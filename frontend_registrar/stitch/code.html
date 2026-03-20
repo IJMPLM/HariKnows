@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Academic Atelier | Registrar Dashboard</title>
+<!-- Google Fonts: Manrope (Headline) & Inter (Body) -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "secondary-fixed": "#d9e3f4",
+              "surface": "#f8f9fb",
+              "on-surface-variant": "#586065",
+              "tertiary-fixed-dim": "#58e7ab",
+              "on-primary-container": "#0048bf",
+              "error": "#9f403d",
+              "on-tertiary-fixed-variant": "#006544",
+              "error-container": "#fe8983",
+              "on-secondary-fixed-variant": "#525c6a",
+              "on-error": "#fff7f6",
+              "inverse-primary": "#618bff",
+              "on-tertiary-container": "#005a3c",
+              "on-background": "#2b3438",
+              "inverse-surface": "#0c0f10",
+              "primary": "#0053db",
+              "primary-dim": "#0048c1",
+              "secondary": "#56606e",
+              "on-secondary-container": "#485260",
+              "secondary-fixed-dim": "#cbd5e6",
+              "background": "#f8f9fb",
+              "surface-container-lowest": "#ffffff",
+              "on-secondary": "#f7f9ff",
+              "on-error-container": "#752121",
+              "primary-fixed": "#dbe1ff",
+              "on-primary": "#f8f7ff",
+              "inverse-on-surface": "#9b9d9f",
+              "on-primary-fixed": "#003798",
+              "error-dim": "#4e0309",
+              "surface-bright": "#f8f9fb",
+              "tertiary-container": "#69f6b8",
+              "tertiary-dim": "#005f40",
+              "surface-container-low": "#f1f4f7",
+              "surface-variant": "#dbe4ea",
+              "secondary-container": "#d9e3f4",
+              "on-primary-fixed-variant": "#0050d4",
+              "on-secondary-fixed": "#36404d",
+              "surface-container-high": "#e2e9ee",
+              "outline-variant": "#abb3b9",
+              "primary-container": "#dbe1ff",
+              "surface-container": "#eaeef2",
+              "outline": "#737c81",
+              "tertiary": "#006d4a",
+              "on-tertiary": "#e6ffee",
+              "surface-dim": "#d1dce2",
+              "surface-container-highest": "#dbe4ea",
+              "tertiary-fixed": "#69f6b8",
+              "on-surface": "#2b3438",
+              "secondary-dim": "#4a5462",
+              "surface-tint": "#0053db",
+              "on-tertiary-fixed": "#00452d",
+              "primary-fixed-dim": "#c7d3ff"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .bg-primary-gradient {
+        background: linear-gradient(135deg, #0053db 0%, #0048c1 100%);
+      }
+      .glass-panel {
+        backdrop-filter: blur(20px);
+        background-color: rgba(248, 249, 251, 0.8);
+      }
+      ::-webkit-scrollbar { width: 6px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #dbe4ea; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface antialiased">
+<!-- Sidebar (Predicted: SideNavBar) -->
+<aside class="h-screen w-64 fixed left-0 top-0 border-r border-slate-200/20 bg-[#f1f4f7] flex flex-col p-4 gap-2 z-40">
+<div class="mb-8 px-2">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-primary-gradient flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined" data-icon="account_balance">account_balance</span>
+</div>
+<div>
+<h1 class="font-headline font-extrabold text-primary text-lg leading-tight">University Portal</h1>
+<p class="font-label text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">Office of the Registrar</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<div class="px-3 py-2 bg-white text-primary rounded-lg shadow-sm font-bold flex items-center gap-3 cursor-pointer transition-transform duration-200 hover:translate-x-1">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label text-xs font-semibold uppercase tracking-widest">Overview</span>
+</div>
+<div class="px-3 py-2 text-slate-500 hover:bg-slate-200/50 rounded-lg flex items-center gap-3 cursor-pointer transition-transform duration-200 hover:translate-x-1">
+<span class="material-symbols-outlined" data-icon="account_balance">account_balance</span>
+<span class="font-label text-xs font-semibold uppercase tracking-widest">Registrar</span>
+</div>
+<div class="px-3 py-2 text-slate-500 hover:bg-slate-200/50 rounded-lg flex items-center gap-3 cursor-pointer transition-transform duration-200 hover:translate-x-1">
+<span class="material-symbols-outlined" data-icon="school">school</span>
+<span class="font-label text-xs font-semibold uppercase tracking-widest">Department A</span>
+</div>
+<div class="px-3 py-2 text-slate-500 hover:bg-slate-200/50 rounded-lg flex items-center gap-3 cursor-pointer transition-transform duration-200 hover:translate-x-1">
+<span class="material-symbols-outlined" data-icon="science">science</span>
+<span class="font-label text-xs font-semibold uppercase tracking-widest">Department B</span>
+</div>
+<div class="px-3 py-2 text-slate-500 hover:bg-slate-200/50 rounded-lg flex items-center gap-3 cursor-pointer transition-transform duration-200 hover:translate-x-1">
+<span class="material-symbols-outlined" data-icon="history_edu">history_edu</span>
+<span class="font-label text-xs font-semibold uppercase tracking-widest">Department C</span>
+</div>
+</nav>
+<div class="pt-4 border-t border-slate-200/40 space-y-4">
+<div class="space-y-1">
+<div class="px-3 py-2 text-slate-500 hover:bg-slate-200/50 rounded-lg flex items-center gap-3 cursor-pointer">
+<span class="material-symbols-outlined" data-icon="list_alt">list_alt</span>
+<span class="font-label text-xs font-semibold uppercase tracking-widest">Activity Log</span>
+</div>
+<div class="px-3 py-2 text-slate-500 hover:bg-slate-200/50 rounded-lg flex items-center gap-3 cursor-pointer">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+<span class="font-label text-xs font-semibold uppercase tracking-widest">Support</span>
+</div>
+</div>
+<button class="w-full bg-primary-gradient text-white py-3 rounded-xl font-headline font-bold text-sm shadow-lg shadow-primary/20 flex items-center justify-center gap-2 active:opacity-80 transition-opacity">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+                New Record
+            </button>
+</div>
+</aside>
+<!-- Main Content Wrapper -->
+<main class="ml-64 flex flex-col min-h-screen">
+<!-- Top Navigation (Predicted: TopNavBar) -->
+<header class="flex justify-between items-center px-8 h-16 w-full sticky top-0 z-50 bg-[#f8f9fb] border-b border-slate-200/20 glass-panel">
+<div class="flex items-center gap-8">
+<span class="font-headline text-xl font-bold text-slate-900 tracking-tight">Academic Atelier</span>
+<nav class="hidden md:flex gap-6 items-center h-full">
+<a class="font-label text-sm font-medium tracking-tight text-primary border-b-2 border-primary pb-1" href="#">Dashboard</a>
+<a class="font-label text-sm font-medium tracking-tight text-slate-500 hover:text-slate-800 transition-colors" href="#">Students</a>
+<a class="font-label text-sm font-medium tracking-tight text-slate-500 hover:text-slate-800 transition-colors" href="#">Reports</a>
+<a class="font-label text-sm font-medium tracking-tight text-slate-500 hover:text-slate-800 transition-colors" href="#">Archives</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<button class="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+<div class="w-8 h-8 rounded-full overflow-hidden bg-slate-200">
+<img alt="Registrar Administrator Profile" class="w-full h-full object-cover" data-alt="Professional portrait of a female academic administrator" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDEjrDdYmOGap_MJUAD8QJULcplcu2d6mhux_tyaaqUIfU3_UU_Sfj5NdrFjVdxlmhbZ3d0YKC8Y47ShZb5ZBiq8kEhmGRWtvdK5G8znrsKapuqQq3duyZguwzcifr4q6V4epL07B7dQqzZmlPAHMlRUf6Uknhsx9h6r-SbnhqelNqA3YZyVTBdI39EIbopQgASBimSEonCGtY-2ORLsBynAzKvNrxMhvsH2zRV1z8_YLa-JwBPhPI6ZYUWNd1XNU5dqvRjzzbYCzJe"/>
+</div>
+</div>
+</header>
+<!-- Three-Column Layout Container -->
+<div class="flex flex-1 overflow-hidden">
+<!-- Column 1: Control Panel (Task Requirement) -->
+<section class="w-72 bg-surface-container-low p-6 flex flex-col gap-6">
+<div>
+<h2 class="font-headline font-bold text-on-surface text-lg mb-4">Command Center</h2>
+<div class="space-y-3">
+<button class="w-full text-left p-4 bg-primary text-on-primary rounded-xl flex items-center justify-between group hover:bg-primary-dim transition-all">
+<span class="font-headline font-bold text-sm tracking-tight">Create New Document</span>
+<span class="material-symbols-outlined group-hover:translate-x-1 transition-transform" data-icon="arrow_forward">arrow_forward</span>
+</button>
+<button class="w-full text-left p-4 bg-white border border-transparent text-primary rounded-xl flex items-center justify-between group hover:border-primary-container transition-all shadow-sm">
+<span class="font-headline font-bold text-sm tracking-tight">Add Student</span>
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform" data-icon="person_add">person_add</span>
+</button>
+<button class="w-full text-left p-4 bg-white border border-transparent text-primary rounded-xl flex items-center justify-between group hover:border-primary-container transition-all shadow-sm">
+<span class="font-headline font-bold text-sm tracking-tight">Generate Report</span>
+<span class="material-symbols-outlined group-hover:rotate-12 transition-transform" data-icon="analytics">analytics</span>
+</button>
+</div>
+</div>
+<div class="mt-auto p-4 bg-surface-container-highest rounded-2xl border border-white/40">
+<div class="flex items-center gap-3 mb-3">
+<div class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></div>
+<span class="font-label text-[10px] font-bold uppercase tracking-tighter text-on-surface-variant">System Status</span>
+</div>
+<p class="text-xs text-on-surface-variant leading-relaxed">All registrar nodes operating at peak efficiency. 12 pending verifications.</p>
+</div>
+</section>
+<!-- Column 2: Main Grid (Task Requirement) -->
+<section class="flex-1 p-8 bg-surface overflow-y-auto">
+<div class="flex justify-between items-end mb-8">
+<div>
+<h2 class="font-headline text-3xl font-extrabold tracking-tight text-on-surface">Department Workflow</h2>
+<p class="text-on-surface-variant text-sm mt-1">Manage document queues across administrative departments.</p>
+</div>
+<div class="flex gap-2">
+<span class="px-3 py-1 rounded-full bg-surface-container-high text-[10px] font-bold uppercase text-on-surface-variant">Filter: Active</span>
+<span class="px-3 py-1 rounded-full bg-surface-container-high text-[10px] font-bold uppercase text-on-surface-variant">Sort: Priority</span>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<!-- Dept Card: Registrar -->
+<div class="bg-surface-container-lowest p-6 rounded-2xl shadow-[0_4px_20px_rgba(43,52,56,0.04)] min-h-[320px] flex flex-col border border-white/50">
+<div class="flex justify-between items-center mb-6">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="account_balance">account_balance</span>
+<h3 class="font-headline font-bold text-on-surface">Registrar</h3>
+</div>
+<span class="text-xs font-bold bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded-full">2 Documents</span>
+</div>
+<div class="flex-1 space-y-3 bg-surface-container-low/30 rounded-xl p-4 border-2 border-dashed border-outline-variant/20">
+<!-- Draggable Green Card -->
+<div class="bg-tertiary text-on-tertiary p-4 rounded-xl shadow-sm cursor-grab active:cursor-grabbing hover:scale-[1.02] transition-transform">
+<div class="flex justify-between items-start mb-2">
+<span class="font-headline font-bold text-xs tracking-wider">#S-10452</span>
+<span class="material-symbols-outlined text-sm" data-icon="drag_indicator">drag_indicator</span>
+</div>
+<h4 class="font-bold text-sm">Jane Doe</h4>
+<div class="mt-3 flex items-center justify-between">
+<span class="text-[10px] uppercase font-bold tracking-widest opacity-80">Transcript Verify</span>
+<div class="flex -space-x-2">
+<div class="w-5 h-5 rounded-full border border-tertiary bg-white/20"></div>
+</div>
+</div>
+</div>
+<div class="bg-tertiary text-on-tertiary p-4 rounded-xl shadow-sm cursor-grab hover:scale-[1.02] transition-transform">
+<div class="flex justify-between items-start mb-2">
+<span class="font-headline font-bold text-xs tracking-wider">#S-10983</span>
+<span class="material-symbols-outlined text-sm" data-icon="drag_indicator">drag_indicator</span>
+</div>
+<h4 class="font-bold text-sm">Marcus Sterling</h4>
+<div class="mt-3 flex items-center justify-between">
+<span class="text-[10px] uppercase font-bold tracking-widest opacity-80">Enrolment Audit</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Dept Card: Dept A -->
+<div class="bg-surface-container-lowest p-6 rounded-2xl shadow-[0_4px_20px_rgba(43,52,56,0.04)] min-h-[320px] flex flex-col border border-white/50">
+<div class="flex justify-between items-center mb-6">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="school">school</span>
+<h3 class="font-headline font-bold text-on-surface">Department A</h3>
+</div>
+<span class="text-xs font-bold bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded-full">0 Documents</span>
+</div>
+<div class="flex-1 flex flex-col items-center justify-center space-y-3 bg-surface-container-low/30 rounded-xl p-4 border-2 border-dashed border-outline-variant/20">
+<span class="material-symbols-outlined text-outline-variant/40 text-4xl" data-icon="move_to_inbox">move_to_inbox</span>
+<p class="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest">Drop Zone</p>
+</div>
+</div>
+<!-- Dept Card: Dept B -->
+<div class="bg-surface-container-lowest p-6 rounded-2xl shadow-[0_4px_20px_rgba(43,52,56,0.04)] min-h-[320px] flex flex-col border border-white/50">
+<div class="flex justify-between items-center mb-6">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="science">science</span>
+<h3 class="font-headline font-bold text-on-surface">Department B</h3>
+</div>
+<span class="text-xs font-bold bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded-full">1 Document</span>
+</div>
+<div class="flex-1 space-y-3 bg-surface-container-low/30 rounded-xl p-4 border-2 border-dashed border-outline-variant/20">
+<div class="bg-tertiary text-on-tertiary p-4 rounded-xl shadow-sm cursor-grab hover:scale-[1.02] transition-transform">
+<div class="flex justify-between items-start mb-2">
+<span class="font-headline font-bold text-xs tracking-wider">#S-11004</span>
+<span class="material-symbols-outlined text-sm" data-icon="drag_indicator">drag_indicator</span>
+</div>
+<h4 class="font-bold text-sm">Elias Vance</h4>
+<div class="mt-3 flex items-center justify-between">
+<span class="text-[10px] uppercase font-bold tracking-widest opacity-80">Research Grant</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Dept Card: Dept C -->
+<div class="bg-surface-container-lowest p-6 rounded-2xl shadow-[0_4px_20px_rgba(43,52,56,0.04)] min-h-[320px] flex flex-col border border-white/50">
+<div class="flex justify-between items-center mb-6">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="history_edu">history_edu</span>
+<h3 class="font-headline font-bold text-on-surface">Department C</h3>
+</div>
+<span class="text-xs font-bold bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded-full">0 Documents</span>
+</div>
+<div class="flex-1 flex flex-col items-center justify-center space-y-3 bg-surface-container-low/30 rounded-xl p-4 border-2 border-dashed border-outline-variant/20">
+<span class="material-symbols-outlined text-outline-variant/40 text-4xl" data-icon="move_to_inbox">move_to_inbox</span>
+<p class="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest">Drop Zone</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Column 3: Activity Log (Task Requirement) -->
+<section class="w-80 bg-surface border-l border-slate-200/20 p-6 overflow-y-auto">
+<div class="flex items-center justify-between mb-8">
+<h2 class="font-headline font-bold text-on-surface text-lg">Activity Log</h2>
+<button class="text-primary text-[10px] font-bold uppercase tracking-widest hover:underline">Clear</button>
+</div>
+<div class="space-y-8 relative">
+<!-- Vertical line for timeline -->
+<div class="absolute left-4 top-2 bottom-0 w-[1px] bg-surface-dim"></div>
+<!-- Log Item 1 -->
+<div class="relative pl-10">
+<div class="absolute left-[13px] top-1 w-2 h-2 rounded-full bg-primary ring-4 ring-surface"></div>
+<div class="flex flex-col gap-1">
+<p class="text-xs font-bold text-on-surface">Document #S-10452 moved to Dept A</p>
+<p class="text-[10px] text-on-surface-variant">Admin: Sarah J. • 2 mins ago</p>
+<div class="mt-2 p-3 bg-surface-container-low rounded-lg border border-white/60">
+<span class="text-[10px] font-medium text-on-surface-variant italic">"Transferred for secondary verification per faculty request."</span>
+</div>
+</div>
+</div>
+<!-- Log Item 2 -->
+<div class="relative pl-10">
+<div class="absolute left-[13px] top-1 w-2 h-2 rounded-full bg-tertiary ring-4 ring-surface"></div>
+<div class="flex flex-col gap-1">
+<p class="text-xs font-bold text-on-surface">New Record created for Jane Doe</p>
+<p class="text-[10px] text-on-surface-variant">System • 15 mins ago</p>
+</div>
+</div>
+<!-- Log Item 3 -->
+<div class="relative pl-10">
+<div class="absolute left-[13px] top-1 w-2 h-2 rounded-full bg-primary ring-4 ring-surface"></div>
+<div class="flex flex-col gap-1">
+<p class="text-xs font-bold text-on-surface">Report #REP-990 Generated</p>
+<p class="text-[10px] text-on-surface-variant">Admin: John D. • 1 hr ago</p>
+</div>
+</div>
+<!-- Log Item 4 -->
+<div class="relative pl-10 opacity-60">
+<div class="absolute left-[13px] top-1 w-2 h-2 rounded-full bg-outline-variant ring-4 ring-surface"></div>
+<div class="flex flex-col gap-1">
+<p class="text-xs font-bold text-on-surface">Batch Update: Student Records</p>
+<p class="text-[10px] text-on-surface-variant">System • 3 hrs ago</p>
+</div>
+</div>
+<!-- Log Item 5 -->
+<div class="relative pl-10 opacity-60">
+<div class="absolute left-[13px] top-1 w-2 h-2 rounded-full bg-outline-variant ring-4 ring-surface"></div>
+<div class="flex flex-col gap-1">
+<p class="text-xs font-bold text-on-surface">Login Detected: Academic Registrar</p>
+<p class="text-[10px] text-on-surface-variant">Security • 5 hrs ago</p>
+</div>
+</div>
+</div>
+<div class="mt-8">
+<button class="w-full py-2 border border-outline-variant/30 rounded-lg text-on-surface-variant text-[10px] font-bold uppercase tracking-widest hover:bg-surface-container-low transition-colors">
+                        View Full History
+                    </button>
+</div>
+</section>
+</div>
+</main>
+</body></html>

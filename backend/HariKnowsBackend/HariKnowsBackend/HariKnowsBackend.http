@@ -1,0 +1,6 @@
+@HariKnowsBackend_HostAddress = http://localhost:5240
+
+GET {{HariKnowsBackend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

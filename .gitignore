@@ -1,0 +1,10 @@
+node_modules
+npm-debug.log*
+
+frontend_helpdesk/node_modules
+frontend_helpdesk/.next
+
+frontend_registrar/node_modules
+frontend_registrar/.next
+
+backend/HariKnowsBackend/HariKnowsBackend/hariknows.db
