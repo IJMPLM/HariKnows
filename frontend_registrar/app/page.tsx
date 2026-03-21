@@ -1,18 +1,46 @@
 "use client";
 
+import type { DragEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5240";
 
+type Department = {
+  id: number;
+  name: string;
+};
+
+type RegistrarDocument = {
+  id: number;
+  referenceCode: string;
+  studentName: string;
+  title: string;
+  departmentId: number;
+  createdAt: string;
+};
+
+type ActivityEntry = {
+  id: number;
+  action: string;
+  actor: string;
+  createdAt: string;
+};
+
+type RegistrarState = {
+  departments: Department[];
+  documents: RegistrarDocument[];
+  activity: ActivityEntry[];
+};
+
 export default function RegistrarPage() {
-  const [departments, setDepartments] = useState([]);
-  const [documents, setDocuments] = useState([]);
-  const [activity, setActivity] = useState([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [documents, setDocuments] = useState<RegistrarDocument[]>([]);
+  const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [newDepartmentName, setNewDepartmentName] = useState("");
   const [newStudentName, setNewStudentName] = useState("");
   const [newDocumentTitle, setNewDocumentTitle] = useState("");
   const [busy, setBusy] = useState(false);
-  const [hoveredDepartmentId, setHoveredDepartmentId] = useState(null);
+  const [hoveredDepartmentId, setHoveredDepartmentId] = useState<number | null>(null);
 
   const loadState = async () => {
     const response = await fetch(`${API_BASE}/api/registrar/state`);
@@ -20,7 +48,7 @@ export default function RegistrarPage() {
       throw new Error("Failed to load registrar state");
     }
 
-    const state = await response.json();
+    const state = (await response.json()) as RegistrarState;
     setDepartments(state.departments);
     setDocuments(state.documents);
     setActivity(state.activity);
@@ -31,7 +59,7 @@ export default function RegistrarPage() {
   }, []);
 
   const documentCountByDepartment = useMemo(() => {
-    const map = new Map();
+    const map = new Map<number, number>();
     for (const department of departments) {
       map.set(department.id, 0);
     }
@@ -102,7 +130,7 @@ export default function RegistrarPage() {
     }
   };
 
-  const onDropDocument = async (event, departmentId) => {
+  const onDropDocument = async (event: DragEvent<HTMLDivElement>, departmentId: number) => {
     event.preventDefault();
     setHoveredDepartmentId(null);
 

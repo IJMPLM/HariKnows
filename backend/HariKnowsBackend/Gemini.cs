@@ -7,12 +7,14 @@ using System.Collections.Generic;
 using Google.GenAI;
 using Google.GenAI.Types;
 
-public class 
+namespace HariKnowsBackend;
+
+public static class GeminiSample
 {
-    public static async Task Main(string[] args)
+    public static async Task<string> RunSampleAsync(string input)
     {
         var client = new Client(
-            apiKey: Environment.GetEnvironmentVariable("GEMINI_API_KEY")
+            apiKey: System.Environment.GetEnvironmentVariable("GEMINI_API_KEY")
         );
 
         var model = "gemini-flash-latest";
@@ -23,7 +25,7 @@ public class
                 Role = "user",
                 Parts = new List<Part>
                 {
-                    new Part { Text = "INSERT_INPUT_HERE" },
+                    new Part { Text = input },
                 }
             },
         };
@@ -48,10 +50,14 @@ public class
             Tools = tools,
         };
 
+        var output = string.Empty;
+
         await foreach (var chunk in client.Models.GenerateContentStreamAsync(model, contents, config))
         {
-            Console.Write(chunk);
+            output += chunk.Text;
         }
+
+        return output;
     }
 
 }

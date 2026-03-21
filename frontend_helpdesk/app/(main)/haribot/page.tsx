@@ -5,7 +5,24 @@ import { useEffect, useMemo, useRef, useState } from "react";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5240";
 const PAGE_SIZE = 20;
 
-function formatTime(value) {
+type Message = {
+  id: number;
+  sender: string;
+  content: string;
+  createdAt: string;
+};
+
+type MessagePage = {
+  messages: Message[];
+  hasMore: boolean;
+};
+
+type FetchParams = {
+  beforeId?: number;
+  afterId?: number;
+};
+
+function formatTime(value: string) {
   return new Date(value).toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit"
@@ -13,16 +30,16 @@ function formatTime(value) {
 }
 
 export default function HelpdeskPage() {
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const threadRef = useRef(null);
+  const threadRef = useRef<HTMLDivElement | null>(null);
 
   const oldestId = useMemo(() => messages[0]?.id, [messages]);
   const latestId = useMemo(() => messages[messages.length - 1]?.id, [messages]);
 
-  const fetchMessages = async (params = {}) => {
+  const fetchMessages = async (params: FetchParams = {}): Promise<MessagePage> => {
     const url = new URL(`${API_BASE}/api/helpdesk/messages`);
     url.searchParams.set("limit", String(PAGE_SIZE));
 
@@ -39,7 +56,7 @@ export default function HelpdeskPage() {
       throw new Error("Failed to load messages");
     }
 
-    return response.json();
+    return (await response.json()) as MessagePage;
   };
 
   const loadInitial = async () => {
@@ -86,7 +103,7 @@ export default function HelpdeskPage() {
     }
   };
 
-  const submit = async (event) => {
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmed = text.trim();
 
@@ -110,7 +127,7 @@ export default function HelpdeskPage() {
         throw new Error("Failed to send");
       }
 
-      const created = await response.json();
+      const created = (await response.json()) as Message;
       setMessages((current) => [...current, created]);
       setText("");
       requestAnimationFrame(() => {

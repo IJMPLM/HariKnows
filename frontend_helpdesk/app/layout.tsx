@@ -1,4 +1,6 @@
 import { Plus_Jakarta_Sans } from "next/font/google";
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import "./globals.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -8,13 +10,17 @@ const plusJakarta = Plus_Jakarta_Sans({
   display: "swap",
 });
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "HariKnows | Your Smart Campus Companion",
   description:
     "HariKnows helps you find answers, review transactions, and chat with Jaithro — your AI-powered campus assistant.",
 };
 
-export default function RootLayout({ children }) {
+type RootLayoutProps = {
+  children: ReactNode;
+};
+
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" className={plusJakarta.variable}>
       <body className={plusJakarta.className}>{children}</body>

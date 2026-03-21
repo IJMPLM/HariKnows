@@ -15,7 +15,7 @@ const recentChats = [
 export default function HomePage() {
   const router = useRouter();
   const [dark, setDark] = useState(false);
-  const [openMenu, setOpenMenu] = useState(null);
+  const [openMenu, setOpenMenu] = useState<number | null>(null);
 
   return (
     <>
