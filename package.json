@@ -2,7 +2,7 @@
   "name": "hariknows-workspace",
   "private": true,
   "scripts": {
-    "setup": "npm run install:frontends && dotnet restore backend/HariKnowsBackend/HariKnowsBackend.sln",
+    "setup": "npm install && npm run install:frontends && dotnet restore backend/HariKnowsBackend/HariKnowsBackend.sln",
     "install:frontends": "npm install --prefix frontend_helpdesk && npm install --prefix frontend_registrar",
     "dev": "concurrently -k -n backend,helpdesk,registrar -c blue,green,magenta \"npm:dev:backend\" \"npm:dev:helpdesk\" \"npm:dev:registrar\"",
     "dev:backend": "dotnet run --project backend/HariKnowsBackend/HariKnowsBackend/HariKnowsBackend.csproj --launch-profile http",
