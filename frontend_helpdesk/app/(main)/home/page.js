@@ -418,7 +418,7 @@ export default function HomePage() {
               </a>
               <a href="/chat" className="sidebar-link">
                 <MessageCircle size={16} />
-                Talk with Jaithro
+                Talk with Hari
               </a>
               <a href="/transactions" className="sidebar-link">
                 <BarChart2 size={16} />
@@ -501,13 +501,13 @@ export default function HomePage() {
                   <article
                     className="card card-large fade-up d2"
                     role="button" tabIndex={0}
-                    aria-label="Talk with Jaithro — Let's try it now"
+                    aria-label="Talk with Hari — Let's try it now"
                     onClick={() => router.push("/haribot")}
                     onKeyDown={(e) => e.key === "Enter" && router.push("/haribot")}
                   >
                     <div className="card-icon-wrap" aria-hidden="true"><MessageCircle size={20} /></div>
                     <div className="card-body">
-                      <p className="card-title">Talk with Jaithro</p>
+                      <p className="card-title">Talk with Hari</p>
                       <p className="card-sub">Let's try it now</p>
                     </div>
                     <div className="card-arrow" aria-hidden="true"><ChevronRight size={14} /></div>
