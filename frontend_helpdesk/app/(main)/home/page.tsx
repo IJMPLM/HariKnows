@@ -416,7 +416,7 @@ export default function HomePage() {
                 </svg>
                 Home
               </a>
-              <a href="/chat" className="sidebar-link">
+              <a href="/haribot" className="sidebar-link">
                 <MessageCircle size={16} />
                 Talk with Hari
               </a>
