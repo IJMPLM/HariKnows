@@ -6,20 +6,14 @@ import { useTheme } from "next-themes";
 import { 
   Bot, 
   Send, 
-  Sun, 
-  Moon, 
   ChevronLeft, 
   Loader2, 
   MoreHorizontal,
-  Mic,
   Image as ImageIcon,
   Sparkles,
   Paperclip,
-  User
 } from "lucide-react";
-import Image from "next/image";
 
-// Make sure this import path matches wherever you placed the DesktopSidebar file!
 import DesktopSidebar from "../../components/DesktopSidebar"; 
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5240";
@@ -192,13 +186,6 @@ export default function HaribotPage() {
             >
               <ChevronLeft size={18} />
               Back
-            </button>
-            <button
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="w-10 h-10 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-              aria-label={mounted && theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            >
-              {mounted && theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
             </button>
           </header>
 
