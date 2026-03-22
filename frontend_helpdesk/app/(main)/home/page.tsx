@@ -80,12 +80,7 @@ export default function HomePage() {
               aria-label="HariKnows Home"
               className="flex items-center gap-2.5 font-bold text-lg text-gray-900 dark:text-white"
             >
-              <div
-                className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#6e3102] to-[#280d02]
-                            flex items-center justify-center shadow-md shadow-[#280d02]/25"
-              >
-                <Image src="/logo1.png" alt="HariKnows logo" width={18} height={18} style={{ objectFit: "contain" }} />
-              </div>
+              <Image src="/Hari_LOGO.png" alt="HariKnows logo" width={35} height={35} style={{ objectFit: "contain" }} />
               HariKnows
             </a>
             <div className="flex items-center gap-1.5">
