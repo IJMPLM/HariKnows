@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
+import Image from "next/image";
 import { 
   Bot, 
   Send, 
@@ -195,14 +196,19 @@ export default function HaribotPage() {
             {isEmpty ? (
               /* EMPTY STATE */
               <div className="flex-1 flex flex-col items-center justify-center px-6 pb-20 animate-fade-in">
+                
+                {/* Mascot Core & Orb Container */}
                 <div className="relative flex items-center justify-center mb-8">
-                  {/* Glowing Orbs */}
-                  <div className="absolute w-32 h-32 bg-[#6e3102]/30 dark:bg-[#d4855a]/30 rounded-full blur-[40px] animate-pulse-slow"></div>
-                  <div className="absolute w-24 h-24 bg-[#d4855a]/40 dark:bg-[#e09873]/20 rounded-full blur-[30px] animate-blob mix-blend-multiply dark:mix-blend-screen"></div>
-                  
-                  {/* Mascot Core (Replace Bot with mascot when im done lel) */}
-                  <div className="relative z-10 w-20 h-20 bg-white dark:bg-[#18181b] rounded-full shadow-2xl flex items-center justify-center border border-white/50 dark:border-white/10">
-                    <Bot size={40} className="text-[#6e3102] dark:text-[#d4855a]" />
+                  <div className="absolute w-32 h-32 bg-[#6e3102]/25 dark:bg-[#d4855a]/25 rounded-full blur-[35px] animate-pulse-slow"></div>
+                  <div className="absolute w-24 h-24 bg-[#d4855a]/30 dark:bg-[#e09873]/15 rounded-full blur-[25px] animate-blob mix-blend-multiply dark:mix-blend-screen"></div>
+                  <div className="relative z-10 w-20 h-20 bg-white dark:bg-[#18181b] rounded-full shadow-2xl flex items-center justify-center border border-white/50 dark:border-white/10 overflow-hidden p-0">
+                    <Image 
+                      src="/Hari_LOGO.png" 
+                      alt="Haribot Logo" 
+                      width={120}
+                      height={120} 
+                      className="w-full h-full object-contain"
+                    />
                   </div>
                 </div>
 
@@ -268,8 +274,14 @@ export default function HaribotPage() {
                                 ME
                               </div>
                           ) : (
-                            <div className="relative w-8 h-8 rounded-full bg-gradient-to-br from-[#6e3102] to-[#280d02] flex items-center justify-center shadow-md">
-                              <Bot size={16} className="text-white" />
+                            <div className="relative w-8 h-8 rounded-full bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10 flex items-center justify-center shadow-md overflow-hidden">
+                              <Image 
+                                src="/Hari_LOGO.png" 
+                                alt="Haribot Avatar" 
+                                width={24} 
+                                height={24} 
+                                className="object-contain" 
+                              />
                             </div>
                           )}
                         </div>
@@ -351,7 +363,7 @@ export default function HaribotPage() {
         }
         @keyframes pulseSlow {
           0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.7; transform: scale(1.1); }
+          50% { opacity: 0.7; transform: scale(1.1); }  
         }
         .animate-blob {
           animation: blob 7s infinite;
