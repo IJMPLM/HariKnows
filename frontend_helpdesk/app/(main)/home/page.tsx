@@ -40,25 +40,32 @@ export default function HomePage() {
   return (
     <div 
       onClick={() => setOpenMenu(null)} 
-      className="relative min-h-screen bg-stone-50 dark:bg-[#121212] text-gray-900 dark:text-gray-100 transition-colors duration-300"
+      className="relative min-h-screen overflow-x-hidden bg-stone-50 dark:bg-[#121212] text-gray-900 dark:text-gray-100 transition-colors duration-300"
     >
       <div
         aria-hidden="true"
-        className="pointer-events-none fixed top-[-8%] right-[-6%] w-[420px] h-[420px] rounded-full
-                    bg-[#6e3102]/15 dark:bg-[#6e3102]/20 blur-[100px] z-0"
+        className="pointer-events-none fixed top-[-8%] right-[-6%] 
+                    w-[280px] h-[280px] lg:w-[420px] lg:h-[420px] 
+                    rounded-full bg-[#6e3102]/15 dark:bg-[#6e3102]/20 
+                    blur-[70px] lg:blur-[100px] z-0"
       />
+      
       <div
         aria-hidden="true"
-        className="pointer-events-none fixed bottom-[5%] left-[-8%] w-[340px] h-[340px] rounded-full
-                    bg-[#280d02]/15 dark:bg-[#d4855a]/10 blur-[80px] z-0"
+        className="pointer-events-none fixed bottom-[5%] left-[-8%] 
+                    w-[220px] h-[220px] lg:w-[340px] lg:h-[340px] 
+                    rounded-full bg-[#280d02]/15 dark:bg-[#d4855a]/10 
+                    blur-[60px] lg:blur-[80px] z-0"
       />
-
-      <div className="relative z-10 flex">
+      
+      <div className="relative z-10 flex flex-col lg:flex-row w-full">
+      <div className="hidden lg:block z-50">
         
         <DesktopSidebar />
+      </div>
 
         {/* MAIN AREA*/}
-        <main role="main" className="flex-1 lg:ml-64 min-h-screen flex flex-col">
+        <main role="main" className="flex-1 lg:ml-64 min-h-screen flex flex-col w-full max-w-full overflow-hidden">
 
           {/* Mobile top nav */}
           <nav
@@ -137,15 +144,32 @@ export default function HomePage() {
               aria-labelledby="greeting"
               style={{ animation: "fadeUp 0.5s ease both" }}
             >
-              <h1 id="greeting" className="text-[2.2rem] lg:text-5xl font-extrabold tracking-tight leading-tight">
-                Hello,{" "}
-                <span className="text-[#6e3102] dark:text-[#d4855a]">
-                  Jana!
-                </span>
-              </h1>
-              <p className="mt-2 text-gray-600 dark:text-gray-400 text-[0.95rem]">
-                What would you like to explore today?
-              </p>
+              <div className="flex items-center gap-4 lg:gap-5">
+                
+                {/* Hari_HI GIF */}
+                <Image 
+                  src="/Hari_HI2.gif" 
+                  alt="Hari waving hi" 
+                  width={112} 
+                  height={112} 
+                  className="w-28 h-28 lg:w-28 lg:h-28 object-contain drop-shadow-sm flex-shrink-0"
+                  unoptimized 
+                />
+
+                {/* Text Block Container */}
+                <div className="flex flex-col">
+                  <h1 id="greeting" className="text-[2.2rem] lg:text-5xl font-extrabold tracking-tight leading-tight">
+                    Hello,{" "}
+                    <span className="text-[#6e3102] dark:text-[#d4855a]">
+                      Rubilyn!
+                    </span>
+                  </h1>
+                  <p className="mt-1 lg:mt-2 text-gray-600 dark:text-gray-400 text-[0.95rem]">
+                    What would you like to explore today?
+                  </p>
+                </div>
+
+              </div>
             </section>
 
             {/* QUICK ACTIONS */}
