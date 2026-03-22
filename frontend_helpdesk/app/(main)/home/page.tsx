@@ -2,7 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MessageCircle, BarChart2, HelpCircle, Sun, Moon, User, MoreHorizontal, ChevronRight } from "lucide-react";
+import {
+  MessageCircle,
+  BarChart2,
+  HelpCircle,
+  Sun,
+  Moon,
+  User,
+  MoreHorizontal,
+  ChevronRight,
+} from "lucide-react";
 import Image from "next/image";
 
 const recentChats = [
@@ -12,424 +21,100 @@ const recentChats = [
   { id: 4, text: "Please head to your AIMs account bes", time: "Yesterday" },
 ];
 
+const navLinks = [
+  { href: "/haribot", icon: <MessageCircle size={16} />, label: "Talk with Hari" },
+  { href: "/transactions", icon: <BarChart2 size={16} />, label: "Transaction History" },
+  { href: "/faqs", icon: <HelpCircle size={16} />, label: "FAQs" },
+];
+
 export default function HomePage() {
   const router = useRouter();
   const [dark, setDark] = useState(false);
   const [openMenu, setOpenMenu] = useState<number | null>(null);
 
   return (
-    <>
-      <style>{`
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    // NOTE: Requires `darkMode: 'class'` in your tailwind.config.js
+    <div className={dark ? "dark" : ""} onClick={() => setOpenMenu(null)}>
+      <div className="relative min-h-screen bg-stone-50 dark:bg-[#0f0f0f] text-gray-900 dark:text-gray-100 transition-colors duration-300">
 
-        :root {
-          --bg: #FBFBFB;
-          --surface: rgba(255,255,255,0.55);
-          --surface-hover: rgba(255,255,255,0.78);
-          --border: rgba(163,68,68,0.10);   
-          --border-strong: rgba(163,68,68,0.20);
-          --text-primary: #1A0808;
-          --text-secondary: #6B3030;
-          --text-muted: #B08080;
-          --accent: #A34444;
-          --shadow: 0 4px 32px rgba(163,68,68,0.08), 0 1px 4px rgba(163,68,68,0.05);
-          --shadow-card: 0 8px 32px rgba(163,68,68,0.10), 0 1px 2px rgba(163,68,68,0.06);
-        }
+        {/* ── Ambient gradient blobs ── */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed top-[-8%] right-[-6%] w-[420px] h-[420px] rounded-full
+                     bg-rose-300/25 dark:bg-rose-900/20 blur-[100px] z-0"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed bottom-[5%] left-[-8%] w-[340px] h-[340px] rounded-full
+                     bg-red-200/30 dark:bg-red-950/25 blur-[80px] z-0"
+        />
 
-        .dark-mode {
-          --bg: #0C1015;
-          --surface: rgba(255,255,255,0.05);
-          --surface-hover: rgba(255,255,255,0.09);
-          --border: rgba(255,255,255,0.07);
-          --border-strong: rgba(255,255,255,0.14);
-          --text-primary: #F5EDED;
-          --text-secondary: #C99090;
-          --text-muted: #7A5A5A;
-          --accent: #D97373;
-          --shadow: 0 4px 32px rgba(0,0,0,0.35), 0 1px 4px rgba(0,0,0,0.20);
-          --shadow-card: 0 8px 40px rgba(0,0,0,0.40), 0 1px 2px rgba(0,0,0,0.25);
-        }
+        {/* ── Layout shell ── */}
+        <div className="relative z-10 flex">
 
-        body {
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          background: var(--bg);
-          color: var(--text-primary);
-          transition: background 0.35s, color 0.35s;
-        }
-
-        /* ── SHELL: sidebar + main ── */
-        .shell {
-          display: grid;
-          grid-template-columns: 1fr;
-          min-height: 100vh;
-          background: var(--bg);
-          transition: background 0.35s;
-          position: relative;
-        }
-        @media (min-width: 768px) {
-          .shell { grid-template-columns: 220px 1fr; }
-        }
-        @media (min-width: 1280px) {
-          .shell { grid-template-columns: 260px 1fr; }
-        }
-
-        /* ── BLOBS ── */
-        .blob {
-          position: fixed; border-radius: 50%;
-          filter: blur(90px); opacity: 0.16;
-          pointer-events: none; z-index: 0;
-          transition: opacity 0.35s;
-        }
-        .blob-1 { width: 400px; height: 400px; background: #D97373; top: -120px; right: -100px; }
-        .blob-2 { width: 320px; height: 320px; background: #A34444; bottom: 60px; left: -130px; }
-        .dark-mode .blob { opacity: 0.22; }
-
-        /* ── SIDEBAR (tablet / desktop only) ── */
-        .sidebar {
-          display: none;
-          flex-direction: column;
-          padding: 28px 16px;
-          border-right: 1px solid var(--border);
-          position: sticky; top: 0;
-          height: 100vh; overflow-y: auto;
-          z-index: 10;
-        }
-        @media (min-width: 768px) { .sidebar { display: flex; } }
-
-        .sidebar-brand {
-          display: flex; align-items: center; gap: 10px;
-          font-weight: 800; font-size: 1.05rem;
-          color: var(--text-primary); text-decoration: none;
-          letter-spacing: -0.02em; margin-bottom: 32px;
-        }
-        .brand-icon {
-          width: 36px; height: 36px;
-          background: transparent; border-radius: 10px;
-          display: grid; place-items: center;
-          flex-shrink: 0;
-        }
-        .brand-icon svg { color: #FBFBFB; }
-
-        .sidebar-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
-
-        .sidebar-link {
-          display: flex; align-items: center; gap: 11px;
-          padding: 10px 12px; border-radius: 12px;
-          font-size: 0.865rem; font-weight: 600;
-          color: var(--text-secondary); text-decoration: none;
-          transition: background 0.18s, color 0.18s;
-          cursor: pointer; border: none; background: none;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          width: 100%; text-align: left;
-        }
-        .sidebar-link svg { color: var(--text-muted); flex-shrink: 0; transition: color 0.18s; }
-        .sidebar-link:hover { background: var(--border); color: var(--text-primary); }
-        .sidebar-link:hover svg { color: var(--accent); }
-        .sidebar-link.active { background: var(--accent); color: #FBFBFB; }
-        .sidebar-link.active svg { color: #FBFBFB; }
-        .sidebar-link.active:hover svg { color: #FBFBFB; }
-
-        .sidebar-divider { height: 1px; background: var(--border); margin: 12px 0; }
-
-        .sidebar-bottom {
-          display: flex; flex-direction: column; gap: 2px;
-          margin-top: auto; padding-top: 14px;
-          border-top: 1px solid var(--border);
-        }
-
-        /* ── MAIN AREA ── */
-        .main-area {
-          position: relative; z-index: 1;
-          display: flex; flex-direction: column;
-          min-height: 100vh;
-        }
-
-        /* ── MOBILE TOP NAV ── */
-        .topnav {
-          display: flex; align-items: center;
-          justify-content: space-between;
-          padding: 18px 20px 10px;
-          position: sticky; top: 0; z-index: 50;
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-          border-bottom: 1px solid var(--border);
-        }
-        @media (min-width: 768px) { .topnav { display: none; } }
-
-        /* ── DESKTOP TOPBAR (icon buttons top-right) ── */
-        .desktop-topbar {
-          display: none;
-          justify-content: flex-end;
-          align-items: center; gap: 8px;
-          padding: 20px 40px 0;
-        }
-        @media (min-width: 768px) { .desktop-topbar { display: flex; } }
-
-        .nav-brand {
-          display: flex; align-items: center; gap: 10px;
-          font-weight: 800; font-size: 1.1rem;
-          color: var(--text-primary); text-decoration: none;
-          letter-spacing: -0.02em;
-        }
-        .nav-actions { display: flex; align-items: center; gap: 8px; }
-
-        .icon-btn {
-          width: 38px; height: 38px;
-          background: var(--surface);
-          border: 1px solid var(--border); border-radius: 12px;
-          display: grid; place-items: center; cursor: pointer;
-          backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-          transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
-          color: var(--text-secondary);
-        }
-        .icon-btn:hover {
-          background: var(--surface-hover);
-          border-color: var(--border-strong);
-          box-shadow: var(--shadow);
-        }
-
-        /* ── PAGE CONTENT ── */
-        .page {
-          padding: 28px 20px 64px;
-          width: 100%;
-          max-width: 860px;
-        }
-        @media (min-width: 768px)  { .page { padding: 28px 36px 64px; } }
-        @media (min-width: 1280px) { .page { padding: 36px 56px 72px; max-width: 980px; } }
-
-        /* ── HERO ── */
-        .hero { padding-bottom: 28px; }
-        .hero-greeting {
-          font-size: clamp(2rem, 4.5vw, 3rem);
-          font-weight: 900; color: var(--text-primary);
-          line-height: 1.1; letter-spacing: -0.03em;
-        }
-        .hero-greeting span { color: var(--accent); transition: color 0.35s; }
-        .hero-sub {
-          font-size: 0.9rem; color: var(--text-muted);
-          margin-top: 7px; font-weight: 500;
-        }
-
-        /* ── CARDS GRID ── */
-        /* Mobile: 2-col, large card spans 2 rows */
-        .cards-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 12px;
-        }
-        .card-large { grid-row: 1 / 3; min-height: 230px; }
-
-        /* Tablet: 3 equal columns, large card no longer spans */
-        @media (min-width: 768px) {
-          .cards-grid {
-            grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
-          }
-          .card-large { grid-row: auto; min-height: 200px; }
-        }
-
-        @media (min-width: 1280px) {
-          .cards-grid { gap: 20px; }
-          .card-large { min-height: 220px; }
-        }
-
-        .card {
-          background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: 20px; padding: 20px;
-          cursor: pointer;
-          backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-          box-shadow: var(--shadow-card);
-          transition: background 0.2s, border-color 0.2s, transform 0.2s, box-shadow 0.2s;
-          position: relative; overflow: hidden;
-          display: flex; flex-direction: column;
-          justify-content: space-between;
-        }
-        .card:hover {
-          background: var(--surface-hover);
-          border-color: var(--border-strong);
-          transform: translateY(-2px);
-          box-shadow: 0 16px 48px rgba(163,68,68,0.16);
-        }
-        .dark-mode .card:hover { box-shadow: 0 16px 48px rgba(0,0,0,0.45); }
-
-        .card-icon-wrap {
-          width: 40px; height: 40px;
-          background: var(--border);
-          border: 1px solid var(--border-strong);
-          border-radius: 12px; display: grid; place-items: center;
-          color: var(--accent); transition: color 0.35s;
-        }
-        .card-body { margin-top: 14px; }
-        .card-title {
-          font-size: 1rem; font-weight: 800;
-          color: var(--text-primary);
-          line-height: 1.25; letter-spacing: -0.02em;
-        }
-        .card-sub {
-          font-size: 0.78rem; color: var(--text-muted);
-          margin-top: 4px; font-weight: 500;
-        }
-        .card-arrow {
-          position: absolute; bottom: 16px; right: 16px;
-          width: 28px; height: 28px;
-          background: var(--accent); border-radius: 8px;
-          display: grid; place-items: center;
-          color: #FBFBFB; opacity: 0;
-          transform: translateX(-6px);
-          transition: opacity 0.2s, transform 0.2s, background 0.35s;
-        }
-        .card:hover .card-arrow { opacity: 1; transform: translateX(0); }
-
-        /* ── RECENT CHATS ── */
-        .section-header {
-          display: flex; align-items: center;
-          justify-content: space-between;
-          margin: 36px 0 14px;
-        }
-        .section-title {
-          font-size: 1.15rem; font-weight: 800;
-          color: var(--text-primary); letter-spacing: -0.02em;
-        }
-        .see-all {
-          font-size: 0.8rem; font-weight: 600;
-          color: var(--accent); cursor: pointer;
-          text-decoration: none;
-          display: flex; align-items: center; gap: 2px;
-          transition: opacity 0.2s, color 0.35s;
-        }
-        .see-all:hover { opacity: 0.65; }
-
-        /* Chat list: 1 col mobile, 2 col tablet+ */
-        .chat-list {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 8px;
-        }
-        @media (min-width: 768px) {
-          .chat-list { grid-template-columns: 1fr 1fr; gap: 10px; }
-        }
-        @media (min-width: 1280px) {
-          .chat-list { gap: 12px; }
-        }
-
-        .chat-item {
-          background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: 14px; padding: 13px 14px;
-          display: flex; align-items: center; gap: 12px;
-          backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-          box-shadow: var(--shadow);
-          transition: background 0.18s, border-color 0.18s, transform 0.18s;
-          cursor: pointer; position: relative;
-        }
-        .chat-item:hover {
-          background: var(--surface-hover);
-          border-color: var(--border-strong);
-          transform: translateX(3px);
-        }
-
-        .chat-avatar {
-          width: 38px; height: 38px; border-radius: 50%;
-          background: var(--border);
-          border: 1px solid var(--border-strong);
-          flex-shrink: 0; display: grid; place-items: center;
-          color: var(--text-muted);
-        }
-        .chat-text { flex: 1; min-width: 0; }
-        .chat-msg {
-          font-size: 0.86rem; font-weight: 600;
-          color: var(--text-primary);
-          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        .chat-time {
-          font-size: 0.7rem; color: var(--text-muted);
-          margin-top: 3px; font-weight: 500;
-        }
-
-        .chat-menu-btn {
-          background: none; border: none; cursor: pointer;
-          color: var(--text-muted); padding: 4px;
-          border-radius: 8px; display: grid; place-items: center;
-          transition: background 0.15s, color 0.15s; position: relative;
-        }
-        .chat-menu-btn:hover { background: var(--border); color: var(--text-primary); }
-
-        .dropdown {
-          position: absolute; right: 0; top: 38px;
-          background: var(--surface-hover);
-          border: 1px solid var(--border-strong);
-          border-radius: 14px; padding: 6px;
-          z-index: 100;
-          backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-          box-shadow: var(--shadow-card); min-width: 130px;
-        }
-        .dropdown button {
-          display: block; width: 100%;
-          background: none; border: none;
-          padding: 8px 12px;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          font-size: 0.82rem; font-weight: 600;
-          color: var(--text-primary); cursor: pointer;
-          border-radius: 8px; text-align: left;
-          transition: background 0.15s;
-        }
-        .dropdown button:hover { background: var(--border); }
-        .dropdown button.danger { color: #E05555; }
-
-        /* ── ANIMATIONS ── */
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(18px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        .fade-up { animation: fadeUp 0.5s cubic-bezier(0.22,1,0.36,1) both; }
-        .d1 { animation-delay: 0.04s; }
-        .d2 { animation-delay: 0.10s; }
-        .d3 { animation-delay: 0.16s; }
-        .d4 { animation-delay: 0.22s; }
-        .d5 { animation-delay: 0.28s; }
-        .d6 { animation-delay: 0.34s; }
-        .d7 { animation-delay: 0.40s; }
-        .d8 { animation-delay: 0.46s; }
-      `}</style>
-
-      <div className={dark ? "dark-mode" : ""} onClick={() => setOpenMenu(null)}>
-        <div className="blob blob-1" />
-        <div className="blob blob-2" />
-
-        <div className="shell">
-
-          {/* ── SIDEBAR ── */}
-          <aside className="sidebar" aria-label="Sidebar navigation">
-            <a href="/home" className="sidebar-brand" aria-label="HariKnows Home">
-            <div className="brand-icon" aria-hidden="true">
-            <Image src="/logo1.png" alt="HariKnows logo" width={40} height={30} style={{ objectFit: "contain" }} />
-            </div>
+          {/* ══════════════════════ SIDEBAR (lg+) ══════════════════════ */}
+          <aside
+            aria-label="Sidebar navigation"
+            className="hidden lg:flex flex-col fixed left-0 top-0 h-full w-64
+                       bg-white/75 dark:bg-[#161616]/80 backdrop-blur-xl
+                       border-r border-gray-100 dark:border-white/[0.05] z-40"
+          >
+            {/* Brand */}
+            <a
+              href="/home"
+              aria-label="HariKnows Home"
+              className="flex items-center gap-3 px-6 py-6 font-bold text-xl
+                         text-gray-900 dark:text-white hover:opacity-80 transition-opacity"
+            >
+              <div
+                className="w-9 h-9 rounded-xl bg-gradient-to-br from-rose-500 to-red-700
+                            flex items-center justify-center shadow-lg shadow-red-500/25 flex-shrink-0"
+              >
+                <Image src="/logo1.png" alt="HariKnows logo" width={22} height={22} style={{ objectFit: "contain" }} />
+              </div>
               HariKnows!
             </a>
 
-            <nav className="sidebar-nav" aria-label="Primary">
-              <a href="/" className="sidebar-link active">
+            {/* Primary nav */}
+            <nav aria-label="Primary" className="flex-1 px-3 py-2 space-y-0.5">
+              {/* Home (active) */}
+              <a
+                href="/"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
+                           bg-gradient-to-r from-rose-500/10 to-transparent
+                           text-rose-600 dark:text-rose-400
+                           border border-rose-100/60 dark:border-rose-900/30"
+              >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
                   <polyline points="9 22 9 12 15 12 15 22"/>
                 </svg>
                 Home
               </a>
-              <a href="/haribot" className="sidebar-link">
-                <MessageCircle size={16} />
-                Talk with Hari
-              </a>
-              <a href="/transactions" className="sidebar-link">
-                <BarChart2 size={16} />
-                Transaction History
-              </a>
-              <a href="/faqs" className="sidebar-link">
-                <HelpCircle size={16} />
-                FAQs
-              </a>
-              <div className="sidebar-divider" />
-              <a href="/chats" className="sidebar-link">
+
+              {navLinks.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
+                             text-gray-500 dark:text-gray-400
+                             hover:bg-gray-50 dark:hover:bg-white/[0.05]
+                             hover:text-gray-900 dark:hover:text-white transition-all duration-150"
+                >
+                  {link.icon}
+                  {link.label}
+                </a>
+              ))}
+
+              <div className="my-3 border-t border-gray-100 dark:border-white/[0.05]" />
+
+              <a
+                href="/chats"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
+                           text-gray-500 dark:text-gray-400
+                           hover:bg-gray-50 dark:hover:bg-white/[0.05]
+                           hover:text-gray-900 dark:hover:text-white transition-all duration-150"
+              >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
                 </svg>
@@ -437,139 +122,259 @@ export default function HomePage() {
               </a>
             </nav>
 
-            <div className="sidebar-bottom">
+            {/* Bottom links */}
+            <div className="px-3 py-4 border-t border-gray-100 dark:border-white/[0.05] space-y-0.5">
               <button
-                className="sidebar-link"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
+                           text-gray-500 dark:text-gray-400
+                           hover:bg-gray-50 dark:hover:bg-white/[0.05]
+                           hover:text-gray-900 dark:hover:text-white transition-all duration-150"
                 onClick={(e) => { e.stopPropagation(); setDark((d) => !d); }}
                 aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
               >
                 {dark ? <Sun size={16} /> : <Moon size={16} />}
                 {dark ? "Light Mode" : "Dark Mode"}
               </button>
-              <a href="/account" className="sidebar-link">
+              <a
+                href="/account"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
+                           text-gray-500 dark:text-gray-400
+                           hover:bg-gray-50 dark:hover:bg-white/[0.05]
+                           hover:text-gray-900 dark:hover:text-white transition-all duration-150"
+              >
                 <User size={16} />
                 Account
               </a>
             </div>
           </aside>
 
-          {/* ── MAIN ── */}
-          <main className="main-area" role="main">
+          {/* ══════════════════════ MAIN AREA ══════════════════════ */}
+          <main role="main" className="flex-1 lg:ml-64 min-h-screen flex flex-col">
 
             {/* Mobile top nav */}
-            <nav className="topnav" aria-label="Main navigation">
-              <a href="/" className="nav-brand" aria-label="HariKnows Home">
-                <div className="brand-icon" aria-hidden="true">
-                  <Image src="/logo1.png" alt="HariKnows logo" width={40} height={40} style={{ objectFit: "contain" }} />
+            <nav
+              aria-label="Main navigation"
+              className="lg:hidden sticky top-0 z-30 flex items-center justify-between
+                         px-5 py-3.5
+                         bg-stone-50/90 dark:bg-[#0f0f0f]/90 backdrop-blur-xl
+                         border-b border-gray-100 dark:border-white/[0.05]"
+            >
+              <a
+                href="/"
+                aria-label="HariKnows Home"
+                className="flex items-center gap-2.5 font-bold text-lg text-gray-900 dark:text-white"
+              >
+                <div
+                  className="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-500 to-red-700
+                              flex items-center justify-center shadow-md shadow-red-500/20"
+                >
+                  <Image src="/logo1.png" alt="HariKnows logo" width={18} height={18} style={{ objectFit: "contain" }} />
                 </div>
                 HariKnows!
               </a>
-              <div className="nav-actions">
-                <button className="icon-btn" onClick={(e) => { e.stopPropagation(); setDark((d) => !d); }} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}>
+              <div className="flex items-center gap-1.5">
+                <button
+                  className="w-9 h-9 rounded-xl flex items-center justify-center
+                             text-gray-500 dark:text-gray-400
+                             hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+                  onClick={(e) => { e.stopPropagation(); setDark((d) => !d); }}
+                  aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+                >
                   {dark ? <Sun size={16} /> : <Moon size={16} />}
                 </button>
-                <button className="icon-btn" aria-label="Account settings">
+                <button
+                  className="w-9 h-9 rounded-xl flex items-center justify-center
+                             text-gray-500 dark:text-gray-400
+                             hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+                  aria-label="Account settings"
+                >
                   <User size={16} />
                 </button>
               </div>
             </nav>
 
-            {/* Tablet / desktop top-right */}
-            <div className="desktop-topbar">
-              <button className="icon-btn" onClick={(e) => { e.stopPropagation(); setDark((d) => !d); }} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}>
+            {/* Desktop top-right controls */}
+            <div className="hidden lg:flex items-center justify-end gap-1.5 px-8 pt-5">
+              <button
+                className="w-9 h-9 rounded-xl flex items-center justify-center
+                           text-gray-400 dark:text-gray-500
+                           hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+                onClick={(e) => { e.stopPropagation(); setDark((d) => !d); }}
+                aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+              >
                 {dark ? <Sun size={16} /> : <Moon size={16} />}
               </button>
-              <button className="icon-btn" aria-label="Account settings">
+              <button
+                className="w-9 h-9 rounded-xl flex items-center justify-center
+                           text-gray-400 dark:text-gray-500
+                           hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+                aria-label="Account settings"
+              >
                 <User size={16} />
               </button>
             </div>
 
-            <div className="page">
+            {/* ── Page content ── */}
+            <div className="flex-1 px-5 py-7 lg:px-8 lg:py-6 max-w-3xl mx-auto w-full space-y-8">
 
-              {/* HERO */}
-              <section className="hero fade-up d1" aria-labelledby="greeting">
-                <h1 id="greeting" className="hero-greeting">
-                  Hello, <span>Juan!</span>
+              {/* ── HERO ── */}
+              <section
+                aria-labelledby="greeting"
+                style={{ animation: "fadeUp 0.5s ease both" }}
+              >
+                <h1 id="greeting" className="text-[2.2rem] lg:text-5xl font-extrabold tracking-tight leading-tight">
+                  Hello,{" "}
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-500 via-red-500 to-rose-700">
+                    Juan!
+                  </span>
                 </h1>
-                <p className="hero-sub">What would you like to explore today?</p>
+                <p className="mt-2 text-gray-400 dark:text-gray-500 text-[0.95rem]">
+                  What would you like to explore today?
+                </p>
               </section>
 
-              {/* QUICK ACTIONS */}
-              <section aria-label="Quick actions">
-                <div className="cards-grid">
+              {/* ── QUICK ACTIONS ── */}
+              <section
+                aria-label="Quick actions"
+                style={{ animation: "fadeUp 0.5s 0.1s ease both", opacity: 0, animationFillMode: "forwards" }}
+              >
+                {/*
+                  Mobile:  2-col grid, "Talk with Hari" spans 2 rows (tall left card)
+                  Desktop: 3-col grid, all cards in a single row
+                */}
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 auto-rows-[minmax(100px,auto)]">
 
+                  {/* Talk with Hari — featured card */}
                   <article
-                    className="card card-large fade-up d2"
-                    role="button" tabIndex={0}
+                    className="row-span-2 lg:row-span-1 rounded-2xl p-5 cursor-pointer select-none
+                               bg-gradient-to-br from-rose-500 via-red-600 to-rose-800
+                               text-white shadow-lg shadow-red-500/20
+                               hover:shadow-red-500/35 hover:scale-[1.02] active:scale-[0.98]
+                               transition-all duration-200 flex flex-col justify-between"
+                    role="button"
+                    tabIndex={0}
                     aria-label="Talk with Hari — Let's try it now"
                     onClick={() => router.push("/haribot")}
                     onKeyDown={(e) => e.key === "Enter" && router.push("/haribot")}
                   >
-                    <div className="card-icon-wrap" aria-hidden="true"><MessageCircle size={20} /></div>
-                    <div className="card-body">
-                      <p className="card-title">Talk with Hari</p>
-                      <p className="card-sub">Let's try it now</p>
+                    <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                      <MessageCircle size={20} className="text-white" />
                     </div>
-                    <div className="card-arrow" aria-hidden="true"><ChevronRight size={14} /></div>
+                    <div>
+                      <p className="font-bold text-base leading-snug">Talk with Hari</p>
+                      <p className="text-white/65 text-xs mt-0.5">Let's try it now</p>
+                    </div>
                   </article>
 
+                  {/* Transaction History */}
                   <article
-                    className="card fade-up d3"
-                    role="button" tabIndex={0}
+                    className="rounded-2xl p-4 cursor-pointer select-none
+                               bg-white dark:bg-[#1a1a1a]
+                               border border-gray-100 dark:border-white/[0.06]
+                               hover:border-rose-200 dark:hover:border-rose-900/50
+                               hover:scale-[1.02] active:scale-[0.98]
+                               transition-all duration-200 shadow-sm hover:shadow-md
+                               flex flex-col justify-between"
+                    role="button"
+                    tabIndex={0}
                     aria-label="Transaction History"
                     onClick={() => router.push("/transactions")}
                     onKeyDown={(e) => e.key === "Enter" && router.push("/transactions")}
                   >
-                    <div className="card-icon-wrap" aria-hidden="true"><BarChart2 size={20} /></div>
-                    <div className="card-body">
-                      <p className="card-title">Transaction History</p>
-                      <p className="card-sub">View your transactions here</p>
+                    <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/40 flex items-center justify-center">
+                      <BarChart2 size={18} className="text-rose-500 dark:text-rose-400" />
                     </div>
-                    <div className="card-arrow" aria-hidden="true"><ChevronRight size={14} /></div>
+                    <div>
+                      <p className="font-semibold text-sm text-gray-800 dark:text-gray-100 leading-snug">
+                        Transaction History
+                      </p>
+                      <p className="text-gray-400 text-[11px] mt-0.5 hidden lg:block">View your transactions here</p>
+                    </div>
                   </article>
 
+                  {/* FAQs */}
                   <article
-                    className="card fade-up d4"
-                    role="button" tabIndex={0}
+                    className="rounded-2xl p-4 cursor-pointer select-none
+                               bg-white dark:bg-[#1a1a1a]
+                               border border-gray-100 dark:border-white/[0.06]
+                               hover:border-rose-200 dark:hover:border-rose-900/50
+                               hover:scale-[1.02] active:scale-[0.98]
+                               transition-all duration-200 shadow-sm hover:shadow-md
+                               flex flex-col justify-between"
+                    role="button"
+                    tabIndex={0}
                     aria-label="FAQs"
                     onClick={() => router.push("/FAQs")}
                     onKeyDown={(e) => e.key === "Enter" && router.push("/FAQs")}
                   >
-                    <div className="card-icon-wrap" aria-hidden="true"><HelpCircle size={20} /></div>
-                    <div className="card-body">
-                      <p className="card-title">FAQs</p>
-                      <p className="card-sub">Find answers to common questions</p>
+                    <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/40 flex items-center justify-center">
+                      <HelpCircle size={18} className="text-rose-500 dark:text-rose-400" />
                     </div>
-                    <div className="card-arrow" aria-hidden="true"><ChevronRight size={14} /></div>
+                    <div>
+                      <p className="font-semibold text-sm text-gray-800 dark:text-gray-100 leading-snug">FAQs</p>
+                      <p className="text-gray-400 text-[11px] mt-0.5 hidden lg:block">Find answers to common questions</p>
+                    </div>
                   </article>
 
                 </div>
               </section>
 
-              {/* RECENT CHATS */}
-              <section aria-labelledby="recent-chats-heading">
-                <div className="section-header fade-up d5">
-                  <h2 id="recent-chats-heading" className="section-title">Recent Chats</h2>
-                  <a href="/chats" className="see-all" aria-label="See all recent chats">
-                    See All <ChevronRight size={13} />
+              {/* ── RECENT CHATS ── */}
+              <section
+                aria-labelledby="recent-chats-heading"
+                style={{ animation: "fadeUp 0.5s 0.2s ease both", opacity: 0, animationFillMode: "forwards" }}
+              >
+                <div className="flex items-center justify-between mb-3.5">
+                  <h2 id="recent-chats-heading" className="text-xl font-bold text-gray-900 dark:text-white">
+                    Recent Chats
+                  </h2>
+                  <a
+                    href="/chats"
+                    aria-label="See all recent chats"
+                    className="flex items-center gap-0.5 text-sm font-medium text-rose-500 dark:text-rose-400
+                               hover:text-rose-600 dark:hover:text-rose-300 transition-colors"
+                  >
+                    See All <ChevronRight size={14} />
                   </a>
                 </div>
 
-                <ul className="chat-list" role="list">
-                  {recentChats.map((chat, i) => (
+                <ul className="space-y-2.5" role="list">
+                  {recentChats.map((chat) => (
                     <li
                       key={chat.id}
-                      className={`chat-item fade-up d${i + 5}`}
+                      className="group flex items-center gap-3 px-4 py-3.5 rounded-2xl cursor-pointer
+                                 bg-white dark:bg-[#1a1a1a]
+                                 border border-gray-100 dark:border-white/[0.06]
+                                 hover:border-rose-100 dark:hover:border-rose-900/40
+                                 transition-all duration-150 shadow-sm hover:shadow-md"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <div className="chat-avatar" aria-hidden="true"><User size={15} /></div>
-                      <div className="chat-text">
-                        <p className="chat-msg">{chat.text}</p>
-                        <p className="chat-time">{chat.time}</p>
+                      {/* Avatar */}
+                      <div
+                        className="w-9 h-9 rounded-full bg-gradient-to-br from-rose-100 to-red-50
+                                   dark:from-rose-950/50 dark:to-red-900/30
+                                   flex items-center justify-center flex-shrink-0"
+                      >
+                        <User size={15} className="text-rose-400 dark:text-rose-500" />
                       </div>
-                      <div style={{ position: "relative" }}>
+
+                      {/* Text */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                          {chat.text}
+                        </p>
+                        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{chat.time}</p>
+                      </div>
+
+                      {/* Context menu */}
+                      <div className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                         <button
-                          className="chat-menu-btn"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center
+                                     text-gray-300 dark:text-gray-600
+                                     hover:text-gray-600 dark:hover:text-gray-300
+                                     hover:bg-gray-100 dark:hover:bg-white/10
+                                     opacity-0 group-hover:opacity-100
+                                     transition-all duration-150"
                           aria-label={`Options for: ${chat.text}`}
                           aria-expanded={openMenu === chat.id}
                           onClick={(e) => {
@@ -579,11 +384,37 @@ export default function HomePage() {
                         >
                           <MoreHorizontal size={16} />
                         </button>
+
                         {openMenu === chat.id && (
-                          <div className="dropdown" role="menu" onClick={(e) => e.stopPropagation()}>
-                            <button role="menuitem">Open Chat</button>
-                            <button role="menuitem">Copy Text</button>
-                            <button role="menuitem" className="danger">Delete</button>
+                          <div
+                            className="absolute right-0 top-full mt-1 w-36 py-1
+                                       bg-white dark:bg-[#252525]
+                                       rounded-xl border border-gray-100 dark:border-white/10
+                                       shadow-xl shadow-black/10 dark:shadow-black/40 z-50"
+                            role="menu"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300
+                                         hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
+                              role="menuitem"
+                            >
+                              Open Chat
+                            </button>
+                            <button
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300
+                                         hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
+                              role="menuitem"
+                            >
+                              Copy Text
+                            </button>
+                            <button
+                              className="w-full text-left px-4 py-2 text-sm text-rose-500
+                                         hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                              role="menuitem"
+                            >
+                              Delete
+                            </button>
                           </div>
                         )}
                       </div>
@@ -596,6 +427,22 @@ export default function HomePage() {
           </main>
         </div>
       </div>
-    </>
+
+      {/*
+        Keyframe animations.
+        Move this to globals.css if you prefer not to inline styles:
+
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(14px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      */}
+      <style>{`
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(14px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+    </div>
   );
 }
