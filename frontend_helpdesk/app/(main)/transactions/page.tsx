@@ -11,7 +11,7 @@ import {
   HelpCircle,
   Hourglass,
   FileCheck,
-  FileWarning
+  FileWarning,
 } from "lucide-react";
 import DesktopSidebar from "../../components/DesktopSidebar";
 
@@ -58,12 +58,6 @@ const transactions = [
   },
 ];
 
-const navLinks = [
-  { href: "/haribot", icon: <MessageCircle size={16} />, label: "Talk with Hari" },
-  { href: "/transactions", icon: <BarChart2 size={16} />, label: "Transaction History" },
-  { href: "/faqs", icon: <HelpCircle size={16} />, label: "FAQs" },
-];
-
 const tabs = ["Pending", "Complete", "Expired"];
 
 function getStatusStyles(status: string) {
@@ -108,11 +102,17 @@ export default function TransactionsPage() {
     <>
       <div className="relative h-screen flex flex-col bg-stone-50 dark:bg-[#121212] text-gray-900 dark:text-gray-100 transition-colors duration-300 font-sans overflow-hidden">
         
-        {/* Ambient Blobs */}
-        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-           <div className="absolute top-[-10%] left-[-5%] w-[500px] h-[500px] rounded-full bg-[#6e3102]/5 dark:bg-[#6e3102]/10 blur-[120px]" />
-           <div className="absolute bottom-[-10%] right-[-5%] w-[400px] h-[400px] rounded-full bg-[#d4855a]/5 dark:bg-[#d4855a]/5 blur-[100px]" />
-        </div>
+        {/* Ambient gradient blobs */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed top-[-8%] right-[-6%] w-[420px] h-[420px] rounded-full
+                      bg-[#6e3102]/15 dark:bg-[#6e3102]/20 blur-[100px] z-0"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed bottom-[5%] left-[-8%] w-[340px] h-[340px] rounded-full
+                      bg-[#280d02]/15 dark:bg-[#d4855a]/10 blur-[80px] z-0"
+        />
 
         {/* DESKTOP LAYOUT */}
         <div className="hidden lg:flex relative z-10 w-full h-full overflow-hidden">

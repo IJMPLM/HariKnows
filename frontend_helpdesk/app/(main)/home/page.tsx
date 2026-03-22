@@ -155,7 +155,7 @@ export default function HomePage() {
             >
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 auto-rows-[minmax(100px,auto)]">
 
-                {/* Talk with Hari - Solid Primary Button */}
+                {/* Talk with Hari */}
                 <article
                   className="row-span-2 lg:row-span-1 rounded-2xl p-5 cursor-pointer select-none
                               bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212]
@@ -215,8 +215,8 @@ export default function HomePage() {
                   role="button"
                   tabIndex={0}
                   aria-label="FAQs"
-                  onClick={() => router.push("/FAQs")}
-                  onKeyDown={(e) => e.key === "Enter" && router.push("/FAQs")}
+                  onClick={() => router.push("/faqs")}
+                  onKeyDown={(e) => e.key === "Enter" && router.push("/faqs")}
                 >
                   <div className="w-9 h-9 rounded-xl bg-[#6e3102]/10 dark:bg-[#d4855a]/10 flex items-center justify-center">
                     <HelpCircle size={18} className="text-[#6e3102] dark:text-[#d4855a]" />
