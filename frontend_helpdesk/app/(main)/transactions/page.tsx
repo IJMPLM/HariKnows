@@ -67,7 +67,7 @@ function getStatusStyles(status: string) {
     case 'Expired':
       return 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400 border-red-200 dark:border-red-500/20';
     case 'Prepared':
-      return 'bg-[#6e3102]/10 text-[#6e3102] dark:bg-[#d4855a]/15 dark:text-[#d4855a] border-[#6e3102]/20 dark:border-[#d4855a]/20';
+      return 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400 border-blue-200 dark:border-blue-500/20';
     case 'Pending':
     default:
       return 'bg-gray-100 text-gray-600 dark:bg-white/5 dark:text-gray-400 border-gray-200 dark:border-white/10';
