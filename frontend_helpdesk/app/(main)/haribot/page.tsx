@@ -218,28 +218,7 @@ export default function HaribotPage() {
                 </h1>
                 <p className="text-gray-500 dark:text-gray-400 mb-10 text-center">
                   Ask about enrollment, document requests, or your processing status.
-                </p>
-
-                {/* Prompt Suggestions */}
-                <div className="flex flex-wrap items-center justify-center gap-3 max-w-2xl">
-                  {[
-                    { text: "What are the requirements for enrollment?", icon: <Sparkles size={16} /> },
-                    { text: "How do I request a True Copy of Grades?", icon: <Paperclip size={16} /> },
-                    { text: "Check my clearance status", icon: <Loader2 size={16} /> },
-                  ].map((prompt, i) => (
-                    <button
-                      key={i}
-                      onClick={() => {
-                        setText(prompt.text);
-                        submit(undefined, prompt.text);
-                      }}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white dark:bg-[#18181b] border border-gray-200/60 dark:border-white/10 text-sm text-gray-700 dark:text-gray-300 hover:border-[#6e3102]/30 dark:hover:border-[#d4855a]/50 hover:shadow-md transition-all"
-                    >
-                      <span className="text-[#6e3102] dark:text-[#d4855a]">{prompt.icon}</span>
-                      {prompt.text}
-                    </button>
-                  ))}
-                </div>
+                </p>  
               </div>
             ) : (
               /* CHAT THREAD STATE */
