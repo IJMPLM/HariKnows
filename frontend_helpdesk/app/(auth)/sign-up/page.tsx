@@ -24,12 +24,108 @@ const COLLEGE_OPTIONS = [
   { value: "gsl", label: "Graduate School of Law" },
 ];
 
-const PROGRAM_OPTIONS = [
-  { value: "bscpe", label: "BS Computer Engineering" },
-  { value: "bscs", label: "BS Computer Science" },
-  { value: "bsit", label: "BS Information Technology" },
-  { value: "bsce", label: "BS Civil Engineering" },
-];
+// Mapping colleges to their specific programs
+const PROGRAMS_BY_COLLEGE: Record<string, { value: string; label: string }[]> = {
+  ca: [
+    { value: "bsa", label: "BS in Accountancy (BSA)" },
+  ],
+  casbe: [
+    { value: "bs_arch", label: "BS in Architecture (BS Arch)" },
+  ],
+  cba: [
+    { value: "bsba_be", label: "BS in Business Administration Major in Business Economics (BSBA-BE)" },
+    { value: "bsba_fm", label: "BS in Business Administration Major in Financial Management (BSBA-FM)" },
+    { value: "bsba_hrm", label: "BS in Business Administration Major in Human Resource Management (BSBA-HRM)" },
+    { value: "bsba_mm", label: "BS in Business Administration Major in Marketing Management (BSBA-MM)" },
+    { value: "bsba_om", label: "BS in Business Administration Major in Operations Management (BSBA-OM)" },
+    { value: "bs_entre", label: "BS in Entrepreneurship (BS Entrepreneurship)" },
+    { value: "bs_rem", label: "BS in Real Estate Management (BS-REM)" },
+    { value: "dba", label: "Doctor in Business Administration" },
+    { value: "mba", label: "Master in Business Administration" },
+  ],
+  ced: [
+    { value: "beced", label: "Bachelor of Early Childhood Education (BECED)" },
+    { value: "beed", label: "Bachelor of Elementary Education (BEED)" },
+    { value: "bped", label: "Bachelor of Physical Education (BPEd)" },
+    { value: "bsed_eng", label: "Bachelor of Secondary Education Major in English (BSEd-Eng)" },
+    { value: "bsed_fil", label: "Bachelor of Secondary Education Major in Filipino (BSEd-Fil)" },
+    { value: "bsed_math", label: "Bachelor of Secondary Education Major in Mathematics (BSEd-Math)" },
+    { value: "bsed_sci", label: "Bachelor of Secondary Education Major in Sciences (BSEd-Sci)" },
+    { value: "bsed_ss", label: "Bachelor of Secondary Education Major in Social Studies (BSED-SS)" },
+    { value: "bsned", label: "Bachelor of Special Needs Education (BSNED Generalist)" },
+    { value: "ded_eml", label: "Doctor of Education Major in Educational Management and Leadership (EDD-EML or DEEML)" },
+    { value: "masped", label: "Master Arts in Special Education with Specialization in Developmental Delays (MASPED, Non-Thesis)" },
+    { value: "maed_bs", label: "Master of Arts in Education Major in Biological Science (MAED-BS or MAEBS)" },
+    { value: "maed_chem", label: "Master of Arts in Education Major in Chemistry (MAEd-Chem or MAECHE)" },
+    { value: "maed_eml", label: "Master of Arts in Education Major in Educational Management and Leadership (MAED-EML or MAEEML)" },
+    { value: "maed_phy", label: "Master of Arts in Education Major in Physics (MAEd-Phy or MAEPHY)" },
+    { value: "maed_ss", label: "Master of Arts in Education Major in Social Sciences (MAED-SS or MAESS)" },
+    { value: "msmed", label: "Master of Science in Mathematics Education (MSMED)" },
+  ],
+  ce: [
+    { value: "bsche", label: "BS in Chemical Engineering (BSCHE)" },
+    { value: "bsce", label: "BS in Civil Engineering (BSCE)" },
+    { value: "bsce_cm", label: "BS in Civil Engineering With Specialization in Construction Management (BSCE-CM)" },
+    { value: "bsce_se", label: "BS in Civil Engineering With Specialization in Structural Engineering (BSCE-SE)" },
+    { value: "bscpe", label: "BS in Computer Engineering (BSCPE)" },
+    { value: "bsee", label: "BS in Electrical Engineering (BSEE)" },
+    { value: "bsece", label: "BS in Electronics Engineering (BSECE)" },
+    { value: "bsmfge", label: "BS in Manufacturing Engineering (BSMfgE)" },
+    { value: "bsme", label: "BS in Mechanical Engineering (BSME)" },
+  ],
+  chass: [
+    { value: "bac", label: "Bachelor of Arts in Communication (BAC)" },
+    { value: "bac_pr", label: "Bachelor of Arts in Communication With Specialization in Public Relations (BAC-PR)" },
+    { value: "bmmp", label: "Bachelor of Music in Music Performance (BMMP)" },
+    { value: "bssw", label: "BS in Social Work (BSSW)" },
+    { value: "mac_cm", label: "Master of Arts in Communication With Specialization in Communication (MAC-CM)" },
+    { value: "msw", label: "Master of Social Work (MSW)" },
+  ],
+  cistm: [
+    { value: "bscs", label: "BS in Computer Science (BSCS)" },
+    { value: "bsit", label: "BS in Information Technology (BSIT)" },
+  ],
+  cl: [
+    { value: "jd", label: "Juris Doctor (JD)" },
+  ],
+  cm: [
+    { value: "md", label: "Doctor of Medicine Program (MD)" },
+    { value: "emed", label: "Enhanced Medicine Program (eMED)" },
+    { value: "mph", label: "Master of Public Health Program (MPH)" },
+  ],
+  cn: [
+    { value: "bsn", label: "BS in Nursing (BSN)" },
+    { value: "man", label: "Master of Arts in Nursing (MAN)" },
+  ],
+  cpt: [
+    { value: "bspt", label: "BS in Physical Therapy (BSPT)" },
+    { value: "mpt", label: "Master of Physical Therapy (MPT)" },
+    { value: "mspt", label: "Master of Science in Physical Therapy (MSPT)" },
+  ],
+  cpa: [
+    { value: "bpa", label: "Bachelor of Public Administration (BPA)" },
+    { value: "dpa", label: "Doctor of Public Administration (DPA)" },
+    { value: "mpa", label: "Master of Public Administration (MPA)" },
+  ],
+  cs: [
+    { value: "bs_bio", label: "Bachelor of Science in Biology" },
+    { value: "bs_bio_cmb", label: "Bachelor of Science in Biology Major in Cell And Molecular Biology (BS BIO-CMB)" },
+    { value: "bs_bio_eco", label: "Bachelor of Science in Biology Major in Ecology (BS BIO-ECO)" },
+    { value: "bs_bio_mb", label: "Bachelor of Science in Biology Major in Medical Biology (BS BIO-MB)" },
+    { value: "bs_chem", label: "Bachelor of Science in Chemistry (BS Chem)" },
+    { value: "bs_math", label: "Bachelor of Science in Mathematics (BS Math)" },
+    { value: "bs_psych", label: "Bachelor of Science in Psychology (BS Psych)" },
+    { value: "ma_psych_cp", label: "Master of Arts in Psychology With Specialization in Clinical Psychology (MA Psych-CP)" },
+    { value: "ma_psych_ip", label: "Master of Arts in Psychology With Specialization in Clinical Psychology (MA Psych-IP)" },
+  ],
+  cthm: [
+    { value: "bshm", label: "Bachelor of Science in Hospitality Management (BSHM)" },
+    { value: "bstm", label: "Bachelor of Science in Tourism Management (BSTM)" },
+  ],
+  gsl: [
+    { value: "llm", label: "Master of Laws (LL.M.)" },
+  ],
+};
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -91,6 +187,9 @@ export default function SignUpPage() {
     router.push("/home");
   };
 
+  // Derive the available programs based on the selected college
+  const availablePrograms = college ? PROGRAMS_BY_COLLEGE[college] : [];
+
   return (
     <div className="min-h-screen flex flex-col lg:flex-row w-full bg-stone-50 overflow-hidden">
       
@@ -117,8 +216,8 @@ export default function SignUpPage() {
           <h2 className="text-4xl xl:text-6xl font-extrabold tracking-tight mb-2 lg:mb-4 drop-shadow-md text-[#fdfbf9]">
             HariKnows
           </h2>
-          <p className="text-white/90 text-xs xl:text-base font-medium max-w-sm lg:max-w-lg drop-shadow uppercase tracking-widest leading-relaxed">
-            An AI-Integrated Online Registrar Helpdesk System<br className="hidden xl:block" />
+          <p className="text-white/90 text-xs xl:text-base font-medium max-w-sm lg:max-w-lg drop-shadow tracking-widest leading-relaxed">
+            An AI-Integrated Online Registrar Helpdesk System <br className="hidden xl:block" />
             For The Pamantasan Ng Lungsod Ng Maynila
           </p>
         </div>
@@ -190,7 +289,6 @@ export default function SignUpPage() {
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                       <UserCircle className="h-5 w-5 text-gray-400 group-focus-within:text-[#6e3102] transition-colors" />
                     </div>
-                    {/* Added exactly 9 digits on form submit */}
                     <input id="studentNumber" type="text" inputMode="numeric" value={studentNumber} onChange={handleStudentNumberChange} 
                       placeholder="e.g. 202312345" minLength={9} maxLength={9} pattern="\d{9}" title="Student number must be exactly 9 digits." required
                       className="block w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm text-gray-900 focus:ring-2 focus:ring-[#6e3102]/20 focus:border-[#6e3102] transition-all shadow-sm" />
@@ -203,7 +301,6 @@ export default function SignUpPage() {
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                       <Mail className="h-5 w-5 text-gray-400 group-focus-within:text-[#6e3102] transition-colors" />
                     </div>
-                    {/* Added enforce @plm.edu.ph domain before submission */}
                     <input id="plmEmail" type="email" value={plmEmail} onChange={(e) => setPlmEmail(e.target.value)} 
                       placeholder="user@plm.edu.ph" pattern=".*@plm\.edu\.ph$" title="Must be a valid @plm.edu.ph email address" required
                       className="block w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm text-gray-900 focus:ring-2 focus:ring-[#6e3102]/20 focus:border-[#6e3102] transition-all shadow-sm" />
@@ -225,7 +322,7 @@ export default function SignUpPage() {
                       type="button"
                       aria-labelledby="college-label"
                       onClick={() => { setCollegeOpen(!collegeOpen); setProgramOpen(false); }}
-                      onBlur={() => setTimeout(() => setCollegeOpen(false), 200)} // Delay allows option click to register
+                      onBlur={() => setTimeout(() => setCollegeOpen(false), 200)}
                       className={`relative block w-full text-left pl-11 pr-10 py-3 bg-white border rounded-2xl text-sm transition-all shadow-sm 
                         ${collegeOpen ? 'border-[#6e3102] ring-2 ring-[#6e3102]/20' : 'border-gray-200 hover:border-gray-300'} 
                         ${college ? 'text-gray-900' : 'text-gray-500'}`}
@@ -246,6 +343,7 @@ export default function SignUpPage() {
                             key={option.value}
                             onMouseDown={() => {
                               setCollege(option.value);
+                              setProgram(""); // Reset the program selection when college changes
                               setCollegeOpen(false);
                             }}
                             className={`px-4 py-3 text-sm cursor-pointer transition-colors
@@ -269,14 +367,21 @@ export default function SignUpPage() {
                     <button
                       type="button"
                       aria-labelledby="program-label"
-                      onClick={() => { setProgramOpen(!programOpen); setCollegeOpen(false); }}
+                      onClick={() => { 
+                        if (college) setProgramOpen(!programOpen); 
+                        setCollegeOpen(false); 
+                      }}
                       onBlur={() => setTimeout(() => setProgramOpen(false), 200)}
+                      disabled={!college} // Disable if no college is selected
                       className={`relative block w-full text-left pl-11 pr-10 py-3 bg-white border rounded-2xl text-sm transition-all shadow-sm 
+                        ${!college ? 'bg-gray-50 cursor-not-allowed opacity-70' : ''}
                         ${programOpen ? 'border-[#6e3102] ring-2 ring-[#6e3102]/20' : 'border-gray-200 hover:border-gray-300'} 
                         ${program ? 'text-gray-900' : 'text-gray-500'}`}
                     >
                       <span className="block truncate">
-                        {program ? PROGRAM_OPTIONS.find(p => p.value === program)?.label : "Select Program"}
+                        {program 
+                          ? availablePrograms.find(p => p.value === program)?.label 
+                          : college ? "Select Program" : "Select a College first"}
                       </span>
                       <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
                         <ChevronDown className={`h-5 w-5 text-gray-400 transition-transform duration-200 ${programOpen ? 'rotate-180' : ''}`} />
@@ -284,9 +389,9 @@ export default function SignUpPage() {
                     </button>
                     
                     {/* Dropdown Menu */}
-                    {programOpen && (
+                    {programOpen && availablePrograms.length > 0 && (
                       <ul className="absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl max-h-56 overflow-y-auto py-1 custom-scrollbar">
-                        {PROGRAM_OPTIONS.map((option) => (
+                        {availablePrograms.map((option) => (
                           <li
                             key={option.value}
                             onMouseDown={() => {
@@ -381,7 +486,7 @@ export default function SignUpPage() {
           background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background-color: #e5e7eb;
+          background-color: #e5e7eb;  
           border-radius: 20px;
         }
         .custom-scrollbar:hover::-webkit-scrollbar-thumb {

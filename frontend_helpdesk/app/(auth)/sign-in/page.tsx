@@ -56,8 +56,8 @@ export default function SignInPage() {
           <h2 className="text-4xl xl:text-6xl font-extrabold tracking-tight mb-3 lg:mb-4 drop-shadow-md text-[#fdfbf9]">
             HariKnows
           </h2>
-          <p className="text-white/90 text-xs xl:text-base font-medium max-w-sm lg:max-w-lg drop-shadow uppercase tracking-widest leading-relaxed">
-            An AI-Integrated Online Registrar Helpdesk System<br className="hidden xl:block" />
+          <p className="text-white/90 text-xs xl:text-base font-medium max-w-sm lg:max-w-lg drop-shadow tracking-widest leading-relaxed">
+            An AI-Integrated Online Registrar Helpdesk System <br className="hidden xl:block" />
             For The Pamantasan Ng Lungsod Ng Maynila
           </p>
         </div>
