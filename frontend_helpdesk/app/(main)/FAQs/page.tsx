@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { 
-  ChevronLeft, 
   Search, 
   Plus,
   Minus,
   MessageCircle
 } from "lucide-react";
 import DesktopSidebar from "../../components/DesktopSidebar";
+import MobileSidebar from "../../components/MobileSidebar";
 
 const faqsData = [
   {
@@ -82,36 +82,23 @@ export default function FAQsPage() {
                       bg-[#280d02]/15 dark:bg-[#d4855a]/10 blur-[80px] z-0"
         />
 
-        {/* Desktop Sidebar component */}
+        {/* Sidebars */}
         <DesktopSidebar />
+        <MobileSidebar /> {/* <-- Added Mobile Sidebar */}
 
         {/* Main Content Wrapper */}
-        <div className="flex-1 lg:ml-64 flex flex-col h-full relative z-10 overflow-hidden">
-
-          {/* --- MOBILE HEADER --- */}
-          <header className="lg:hidden flex items-center px-4 py-3.5 flex-shrink-0">
-            <button 
-              onClick={() => router.push('/home')}
-              className="w-10 h-10 rounded-full flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-            >
-              <ChevronLeft size={24} className="-ml-1" />
-            </button>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white ml-2">
-              FAQs
-            </h1>
-          </header>
-
+        <div className="flex-1 lg:ml-64 flex flex-col h-full relative z-10 overflow-hidden pt-16 lg:pt-0">
 
           {/* --- MAIN SCROLLABLE AREA --- */}
-          <main className="flex-1 overflow-y-auto w-full flex flex-col pt-7 items-center">
+          <main className="flex-1 overflow-y-auto w-full flex flex-col pt-4 lg:pt-7 items-center">
             <div className="w-full max-w-3xl px-6 lg:px-8 pb-20">
               
-              {/* Desktop Hero Section */}
-              <div className="hidden lg:flex flex-col items-center text-center mt-10 mb-10 animate-fade-in-up">
-                <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-4">
+              {/* Hero Section */}
+              <div className="flex flex-col items-center text-center mt-4 lg:mt-10 mb-8 lg:mb-10 animate-fade-in-up">
+                <h1 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-3 lg:mb-4">
                   Frequently asked questions
                 </h1>
-                <p className="text-gray-500 dark:text-gray-400 text-[1.05rem] max-w-xl">
+                <p className="text-gray-500 dark:text-gray-400 text-sm lg:text-[1.05rem] max-w-xl">
                   These are the most commonly asked questions about Registrar processes. 
                   Can't find what you're looking for?{" "}
                   <button 

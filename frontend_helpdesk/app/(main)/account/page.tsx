@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { 
-  ChevronLeft, 
   User,
   Camera,
   Edit2,
@@ -14,6 +13,7 @@ import {
   Hash
 } from "lucide-react";
 import DesktopSidebar from "../../components/DesktopSidebar";
+import MobileSidebar from "../../components/MobileSidebar";
 
 export default function AccountPage() {
   const router = useRouter();
@@ -37,23 +37,12 @@ export default function AccountPage() {
                       bg-[#280d02]/15 dark:bg-[#d4855a]/10 blur-[80px] z-0"
         />
 
+        {/* Sidebars */}
         <DesktopSidebar />
+        <MobileSidebar />
 
         {/* Main Content Wrapper */}
-        <div className="flex-1 lg:ml-64 flex flex-col h-full relative z-10 overflow-y-auto">
-
-          {/* --- MOBILE HEADER --- */}
-          <header className="lg:hidden flex items-center px-4 py-3.5 flex-shrink-0">
-            <button 
-              onClick={() => router.push('/home')}
-              className="w-10 h-10 rounded-full flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-            >
-              <ChevronLeft size={24} className="-ml-1" />
-            </button>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white ml-2">
-              Account Profile
-            </h1>
-          </header>
+        <div className="flex-1 lg:ml-64 flex flex-col h-full relative z-10 overflow-y-auto pt-16 lg:pt-0">
 
           {/* --- DESKTOP HEADER CONTROLS --- */}
           <header className="hidden lg:flex items-center justify-between px-8 pt-7 pb-2 flex-shrink-0">
@@ -82,7 +71,7 @@ export default function AccountPage() {
 
               {/* Name & Quick Info */}
               <div className="flex-1 text-center md:text-left">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Rubilyn Gonzales</h2>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Jana Del Rosario</h2>
                 <p className="text-[#6e3102] dark:text-[#d4855a] font-medium mt-1">Student No: 2026-12345</p>
                 <p className="text-gray-500 dark:text-gray-400 text-sm mt-1 flex items-center justify-center md:justify-start gap-1.5">
                    <Building2 size={14} /> Pamantasan ng Lungsod ng Maynila
@@ -123,7 +112,7 @@ export default function AccountPage() {
                     <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <input 
                       type="text" 
-                      defaultValue="Rubilyn Gonzales"
+                      defaultValue="Jana Del Rosario"
                       disabled={!isEditing}
                       className="w-full pl-11 pr-4 py-3 rounded-xl bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-white/10 text-[0.95rem] text-gray-900 dark:text-white focus:ring-2 focus:ring-[#6e3102]/30 dark:focus:ring-[#d4855a]/30 outline-none transition-all disabled:opacity-70 disabled:cursor-not-allowed font-medium"
                     />
@@ -146,12 +135,12 @@ export default function AccountPage() {
 
                 {/* PLM Email */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">PLM Email Address</label>
+                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Email Address</label>
                   <div className="relative">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <input 
                       type="email" 
-                      defaultValue="jdelrosario2026@plm.edu.ph"
+                      defaultValue="delrosariojana9@gmail.com"
                       disabled // Usually unchangeable
                       className="w-full pl-11 pr-4 py-3 rounded-xl bg-gray-100 dark:bg-[#1f1f1f] border border-gray-200 dark:border-white/5 text-[0.95rem] text-gray-600 dark:text-gray-400 outline-none cursor-not-allowed font-medium"
                     />
@@ -179,7 +168,7 @@ export default function AccountPage() {
                     <BookOpen className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <input 
                       type="text" 
-                      defaultValue="Bachelor of Science in Information Technology"
+                      defaultValue="Bachelor of Science in Computer Science"
                       disabled={!isEditing}
                       className="w-full pl-11 pr-4 py-3 rounded-xl bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-white/10 text-[0.95rem] text-gray-900 dark:text-white focus:ring-2 focus:ring-[#6e3102]/30 dark:focus:ring-[#d4855a]/30 outline-none transition-all disabled:opacity-70 disabled:cursor-not-allowed font-medium"
                     />

@@ -1,19 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useTheme } from "next-themes";
 import { 
-  ChevronLeft, 
   Search, 
-  BarChart2, 
-  MessageCircle, 
-  HelpCircle,
   Hourglass,
   FileCheck,
   FileWarning,
 } from "lucide-react";
 import DesktopSidebar from "../../components/DesktopSidebar";
+import MobileSidebar from "../../components/MobileSidebar";
 
 const transactions = [
   { 
@@ -74,16 +70,16 @@ function getStatusStyles(status: string) {
   }
 }
 
-// Dynamic Icon Generator based on category
-function getTransactionIcon(category: string, size: number) {
+// Updated to accept Tailwind classes for responsive sizing
+function getTransactionIcon(category: string, className: string = "w-5 h-5 lg:w-6 lg:h-6") {
   switch (category) {
     case 'Complete':
-      return <FileCheck size={size} className="text-green-600 dark:text-green-400" />;
+      return <FileCheck className={`text-green-600 dark:text-green-400 ${className}`} />;
     case 'Expired':
-      return <FileWarning size={size} className="text-red-600 dark:text-red-400" />;
+      return <FileWarning className={`text-red-600 dark:text-red-400 ${className}`} />;
     case 'Pending':
     default:
-      return <Hourglass size={size} className="text-gray-500 dark:text-gray-400" />;
+      return <Hourglass className={`text-gray-500 dark:text-gray-400 ${className}`} />;
   }
 }
 
@@ -114,132 +110,43 @@ export default function TransactionsPage() {
                       bg-[#280d02]/15 dark:bg-[#d4855a]/10 blur-[80px] z-0"
         />
 
-        {/* DESKTOP LAYOUT */}
-        <div className="hidden lg:flex relative z-10 w-full h-full overflow-hidden">
-          
-          {/* Sidebar */}
-          <DesktopSidebar />
+        {/* Sidebars */}
+        <DesktopSidebar />
+        <MobileSidebar />
 
-          {/* Desktop Content */}
-          <main className="flex-1 lg:ml-64 min-h-screen flex flex-col">
-            <header className="flex items-center justify-between px-8 pt-6 pb-2">
-              <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white pt-7">
+        {/* RESPONSIVE LAYOUT */}
+        <div className="flex-1 lg:ml-64 flex flex-col h-full relative z-10 overflow-hidden pt-16 lg:pt-0">
+          <main className="flex-1 overflow-hidden flex flex-col w-full max-w-5xl mx-auto">
+            
+            {/* Header */}
+            <header className="px-4 lg:px-8 pt-6 lg:pt-10 pb-2">
+              <h1 className="text-2xl lg:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
                 Transaction History
               </h1>
             </header>
 
-            {/* Desktop Tabs */}
-            <div className="px-8 mt-4 border-b border-gray-200 dark:border-white/10 flex gap-8">
-               {tabs.map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`pb-3 text-sm font-semibold transition-colors relative ${
-                      activeTab === tab 
-                        ? 'text-[#6e3102] dark:text-[#d4855a]' 
-                        : 'text-gray-500 dark:text-gray-400 hover:text-[#6e3102]/80 dark:hover:text-[#d4855a]/80'
-                    }`}
-                  >
-                    {tab}
-                    {activeTab === tab && (
-                      <div className="absolute bottom-0 left-0 w-full h-[2px] bg-[#6e3102] dark:bg-[#d4855a]" />
-                    )}
-                  </button>
-               ))}
-            </div>
-
-            <div className="px-8 pt-6 mb-2">
-              <div className="relative max-w-md">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                <input 
-                  type="text"
-                  placeholder="Search requests..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10 text-sm focus:outline-none focus:ring-1 focus:ring-[#6e3102]/50 dark:focus:ring-[#d4855a]/50 transition-all shadow-sm"
-                />
-              </div>
-            </div>
-
-            {/* Desktop Card List */}
-            <div className="flex-1 overflow-y-auto px-8 py-4 space-y-5">
-              {filteredTransactions.map((t) => (
-                <article key={t.id} className="rounded-2xl bg-gray-50/50 dark:bg-[#18181b] border border-gray-200/80 dark:border-white/10 shadow-sm overflow-hidden flex flex-col hover:shadow-md hover:border-[#6e3102]/20 dark:hover:border-[#d4855a]/30 transition-all duration-200">
-                  {/* Top Section */}
-                  <div className="p-5 flex items-center gap-5">
-                    {/* Circle with dynamic Icon */}
-                    <div className="w-14 h-14 rounded-full bg-white dark:bg-[#27272a] border border-gray-200 dark:border-white/10 flex-shrink-0 flex items-center justify-center shadow-sm">
-                      {getTransactionIcon(t.category, 24)}
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
-                        {t.serviceName}
-                      </h2>
-                      <p className="text-[0.95rem] text-gray-500 dark:text-gray-400 mt-0.5">
-                        Requested: {t.date}
-                      </p>
-                    </div>
-                  </div>
-                  {/* Bottom Divider Section */}
-                  <div className="bg-white dark:bg-[#1f1f22] border-t border-gray-100 dark:border-white/[0.04] px-5 py-3 flex items-center justify-between">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      <span className="font-semibold text-gray-900 dark:text-gray-200">Status: </span>
-                      {t.location}
-                    </p>
-                    <span className={`px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide border ${getStatusStyles(t.status)}`}>
-                      {t.status}
-                    </span>
-                  </div>
-                </article>
+            {/* Tabs */}
+            <div className="flex items-center justify-around lg:justify-start lg:gap-8 border-b border-gray-200 dark:border-white/10 mt-2 lg:mt-4 px-2 lg:px-8">
+              {tabs.map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`flex-1 lg:flex-none pb-3 text-[0.9rem] lg:text-sm font-semibold text-center lg:text-left relative transition-colors ${
+                    activeTab === tab 
+                      ? 'text-[#6e3102] dark:text-[#d4855a]' 
+                      : 'text-gray-500 dark:text-gray-400 hover:text-[#6e3102]/80 dark:hover:text-[#d4855a]/80'
+                  }`}
+                >
+                  {tab}
+                  {activeTab === tab && (
+                    <div className="absolute bottom-0 left-0 w-full h-[2px] bg-[#6e3102] dark:bg-[#d4855a]" />
+                  )}
+                </button>
               ))}
-              
-              {filteredTransactions.length === 0 && (
-                <div className="text-center py-10 text-gray-500 dark:text-gray-400">
-                  No {activeTab.toLowerCase()} transactions found.
-                </div>
-              )}
             </div>
-          </main>
-        </div>
 
-
-        {/* --- MOBILE LAYOUT --- */}
-        <div className="lg:hidden relative z-10 flex-1 flex flex-col h-full overflow-hidden">
-          
-          <header className="flex items-center px-4 py-3.5 flex-shrink-0 border-b border-transparent">
-            <button 
-              onClick={() => router.push('/home')}
-              className="w-10 h-10 rounded-full flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-[#6e3102]/10 dark:hover:bg-[#d4855a]/10 hover:text-[#6e3102] dark:hover:text-[#d4855a] transition-colors"
-            >
-              <ChevronLeft size={24} className="-ml-1" />
-            </button>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white ml-2">
-              Transaction History
-            </h1>
-          </header>
-
-          {/* Mobile Tabs */}
-          <div className="flex items-center justify-around border-b border-gray-200 dark:border-white/10 mt-2 px-2">
-            {tabs.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`flex-1 pb-3 text-[0.9rem] font-semibold text-center relative transition-colors ${
-                  activeTab === tab 
-                    ? 'text-[#6e3102] dark:text-[#d4855a]' 
-                    : 'text-gray-500 dark:text-gray-400'
-                }`}
-              >
-                {tab}
-                {activeTab === tab && (
-                  <div className="absolute bottom-0 left-0 w-full h-[2px] bg-[#6e3102] dark:bg-[#d4855a]" />
-                )}
-              </button>
-            ))}
-          </div>
-
-          <main className="flex-1 flex flex-col overflow-hidden">
-            <div className="px-4 mt-5 mb-4">
+            {/* Search Bar */}
+            <div className="px-4 lg:px-8 mt-5 lg:mt-6 mb-4 lg:mb-2 max-w-md w-full">
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input 
@@ -247,54 +154,57 @@ export default function TransactionsPage() {
                   placeholder="Search requests..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 rounded-full bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10 text-sm focus:outline-none focus:ring-1 focus:ring-[#6e3102]/50 dark:focus:ring-[#d4855a]/50 shadow-sm"
+                  className="w-full pl-11 pr-4 py-3 lg:py-2.5 rounded-full lg:rounded-xl bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10 text-sm focus:outline-none focus:ring-1 focus:ring-[#6e3102]/50 dark:focus:ring-[#d4855a]/50 transition-all shadow-sm"
                 />
               </div>
             </div>
 
-            {/* Mobile Card List */}
-            <div className="flex-1 overflow-y-auto px-4 space-y-4 pb-8">
+            {/* Responsive Card List */}
+            <div className="flex-1 overflow-y-auto px-4 lg:px-8 py-4 space-y-4 lg:space-y-5 pb-8 lg:pb-12">
               {filteredTransactions.map((t) => (
-                <article key={t.id} className="rounded-2xl bg-white dark:bg-[#18181b] border border-gray-200/80 dark:border-white/10 overflow-hidden shadow-sm flex flex-col hover:border-[#6e3102]/20 dark:hover:border-[#d4855a]/30 transition-colors">
+                <article key={t.id} className="rounded-2xl bg-white lg:bg-gray-50/50 dark:bg-[#18181b] border border-gray-200/80 dark:border-white/10 shadow-sm overflow-hidden flex flex-col hover:shadow-md hover:border-[#6e3102]/20 dark:hover:border-[#d4855a]/30 transition-all duration-200">
                   
-                  <div className="p-4 flex gap-4">
+                  {/* Top Section */}
+                  <div className="p-4 lg:p-5 flex items-center gap-4 lg:gap-5">
                     {/* Circle with dynamic Icon */}
-                    <div className="w-12 h-12 rounded-full bg-gray-50 dark:bg-[#27272a] border border-gray-200 dark:border-white/10 flex-shrink-0 flex items-center justify-center shadow-sm">
-                       {getTransactionIcon(t.category, 20)}
+                    <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-gray-50 lg:bg-white dark:bg-[#27272a] border border-gray-200 dark:border-white/10 flex-shrink-0 flex items-center justify-center shadow-sm">
+                      {getTransactionIcon(t.category)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h2 className="text-[1.1rem] font-bold text-gray-900 dark:text-gray-100 leading-tight">
+                      <h2 className="text-[1.1rem] lg:text-xl font-bold text-gray-900 dark:text-gray-100 leading-tight lg:tracking-tight truncate">
                         {t.serviceName}
                       </h2>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      <p className="text-sm lg:text-[0.95rem] text-gray-500 dark:text-gray-400 mt-0.5">
                         Requested: {t.date}
                       </p>
                     </div>
                   </div>
 
-                  <div className="bg-gray-50/80 dark:bg-[#1f1f22] border-t border-gray-100 dark:border-white/[0.04] px-4 py-3 flex flex-col gap-2">
-                    <p className="text-[0.8rem] text-gray-600 dark:text-gray-400 leading-snug">
+                  {/* Bottom Divider Section */}
+                  <div className="bg-gray-50/80 lg:bg-white dark:bg-[#1f1f22] border-t border-gray-100 dark:border-white/[0.04] px-4 py-3 lg:px-5 flex flex-col lg:flex-row lg:items-center justify-between gap-2 lg:gap-0">
+                    <p className="text-[0.8rem] lg:text-sm text-gray-600 dark:text-gray-400 leading-snug">
                       <span className="font-semibold text-gray-900 dark:text-gray-200">Status: </span>
                       {t.location}
                     </p>
-                    <div className="flex justify-end mt-1">
-                      <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusStyles(t.status)}`}>
+                    <div className="flex justify-end lg:block mt-1 lg:mt-0">
+                      <span className={`px-3 py-1 rounded-full text-[10px] lg:text-[11px] font-bold uppercase tracking-wider lg:tracking-wide border ${getStatusStyles(t.status)}`}>
                         {t.status}
                       </span>
                     </div>
                   </div>
+
                 </article>
               ))}
-
+              
               {filteredTransactions.length === 0 && (
-                <div className="text-center py-10 text-gray-500 dark:text-gray-400 text-sm">
+                <div className="text-center py-10 text-gray-500 dark:text-gray-400 text-sm lg:text-base">
                   No {activeTab.toLowerCase()} transactions found.
                 </div>
               )}
             </div>
+
           </main>
         </div>
-
       </div>
 
       <style>{`

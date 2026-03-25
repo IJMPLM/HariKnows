@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import DesktopSidebar from "../../components/DesktopSidebar"; 
+import MobileSidebar from "../../components/MobileSidebar";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5240";
 const PAGE_SIZE = 20;
@@ -47,15 +48,6 @@ function formatTime(value: string) {
 export default function HaribotPage() {
   const router = useRouter();
   
-  // next-themes setup
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  // Prevent hydration mismatch by waiting for mount
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   // Chat State
   const [messages, setMessages] = useState<Message[]>([]);
   const [hasMore, setHasMore] = useState(true);
@@ -174,21 +166,11 @@ export default function HaribotPage() {
             <div className="absolute bottom-[-10%] right-[-5%] w-[400px] h-[400px] rounded-full bg-[#d4855a]/5 dark:bg-[#d4855a]/5 blur-[100px]" />
         </div>
 
-        {/* Desktop Sidebar */}
+        {/* Sidebars */}
         <DesktopSidebar />
+        <MobileSidebar />
 
-        <div className="flex-1 lg:ml-64 flex flex-col h-full relative z-10">
-
-          {/* MOBILE Header */}
-          <header className="lg:hidden flex items-center justify-between px-6 py-4">
-            <button 
-              onClick={() => router.push('/home')}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-            >
-              <ChevronLeft size={18} />
-              Back
-            </button>
-          </header>
+        <div className="flex-1 lg:ml-64 flex flex-col h-full relative z-10 pt-16 lg:pt-0">
 
           {/* Main Chat Area */}
           <main className="flex-1 flex flex-col max-w-4xl w-full mx-auto overflow-hidden relative">

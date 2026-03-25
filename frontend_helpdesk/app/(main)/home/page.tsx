@@ -15,6 +15,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import DesktopSidebar from "../../components/DesktopSidebar";
+import MobileSidebar from "../../components/MobileSidebar";
 import Image from "next/image";
 
 const recentChats = [
@@ -59,45 +60,13 @@ export default function HomePage() {
       />
       
       <div className="relative z-10 flex flex-col lg:flex-row w-full">
-      <div className="hidden lg:block z-50">
         
+        {/* Sidebars */}
         <DesktopSidebar />
-      </div>
+        <MobileSidebar />
 
-        {/* MAIN AREA*/}
-        <main role="main" className="flex-1 lg:ml-64 min-h-screen flex flex-col w-full max-w-full overflow-hidden">
-
-          {/* Mobile top nav */}
-          <nav
-            aria-label="Main navigation"
-            className="lg:hidden sticky top-0 z-30 flex items-center justify-between
-                        px-5 py-3.5
-                        bg-stone-50/90 dark:bg-[#121212]/90 backdrop-blur-xl
-                        border-b border-gray-200 dark:border-white/[0.06]"
-          >
-            <a
-              href="/home"
-              aria-label="HariKnows Home"
-              className="flex items-center gap-2.5 font-bold text-lg text-gray-900 dark:text-white"
-            >
-              <Image src="/Hari_LOGO.png" alt="HariKnows logo" width={35} height={35} style={{ objectFit: "contain" }} />
-              HariKnows
-            </a>
-            <div className="flex items-center gap-1.5">
-              <button
-                className="w-9 h-9 rounded-xl flex items-center justify-center
-                            text-gray-500 dark:text-gray-400
-                            hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
-                onClick={(e) => { 
-                  e.stopPropagation(); 
-                  setTheme(theme === "dark" ? "light" : "dark"); 
-                }}
-                aria-label={mounted && theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-              >
-                {mounted && theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-              </button>
-            </div>
-          </nav>
+        {/* MAIN AREA */}
+        <main role="main" className="flex-1 lg:ml-64 min-h-screen flex flex-col w-full max-w-full overflow-hidden pt-16 lg:pt-0">
 
           {/* Desktop top-right controls */}
           <div className="hidden lg:flex items-center justify-end gap-1.5 px-8 pt-5">
@@ -148,7 +117,7 @@ export default function HomePage() {
                   <h1 id="greeting" className="text-[2.2rem] lg:text-5xl font-extrabold tracking-tight leading-tight">
                     Hello,{" "}
                     <span className="text-[#6e3102] dark:text-[#d4855a]">
-                      Rubilyn!
+                      Jana!
                     </span>
                   </h1>
                   <p className="mt-1 lg:mt-2 text-gray-600 dark:text-gray-400 text-[0.95rem]">
