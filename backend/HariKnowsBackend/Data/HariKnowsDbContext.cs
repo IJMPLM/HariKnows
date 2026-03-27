@@ -6,6 +6,8 @@ namespace HariKnowsBackend.Data;
 public class HariKnowsDbContext(DbContextOptions<HariKnowsDbContext> options) : DbContext(options)
 {
     public DbSet<ChatMessage> ChatMessages { get; set; }
+    public DbSet<College> Colleges { get; set; }
+    public DbSet<AcademicProgram> AcademicPrograms { get; set; }
     public DbSet<Department> Departments { get; set; }
     public DbSet<Document> Documents { get; set; }
     public DbSet<ActivityLog> ActivityLogs { get; set; }
@@ -34,6 +36,29 @@ public class HariKnowsDbContext(DbContextOptions<HariKnowsDbContext> options) : 
                 .WithOne(d => d.Department)
                 .HasForeignKey(d => d.DepartmentId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // College configuration
+        modelBuilder.Entity<College>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired();
+            entity.HasIndex(e => e.Name).IsUnique();
+            entity.HasMany(e => e.Programs)
+                .WithOne(p => p.College)
+                .HasForeignKey(p => p.CollegeId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // AcademicProgram configuration
+        modelBuilder.Entity<AcademicProgram>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired();
+            entity.Property(e => e.Code).IsRequired();
+            entity.Property(e => e.Group).IsRequired();
+            entity.HasIndex(e => new { e.CollegeId, e.Name }).IsUnique();
+            entity.HasIndex(e => new { e.CollegeId, e.Code }).IsUnique();
         });
 
         // Document configuration

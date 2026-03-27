@@ -26,3 +26,26 @@
     You should see `GeminiApi:ApiKey` in the output.
 
 3. npm run dev
+
+## Registrar Catalog Defaults
+
+The registrar colleges/programs/departments catalog is configured in a single backend object:
+
+- `backend/HariKnowsBackend/registrar-defaults.json`
+
+Backend startup loads this file and seeds missing data into SQLite (`Departments`, `Colleges`, `AcademicPrograms`) in an idempotent way.
+
+### Registrar APIs
+
+- `GET /api/registrar/state`
+    : Returns departments, workflow documents, activity log, and catalog.
+- `GET /api/registrar/catalog`
+    : Returns catalog hierarchy (colleges + grouped programs + departments).
+- `POST /api/registrar/departments`
+    : Creates a department.
+- `POST /api/registrar/documents`
+    : Creates a registrar workflow document.
+- `POST /api/registrar/documents/{documentId}/move`
+    : Moves a document to another department.
+
+If you need a clean reseed during development, remove `backend/HariKnowsBackend/hariknows.db` and run the backend again.

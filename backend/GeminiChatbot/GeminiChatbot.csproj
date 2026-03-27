@@ -11,8 +11,4 @@
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
     </ItemGroup>
 
-    <ItemGroup>
-        <Compile Remove="Repositories\EfChatsRepository.cs" />
-    </ItemGroup>
-
 </Project>

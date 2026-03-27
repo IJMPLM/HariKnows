@@ -1,0 +1,129 @@
+{
+  "RegistrarDefaults": {
+    "Departments": [
+      "Registrar",
+      "College of Accountancy",
+      "College Of Architecture And Sustainable Built Environment",
+      "College Of Business Administration",
+      "College Of Education",
+      "College Of Engineering",
+      "College Of Humanities, Arts And Social Sciences",
+      "College Of Information Systems And Technology Management",
+      "College Of Law",
+      "College of Medicine",
+      "College Of Nursing",
+      "College Of Physical Therapy"
+    ],
+    "Colleges": [
+      {
+        "Name": "College of Accountancy",
+        "Programs": [
+          { "Name": "BS in Accountancy", "Code": "BSA", "Group": "Undergraduate" }
+        ]
+      },
+      {
+        "Name": "College Of Architecture And Sustainable Built Environment",
+        "Programs": [
+          { "Name": "BS in Architecture", "Code": "BS Arch", "Group": "Undergraduate" }
+        ]
+      },
+      {
+        "Name": "College Of Business Administration",
+        "Programs": [
+          { "Name": "BS in Business Administration Major in Business Economics", "Code": "BSBA-BE", "Group": "Undergraduate" },
+          { "Name": "BS in Business Administration Major in Financial Management", "Code": "BSBA-FM", "Group": "Undergraduate" },
+          { "Name": "BS in Business Administration Major in Human Resource Management", "Code": "BSBA-HRM", "Group": "Undergraduate" },
+          { "Name": "BS in Business Administration Major in Marketing Management", "Code": "BSBA-MM", "Group": "Undergraduate" },
+          { "Name": "BS in Business Administration Major in Operations Management", "Code": "BSBA-OM", "Group": "Undergraduate" },
+          { "Name": "BS in Entrepreneurship", "Code": "BS Entrepreneurship", "Group": "Undergraduate" },
+          { "Name": "BS in Real Estate Management", "Code": "BS-REM", "Group": "Undergraduate" },
+          { "Name": "Doctor in Business Administration", "Code": "DBA", "Group": "Graduate" },
+          { "Name": "Master in Business Administration", "Code": "MBA", "Group": "Graduate" }
+        ]
+      },
+      {
+        "Name": "College Of Education",
+        "Programs": [
+          { "Name": "Bachelor of Early Childhood Education", "Code": "BECED", "Group": "Undergraduate" },
+          { "Name": "Bachelor of Elementary Education", "Code": "BEED", "Group": "Undergraduate" },
+          { "Name": "Bachelor of Physical Education", "Code": "BPEd", "Group": "Undergraduate" },
+          { "Name": "Bachelor of Secondary Education Major in English", "Code": "BSEd-Eng", "Group": "Undergraduate" },
+          { "Name": "Bachelor of Secondary Education Major in Filipino", "Code": "BSEd-Fil", "Group": "Undergraduate" },
+          { "Name": "Bachelor of Secondary Education Major in Mathematics", "Code": "BSEd-Math", "Group": "Undergraduate" },
+          { "Name": "Bachelor of Secondary Education Major in Sciences", "Code": "BSEd-Sci", "Group": "Undergraduate" },
+          { "Name": "Bachelor of Secondary Education Major in Social Studies", "Code": "BSED-SS", "Group": "Undergraduate" },
+          { "Name": "Bachelor of Special Needs Education", "Code": "BSNED Generalist", "Group": "Undergraduate" },
+          { "Name": "Doctor of Education Major in Educational Management and Leadership", "Code": "EDD-EML", "Group": "Graduate" },
+          { "Name": "Master Arts in Special Education with Specialization in Developmental Delays", "Code": "MASPED", "Group": "Graduate" },
+          { "Name": "Master of Arts in Education Major in Biological Science", "Code": "MAED-BS", "Group": "Graduate" },
+          { "Name": "Master of Arts in Education Major in Chemistry", "Code": "MAEd-Chem", "Group": "Graduate" },
+          { "Name": "Master of Arts in Education Major in Educational Management and Leadership", "Code": "MAED-EML", "Group": "Graduate" },
+          { "Name": "Master of Arts in Education Major in Physics", "Code": "MAEd-Phy", "Group": "Graduate" },
+          { "Name": "Master of Arts in Education Major in Social Sciences", "Code": "MAED-SS", "Group": "Graduate" },
+          { "Name": "Master of Science in Mathematics Education", "Code": "MSMED", "Group": "Graduate" }
+        ]
+      },
+      {
+        "Name": "College Of Engineering",
+        "Programs": [
+          { "Name": "BS in Chemical Engineering", "Code": "BSCHE", "Group": "Undergraduate" },
+          { "Name": "BS in Civil Engineering", "Code": "BSCE", "Group": "Undergraduate" },
+          { "Name": "BS in Civil Engineering With Specialization in Construction Management", "Code": "BSCE-CM", "Group": "Undergraduate" },
+          { "Name": "BS in Civil Engineering With Specialization in Structural Engineering", "Code": "BSCE-SE", "Group": "Undergraduate" },
+          { "Name": "BS in Computer Engineering", "Code": "BSCPE", "Group": "Undergraduate" },
+          { "Name": "BS in Electrical Engineering", "Code": "BSEE", "Group": "Undergraduate" },
+          { "Name": "BS in Electronics Engineering", "Code": "BSECE", "Group": "Undergraduate" },
+          { "Name": "BS in Manufacturing Engineering", "Code": "BSMfgE", "Group": "Undergraduate" },
+          { "Name": "BS in Mechanical Engineering", "Code": "BSME", "Group": "Undergraduate" }
+        ]
+      },
+      {
+        "Name": "College Of Humanities, Arts And Social Sciences",
+        "Programs": [
+          { "Name": "Bachelor of Arts in Communication", "Code": "BAC", "Group": "Undergraduate" },
+          { "Name": "Bachelor of Arts in Communication With Specialization in Public Relations", "Code": "BAC-PR", "Group": "Undergraduate" },
+          { "Name": "Bachelor of Music in Music Performance", "Code": "BMMP", "Group": "Undergraduate" },
+          { "Name": "BS in Social Work", "Code": "BSSW", "Group": "Undergraduate" },
+          { "Name": "Master of Arts in Communication With Specialization in Communication", "Code": "MAC-CM", "Group": "Graduate" },
+          { "Name": "Master of Social Work", "Code": "MSW", "Group": "Graduate" }
+        ]
+      },
+      {
+        "Name": "College Of Information Systems And Technology Management",
+        "Programs": [
+          { "Name": "BS in Computer Science", "Code": "BSCS", "Group": "Undergraduate" },
+          { "Name": "BS in Information Technology", "Code": "BSIT", "Group": "Undergraduate" }
+        ]
+      },
+      {
+        "Name": "College Of Law",
+        "Programs": [
+          { "Name": "Juris Doctor", "Code": "JD", "Group": "Graduate" }
+        ]
+      },
+      {
+        "Name": "College of Medicine",
+        "Programs": [
+          { "Name": "Doctor of Medicine Program", "Code": "MD", "Group": "Graduate" },
+          { "Name": "Enhanced Medicine Program", "Code": "eMED", "Group": "Graduate" },
+          { "Name": "Master of Public Health Program", "Code": "MPH", "Group": "Graduate" }
+        ]
+      },
+      {
+        "Name": "College Of Nursing",
+        "Programs": [
+          { "Name": "BS in Nursing", "Code": "BSN", "Group": "Undergraduate" },
+          { "Name": "Master of Arts in Nursing", "Code": "MAN", "Group": "Graduate" }
+        ]
+      },
+      {
+        "Name": "College Of Physical Therapy",
+        "Programs": [
+          { "Name": "BS in Physical Therapy", "Code": "BSPT", "Group": "Undergraduate" },
+          { "Name": "Master of Physical Therapy", "Code": "MPT", "Group": "Graduate" },
+          { "Name": "Master of Science in Physical Therapy", "Code": "MSPT", "Group": "Graduate" }
+        ]
+      }
+    ]
+  }
+}

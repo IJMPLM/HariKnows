@@ -5,6 +5,47 @@ namespace HariKnowsBackend.Repositories;
 
 public sealed class SqliteRegistrarRepository(string connectionString) : IRegistrarRepository
 {
+    public IReadOnlyList<CollegeDto> GetCollegesWithPrograms()
+    {
+        // Legacy SQLite repository is retained for compatibility only.
+        return [];
+    }
+
+    public CollegeDto CreateCollege(string name)
+    {
+        throw new NotSupportedException("College CRUD is not supported by SqliteRegistrarRepository.");
+    }
+
+    public CollegeDto? UpdateCollege(int collegeId, string name)
+    {
+        throw new NotSupportedException("College CRUD is not supported by SqliteRegistrarRepository.");
+    }
+
+    public bool DeleteCollege(int collegeId)
+    {
+        throw new NotSupportedException("College CRUD is not supported by SqliteRegistrarRepository.");
+    }
+
+    public bool CollegeExists(int collegeId)
+    {
+        return false;
+    }
+
+    public ProgramDto CreateProgram(int collegeId, string name, string code, string group)
+    {
+        throw new NotSupportedException("Program CRUD is not supported by SqliteRegistrarRepository.");
+    }
+
+    public ProgramDto? UpdateProgram(int programId, int collegeId, string name, string code, string group)
+    {
+        throw new NotSupportedException("Program CRUD is not supported by SqliteRegistrarRepository.");
+    }
+
+    public bool DeleteProgram(int programId)
+    {
+        throw new NotSupportedException("Program CRUD is not supported by SqliteRegistrarRepository.");
+    }
+
     public IReadOnlyList<DepartmentDto> GetDepartments()
     {
         using var connection = new SqliteConnection(connectionString);

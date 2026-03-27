@@ -25,6 +25,117 @@ public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegis
             .ToList();
     }
 
+    public CollegeDto CreateCollege(string name)
+    {
+        var college = new College { Name = name };
+        dbContext.Colleges.Add(college);
+        dbContext.SaveChanges();
+
+        return new CollegeDto(college.Id, college.Name, []);
+    }
+
+    public CollegeDto? UpdateCollege(int collegeId, string name)
+    {
+        var college = dbContext.Colleges.FirstOrDefault(c => c.Id == collegeId);
+        if (college is null)
+        {
+            return null;
+        }
+
+        college.Name = name;
+        dbContext.SaveChanges();
+        var programs = dbContext.AcademicPrograms
+            .Where(p => p.CollegeId == collegeId)
+            .OrderBy(p => p.Group)
+            .ThenBy(p => p.Name)
+            .Select(p => new ProgramDto(p.Id, p.Name, p.Code, p.Group))
+            .ToList();
+
+        return new CollegeDto(college.Id, college.Name, programs);
+    }
+
+    public bool DeleteCollege(int collegeId)
+    {
+        var college = dbContext.Colleges.FirstOrDefault(c => c.Id == collegeId);
+        if (college is null)
+        {
+            return false;
+        }
+
+        dbContext.Colleges.Remove(college);
+        dbContext.SaveChanges();
+        return true;
+    }
+
+    public bool CollegeExists(int collegeId)
+    {
+        return dbContext.Colleges.Any(c => c.Id == collegeId);
+    }
+
+    public ProgramDto CreateProgram(int collegeId, string name, string code, string group)
+    {
+        var program = new AcademicProgram
+        {
+            CollegeId = collegeId,
+            Name = name,
+            Code = code,
+            Group = group
+        };
+
+        dbContext.AcademicPrograms.Add(program);
+        dbContext.SaveChanges();
+
+        return new ProgramDto(program.Id, program.Name, program.Code, program.Group);
+    }
+
+    public ProgramDto? UpdateProgram(int programId, int collegeId, string name, string code, string group)
+    {
+        var program = dbContext.AcademicPrograms.FirstOrDefault(p => p.Id == programId);
+        if (program is null)
+        {
+            return null;
+        }
+
+        program.CollegeId = collegeId;
+        program.Name = name;
+        program.Code = code;
+        program.Group = group;
+        dbContext.SaveChanges();
+
+        return new ProgramDto(program.Id, program.Name, program.Code, program.Group);
+    }
+
+    public bool DeleteProgram(int programId)
+    {
+        var program = dbContext.AcademicPrograms.FirstOrDefault(p => p.Id == programId);
+        if (program is null)
+        {
+            return false;
+        }
+
+        dbContext.AcademicPrograms.Remove(program);
+        dbContext.SaveChanges();
+        return true;
+    }
+
+    public IReadOnlyList<CollegeDto> GetCollegesWithPrograms()
+    {
+        return dbContext.Colleges
+            .Include(c => c.Programs)
+            .OrderBy(c => c.Name)
+            .AsEnumerable()
+            .Select(c => new CollegeDto(
+                c.Id,
+                c.Name,
+                c.Programs
+                    .OrderBy(p => p.Group)
+                    .ThenBy(p => p.Name)
+                    .Select(p => new ProgramDto(p.Id, p.Name, p.Code, p.Group))
+                    .ToList()
+            ))
+            .ToList();
+    }
+
     public IReadOnlyList<ActivityLogDto> GetActivity(int limit)
     {
         return dbContext.ActivityLogs
@@ -110,10 +221,9 @@ public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegis
         // Keeping this method for backwards compatibility
     }
 
-    public static async Task SeedDataAsync(HariKnowsDbContext dbContext)
+    public static async Task SeedDataAsync(HariKnowsDbContext dbContext, RegistrarDefaultsOptions defaults)
     {
-        var seedDepartments = new[] { "Registrar", "Department A", "Department B", "Department C" };
-        foreach (var deptName in seedDepartments)
+        foreach (var deptName in defaults.Departments.Select(name => name.Trim()).Where(name => !string.IsNullOrWhiteSpace(name)))
         {
             if (!dbContext.Departments.Any(d => d.Name == deptName))
             {
@@ -123,12 +233,53 @@ public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegis
 
         await dbContext.SaveChangesAsync();
 
+        foreach (var collegeDefaults in defaults.Colleges.Where(college => !string.IsNullOrWhiteSpace(college.Name)))
+        {
+            var normalizedCollegeName = collegeDefaults.Name.Trim();
+            var college = await dbContext.Colleges.FirstOrDefaultAsync(c => c.Name == normalizedCollegeName);
+
+            if (college is null)
+            {
+                college = new College { Name = normalizedCollegeName };
+                dbContext.Colleges.Add(college);
+                await dbContext.SaveChangesAsync();
+            }
+
+            foreach (var programDefaults in collegeDefaults.Programs)
+            {
+                var programName = programDefaults.Name.Trim();
+                var programCode = string.IsNullOrWhiteSpace(programDefaults.Code) ? programName : programDefaults.Code.Trim();
+                var programGroup = string.IsNullOrWhiteSpace(programDefaults.Group) ? "General" : programDefaults.Group.Trim();
+
+                if (string.IsNullOrWhiteSpace(programName))
+                {
+                    continue;
+                }
+
+                var exists = await dbContext.AcademicPrograms.AnyAsync(p => p.CollegeId == college.Id && p.Name == programName);
+                if (!exists)
+                {
+                    dbContext.AcademicPrograms.Add(new AcademicProgram
+                    {
+                        Name = programName,
+                        Code = programCode,
+                        Group = programGroup,
+                        CollegeId = college.Id
+                    });
+                }
+            }
+        }
+
+        await dbContext.SaveChangesAsync();
+
         var now = DateTime.UtcNow;
+        var firstDepartmentId = dbContext.Departments.OrderBy(d => d.Id).Select(d => d.Id).FirstOrDefault();
+        var fallbackDepartmentId = firstDepartmentId == 0 ? 1 : firstDepartmentId;
         var seedDocuments = new[]
         {
-            new { Code = "#S-10452", Student = "Jane Doe", Title = "Transcript Verify", DepartmentId = 1 },
-            new { Code = "#S-10983", Student = "Marcus Sterling", Title = "Enrollment Audit", DepartmentId = 1 },
-            new { Code = "#S-11004", Student = "Elias Vance", Title = "Research Grant", DepartmentId = 3 }
+            new { Code = "#S-10452", Student = "Jane Doe", Title = "Transcript Verify", DepartmentId = fallbackDepartmentId },
+            new { Code = "#S-10983", Student = "Marcus Sterling", Title = "Enrollment Audit", DepartmentId = fallbackDepartmentId },
+            new { Code = "#S-11004", Student = "Elias Vance", Title = "Research Grant", DepartmentId = fallbackDepartmentId }
         };
 
         foreach (var docData in seedDocuments)

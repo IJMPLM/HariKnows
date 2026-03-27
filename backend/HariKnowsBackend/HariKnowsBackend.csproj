@@ -20,6 +20,13 @@
     </ItemGroup>
 
     <ItemGroup>
+        <None Update="registrar-defaults.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        </None>
+    </ItemGroup>
+
+    <ItemGroup>
         <Compile Remove="GeminiChatbot\**\*.cs" />
         <Compile Remove="HariKnowsBackend\**\*.cs" />
         <None Remove="HariKnowsBackend\**\*" />

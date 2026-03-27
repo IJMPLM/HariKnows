@@ -6,6 +6,22 @@ public interface IRegistrarRepository
 {
     IReadOnlyList<DepartmentDto> GetDepartments();
 
+    IReadOnlyList<CollegeDto> GetCollegesWithPrograms();
+
+    CollegeDto CreateCollege(string name);
+
+    CollegeDto? UpdateCollege(int collegeId, string name);
+
+    bool DeleteCollege(int collegeId);
+
+    bool CollegeExists(int collegeId);
+
+    ProgramDto CreateProgram(int collegeId, string name, string code, string group);
+
+    ProgramDto? UpdateProgram(int programId, int collegeId, string name, string code, string group);
+
+    bool DeleteProgram(int programId);
+
     IReadOnlyList<RegistrarDocumentDto> GetDocuments();
 
     IReadOnlyList<ActivityLogDto> GetActivity(int limit);
