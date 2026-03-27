@@ -2,16 +2,19 @@
 
 import { Moon, Sun, LayoutGrid, Building2, BookOpen, ClipboardList } from "lucide-react";
 import { useTheme } from "next-themes";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
 
 const navItems = [
-  { label: "Overview", icon: LayoutGrid },
-  { label: "Registrar", icon: ClipboardList },
-  { label: "Colleges", icon: Building2 },
-  { label: "Programs", icon: BookOpen },
+  { label: "Overview", icon: LayoutGrid, href: "/" },
+  { label: "Registrar", icon: ClipboardList, href: "/registrar" },
+  { label: "Colleges", icon: Building2, href: "/colleges" },
+  { label: "Programs", icon: BookOpen, href: "/programs" },
 ];
 
 export default function DesktopSidebar() {
   const { theme, setTheme } = useTheme();
+  const pathname = usePathname();
 
   return (
     <aside className="hidden lg:flex fixed left-0 top-0 h-full w-64 flex-col bg-white/85 dark:bg-[#18181b]/90 backdrop-blur-xl border-r border-gray-100 dark:border-white/10 z-30">
@@ -21,20 +24,23 @@ export default function DesktopSidebar() {
       </div>
 
       <nav className="px-3 py-4 space-y-1">
-        {navItems.map(({ label, icon: Icon }, index) => (
-          <button
-            key={label}
-            type="button"
-            className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-              index === 0
-                ? "bg-[#6e3102]/10 text-[#6e3102] dark:bg-[#d4855a]/20 dark:text-[#f0c0a5]"
-                : "text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10"
-            }`}
-          >
-            <Icon size={16} />
-            {label}
-          </button>
-        ))}
+        {navItems.map(({ label, icon: Icon, href }) => {
+          const isActive = pathname === href;
+          return (
+            <Link
+              key={label}
+              href={href}
+              className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                isActive
+                  ? "bg-[#6e3102]/10 text-[#6e3102] dark:bg-[#d4855a]/20 dark:text-[#f0c0a5]"
+                  : "text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10"
+              }`}
+            >
+              <Icon size={16} />
+              {label}
+            </Link>
+          );
+        })}
       </nav>
 
       <div className="mt-auto px-3 py-4 border-t border-gray-100 dark:border-white/10">
