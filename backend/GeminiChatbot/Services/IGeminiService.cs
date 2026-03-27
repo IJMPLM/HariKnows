@@ -60,7 +60,7 @@ public sealed class GeminiService(IConfiguration config, ILogger<GeminiService> 
         {
             contents.Add(new Content
             {
-                Role = message.Role,
+                Role = NormalizeRoleForGemini(message.Role),
                 Parts = new List<Part>
                 {
                     new Part { Text = message.Content }
@@ -209,6 +209,24 @@ public sealed class GeminiService(IConfiguration config, ILogger<GeminiService> 
 
         var exponentialDelay = _retryBaseDelayMs * (int)Math.Pow(2, attempt);
         return exponentialDelay + Random.Shared.Next(0, _retryJitterMs + 1);
+    }
+
+    private static string NormalizeRoleForGemini(string? storedRole)
+    {
+        if (string.Equals(storedRole, "user", StringComparison.OrdinalIgnoreCase))
+        {
+            return "user";
+        }
+
+        // We persist assistant/model replies interchangeably in storage, but Gemini expects "model".
+        if (string.Equals(storedRole, "assistant", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(storedRole, "model", StringComparison.OrdinalIgnoreCase))
+        {
+            return "model";
+        }
+
+        // Unknown legacy roles are treated as model turns to avoid hard API failures.
+        return "model";
     }
 
     private static string[] BuildModelCandidates(IConfiguration config)
