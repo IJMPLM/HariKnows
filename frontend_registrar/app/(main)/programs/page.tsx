@@ -20,6 +20,7 @@ export default function ProgramsPage() {
 
   // Filter & UI State
   const [selectedCollegeId, setSelectedCollegeId] = useState<number | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<string>("All");
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState<Program | null>(null);
 
@@ -113,8 +114,17 @@ export default function ProgramsPage() {
           </p>
         </div>
         
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1 md:w-64">
+        <div className="flex flex-row items-center justify-end gap-3 w-full">
+          <select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+            className="pl-3 pr-8 py-2 bg-[#18181b] border border-[#6e3102]/40 rounded-lg text-sm text-[#fafaf9] focus:ring-1 focus:ring-[#d4855a] appearance-none min-w-[120px]"
+          >
+            <option value="All">All Groups</option>
+            <option value="Undergraduate">Undergraduate</option>
+            <option value="Graduate">Graduate</option>
+          </select>
+          <div className="relative w-48">
             <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#d4855a]" />
             <select 
               value={selectedCollegeId}
@@ -130,7 +140,7 @@ export default function ProgramsPage() {
           </div>
           <button
             onClick={openAdd}
-            className="flex items-center gap-2 bg-[#d4855a] hover:bg-[#6e3102] text-[#fafaf9] px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-lg shadow-[#6e3102]/10"
+            className="flex items-center gap-2 bg-[#d4855a] hover:bg-[#6e3102] text-[#fafaf9] px-7 py-2 rounded-lg text-sm font-semibold transition-all shadow-lg shadow-[#6e3102]/10 min-w-[150px] justify-center"
           >
             <Plus size={16} />
             Add Program
@@ -171,7 +181,7 @@ export default function ProgramsPage() {
               </div>
 
               <div className="flex gap-3">
-                <div className="mt-1 p-2 rounded-lg bg-[#6e3102]/10 text-[#d4855a]">
+                <div className="mt-1 h-10 w-10 flex items-center justify-center rounded-lg bg-[#6e3102]/10 text-[#d4855a]">
                   <BookOpen size={18} />
                 </div>
                 <div>
