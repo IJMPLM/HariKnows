@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import Image from "next/image";
@@ -13,30 +13,19 @@ import {
   Image as ImageIcon,
   Sparkles,
   Paperclip,
+  Trash2,
 } from "lucide-react";
 
 import DesktopSidebar from "../../components/DesktopSidebar"; 
 import MobileSidebar from "../../components/MobileSidebar";
+import { 
+  sendChatMessage, 
+  getChatHistory, 
+  clearChatHistory, 
+  type ChatMessage 
+} from "../../../lib/gemini-client";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5240";
 const PAGE_SIZE = 20;
-
-type Message = {
-  id: number;
-  sender: string;
-  content: string;
-  createdAt: string;
-};
-
-type MessagePage = {
-  messages: Message[];
-  hasMore: boolean;
-};
-
-type FetchParams = {
-  beforeId?: number;
-  afterId?: number;
-};
 
 function formatTime(value: string) {
   return new Date(value).toLocaleTimeString([], {
@@ -49,110 +38,76 @@ export default function HaribotPage() {
   const router = useRouter();
   
   // Chat State
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [hasMore, setHasMore] = useState(true);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const inFlightRef = useRef(false);
   const threadRef = useRef<HTMLDivElement | null>(null);
+  const [conversationId] = useState(() => `haribot-${Date.now()}`);
 
-  const oldestId = useMemo(() => messages[0]?.id, [messages]);
-  const latestId = useMemo(() => messages[messages.length - 1]?.id, [messages]);
-
-  // --- API LOGIC ---
-  const fetchMessages = async (params: FetchParams = {}): Promise<MessagePage> => {
-    const url = new URL(`${API_BASE}/api/helpdesk/messages`);
-    url.searchParams.set("limit", String(PAGE_SIZE));
-
-    if (params.beforeId) url.searchParams.set("beforeId", String(params.beforeId));
-    if (params.afterId) url.searchParams.set("afterId", String(params.afterId));
-
-    const response = await fetch(url.toString());
-    if (!response.ok) throw new Error("Failed to load messages");
-    return (await response.json()) as MessagePage;
-  };
-
+  // Load initial chat history
   const loadInitial = async () => {
     try {
-      const result = await fetchMessages();
-      setMessages(result.messages);
-      setHasMore(result.hasMore);
+      setIsLoading(true);
+      const history = await getChatHistory(conversationId, PAGE_SIZE);
+      setMessages(history);
       requestAnimationFrame(() => {
         threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight });
       });
     } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const loadOlder = async () => {
-    if (!oldestId || busy || !hasMore) return;
-    const previousHeight = threadRef.current?.scrollHeight ?? 0;
-    setBusy(true);
-    try {
-      const result = await fetchMessages({ beforeId: oldestId });
-      setMessages((current) => [...result.messages, ...current]);
-      setHasMore(result.hasMore);
-      requestAnimationFrame(() => {
-        const currentHeight = threadRef.current?.scrollHeight ?? 0;
-        threadRef.current?.scrollTo({ top: currentHeight - previousHeight });
-      });
+      console.error("Failed to load messages:", error);
     } finally {
-      setBusy(false);
+      setIsLoading(false);
     }
   };
 
-  const pollNew = async () => {
-    if (!latestId) return;
-    try {
-      const result = await fetchMessages({ afterId: latestId });
-      if (result.messages.length > 0) {
-        setMessages((current) => [...current, ...result.messages]);
-        requestAnimationFrame(() => {
-          threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
-        });
-      }
-    } catch (error) {
-      // Silently fail polling
-    }
-  };
-
-  const submit = async (event?: React.FormEvent<HTMLFormElement>, overrideText?: string) => {
+  const submit = async (event?: React.FormEvent<HTMLFormElement>) => {
     if (event) event.preventDefault();
-    const contentToSend = overrideText || text;
-    const trimmed = contentToSend.trim();
+    const trimmed = text.trim();
     
-    if (!trimmed || busy) return;
+    if (!trimmed || busy || inFlightRef.current) return;
 
+    inFlightRef.current = true;
     setBusy(true);
     try {
-      const response = await fetch(`${API_BASE}/api/helpdesk/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sender: "user", content: trimmed }),
-      });
-
-      if (!response.ok) throw new Error("Failed to send");
-
-      const created = (await response.json()) as Message;
-      setMessages((current) => [...current, created]);
-      if (!overrideText) setText("");
+      // Send message and get response
+      const response = await sendChatMessage(trimmed, conversationId);
+      
+      // Reload chat history to display both user and assistant messages
+      const history = await getChatHistory(conversationId, PAGE_SIZE);
+      setMessages(history);
+      setText("");
       
       requestAnimationFrame(() => {
         threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
       });
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      alert("Failed to send message. Please try again.");
     } finally {
       setBusy(false);
+      inFlightRef.current = false;
+    }
+  };
+
+  const handleClearHistory = async () => {
+    if (!confirm("Are you sure you want to clear the chat history?")) {
+      return;
+    }
+
+    try {
+      await clearChatHistory(conversationId);
+      setMessages([]);
+    } catch (error) {
+      console.error("Failed to clear history:", error);
+      alert("Failed to clear history. Please try again.");
     }
   };
 
   useEffect(() => {
     loadInitial();
   }, []);
-
-  useEffect(() => {
-    const timer = setInterval(() => pollNew(), 3500);
-    return () => clearInterval(timer);
-  }, [latestId]);
 
   const isEmpty = messages.length === 0;
 
@@ -175,7 +130,7 @@ export default function HaribotPage() {
           {/* Main Chat Area */}
           <main className="flex-1 flex flex-col max-w-4xl w-full mx-auto overflow-hidden relative">
             
-            {isEmpty ? (
+            {isEmpty && !isLoading ? (
               /* EMPTY STATE */
               <div className="flex-1 flex flex-col items-center justify-center px-6 pb-20 animate-fade-in">
                 
@@ -199,8 +154,13 @@ export default function HaribotPage() {
                   Good Day, <span className="text-[#6e3102] dark:text-[#d4855a]">Jana</span>
                 </h1>
                 <p className="text-gray-500 dark:text-gray-400 mb-10 text-center">
-                  Ask about enrollment, document requests, or your processing status.
+                  I'm your registrar helpdesk assistant. Ask me about enrollment, document requests, or your processing status.
                 </p>  
+              </div>
+            ) : isLoading ? (
+              /* LOADING STATE */
+              <div className="flex-1 flex items-center justify-center">
+                <Loader2 size={32} className="animate-spin text-[#6e3102] dark:text-[#d4855a]" />
               </div>
             ) : (
               /* CHAT THREAD STATE */
@@ -208,21 +168,8 @@ export default function HaribotPage() {
                 className="flex-1 overflow-y-auto px-4 sm:px-8 pt-6 pb-32 space-y-8 scroll-smooth" 
                 ref={threadRef}
               >
-                {hasMore && (
-                  <div className="flex justify-center">
-                    <button 
-                      className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-[#18181b] border border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/10 transition-colors shadow-sm"
-                      onClick={loadOlder} 
-                      disabled={busy}
-                    >
-                      {busy ? <Loader2 size={14} className="animate-spin" /> : <MoreHorizontal size={14} />}
-                      {busy ? "Loading..." : "Load previous messages"}
-                    </button>
-                  </div>
-                )}
-
                 {messages.map((message) => {
-                  const isUser = message.sender === "user";
+                  const isUser = message.role === "user";
 
                   return (
                     <div key={message.id} className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -250,39 +197,47 @@ export default function HaribotPage() {
                         {/* Bubble */}
                         <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
                           <div 
-                            className={`px-5 py-3.5 rounded-2xl text-[0.95rem] leading-relaxed ${
+                            className={`px-5 py-3.5 rounded-2xl text-[0.95rem] leading-relaxed whitespace-pre-wrap ${
                               isUser 
-                                ? 'bg-gray-100 dark:bg-[#27272a] text-gray-900 dark:text-gray-100 rounded-tr-sm' 
-                                : 'bg-transparent text-gray-800 dark:text-gray-200'
+                                ? 'bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212] rounded-tr-sm' 
+                                : 'bg-gray-100 dark:bg-[#27272a] text-gray-800 dark:text-gray-200 rounded-tl-sm'
                             }`}
                           >
                             {message.content}
                           </div>
+                          <span className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                            {formatTime(message.createdAt)}
+                          </span>
                         </div>
                       </div>
                     </div>
                   );
                 })}
+                
+                {messages.length > 0 && (
+                  <div className="flex justify-center">
+                    <button 
+                      className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-[#18181b] border border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/10 transition-colors shadow-sm"
+                      onClick={handleClearHistory}
+                    >
+                      <Trash2 size={14} />
+                      Clear History
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
             {/* FLOATING COMPOSER */}
             <div className="absolute bottom-6 left-0 right-0 px-4 sm:px-8">
               <div className="w-full bg-white dark:bg-[#18181b] p-2 pl-4 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)] border border-gray-100 dark:border-white/10 flex items-center gap-2">
-                <button type="button" className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-white/10 hidden sm:block">
-                  <Paperclip size={20} />
-                </button>
-                <button type="button" className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-white/10 hidden sm:block">
-                  <ImageIcon size={20} />
-                </button>
-
                 <form onSubmit={submit} className="flex-1 flex items-center">
                   <input
                     type="text"
                     value={text}
                     onChange={(event) => setText(event.target.value)}
-                    placeholder="Ask Haribot whatever you want..."
-                    disabled={busy}
+                    placeholder="Ask Haribot..."
+                    disabled={busy || isLoading}
                     className="w-full bg-transparent border-none text-gray-900 dark:text-gray-100 px-2 py-3 focus:outline-none focus:ring-0 text-[0.95rem] disabled:opacity-50"
                     aria-label="Message"
                   />
@@ -290,7 +245,7 @@ export default function HaribotPage() {
                   <div className="flex items-center gap-2 pr-1">
                     <button 
                       type="submit" 
-                      disabled={busy || !text.trim()}
+                      disabled={busy || isLoading || !text.trim()}
                       className="w-10 h-10 rounded-full flex items-center justify-center bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212] hover:bg-[#5a2801] dark:hover:bg-[#e09873] hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100 flex-shrink-0"
                       aria-label="Send message"
                     >
