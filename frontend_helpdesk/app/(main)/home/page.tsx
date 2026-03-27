@@ -19,10 +19,10 @@ import MobileSidebar from "../../components/MobileSidebar";
 import Image from "next/image";
 
 const recentChats = [
-  { id: 1, text: "Ako pa rin ba?", time: "2m ago" },
-  { id: 2, text: "Nasa PLM ba si Tomboy Ice Scramble?", time: "1h ago" },
-  { id: 3, text: "How to Factory Reset si bff?", time: "3h ago" },
-  { id: 4, text: "Please head to your AIMs account bes", time: "Yesterday" },
+  { id: 1, text: "Question #1", time: "2m ago" },
+  { id: 2, text: "Question #2", time: "1h ago" },
+  { id: 3, text: "Question #3", time: "3h ago" },
+  { id: 4, text: "Question #4", time: "Yesterday" },
 ];
 
 export default function HomePage() {
@@ -117,7 +117,7 @@ export default function HomePage() {
                   <h1 id="greeting" className="text-[2.2rem] lg:text-5xl font-extrabold tracking-tight leading-tight">
                     Hello,{" "}
                     <span className="text-[#6e3102] dark:text-[#d4855a]">
-                      Jana!
+                      Rubilyn!
                     </span>
                   </h1>
                   <p className="mt-1 lg:mt-2 text-gray-600 dark:text-gray-400 text-[0.95rem]">

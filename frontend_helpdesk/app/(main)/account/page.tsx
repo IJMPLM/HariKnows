@@ -71,11 +71,8 @@ export default function AccountPage() {
 
               {/* Name & Quick Info */}
               <div className="flex-1 text-center md:text-left">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Jana Del Rosario</h2>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Rubilyn Gonzales</h2>
                 <p className="text-[#6e3102] dark:text-[#d4855a] font-medium mt-1">Student No: 2026-12345</p>
-                <p className="text-gray-500 dark:text-gray-400 text-sm mt-1 flex items-center justify-center md:justify-start gap-1.5">
-                   <Building2 size={14} /> Pamantasan ng Lungsod ng Maynila
-                </p>
               </div>
 
               {/* Desktop Edit Button */}
@@ -112,7 +109,7 @@ export default function AccountPage() {
                     <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <input 
                       type="text" 
-                      defaultValue="Jana Del Rosario"
+                      defaultValue="Rubilyn Gonzales"
                       disabled={!isEditing}
                       className="w-full pl-11 pr-4 py-3 rounded-xl bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-white/10 text-[0.95rem] text-gray-900 dark:text-white focus:ring-2 focus:ring-[#6e3102]/30 dark:focus:ring-[#d4855a]/30 outline-none transition-all disabled:opacity-70 disabled:cursor-not-allowed font-medium"
                     />
@@ -121,7 +118,7 @@ export default function AccountPage() {
 
                 {/* Student Number / Username */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Student Number (Username)</label>
+                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Student Number</label>
                   <div className="relative">
                     <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <input 
@@ -140,7 +137,7 @@ export default function AccountPage() {
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <input 
                       type="email" 
-                      defaultValue="delrosariojana9@gmail.com"
+                      defaultValue="rubilyn.gonzales@gmail.com"
                       disabled // Usually unchangeable
                       className="w-full pl-11 pr-4 py-3 rounded-xl bg-gray-100 dark:bg-[#1f1f1f] border border-gray-200 dark:border-white/5 text-[0.95rem] text-gray-600 dark:text-gray-400 outline-none cursor-not-allowed font-medium"
                     />
