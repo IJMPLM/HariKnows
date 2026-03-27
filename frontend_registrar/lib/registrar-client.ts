@@ -26,6 +26,7 @@ export type Program = {
   name: string;
   code: string;
   group: string;
+  collegeId: number;
 };
 
 export type College = {
