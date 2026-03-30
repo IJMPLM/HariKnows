@@ -15,17 +15,9 @@ const transactions = [
   { 
     id: 1, 
     serviceName: "Certificate of Grades",
-    date: "6/7/6767",
+    date: "3/27/2026",
     location: "Processing in the College of Engineering",
     status: "Pending", 
-    category: "Pending" 
-  },
-  { 
-    id: 2, 
-    serviceName: "Certificate of Good Moral Character",
-    date: "3/18/2026",
-    location: "Ready for pickup at the Registrar Office",
-    status: "Prepared", 
     category: "Pending" 
   },
   { 
@@ -38,7 +30,7 @@ const transactions = [
   },
   { 
     id: 4, 
-    serviceName: "Certificate of Divorce",
+    serviceName: "Certificate of Good Moral",
     date: "6/7/6767",
     location: "Archived due to non-claim past 30 days",
     status: "Expired",
