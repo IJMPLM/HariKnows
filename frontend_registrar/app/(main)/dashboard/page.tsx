@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { AlertCircle, CheckCircle, Filter, FileText } from "lucide-react";
 
-// Placeholder for dynamic data fetching in the future
 const uploadData: any[] = [];
 
 export default function DashboardPage() {
@@ -14,7 +13,6 @@ export default function DashboardPage() {
       ? uploadData
       : uploadData.filter((item) => item.department === selectedDepartment);
 
-  // Calculate statistics
   const totalDocuments = filteredData.length;
   const completeDocuments = filteredData.filter((d) => d.status === "Complete").length;
   const incompleteDocuments = filteredData.filter((d) => d.status === "Incomplete").length;
@@ -29,7 +27,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Deficiency Report Summary Cards */}
+      {/* Summary Cards */}
       <div className="grid grid-cols-4 gap-4 mb-8">
         <div className="bg-[color:var(--panel)] rounded-2xl p-6 border border-[color:var(--line)]">
           <div className="flex items-center justify-between mb-2">
@@ -38,7 +36,6 @@ export default function DashboardPage() {
           </div>
           <p className="text-3xl">{totalDocuments}</p>
         </div>
-
         <div className="bg-[color:var(--panel)] rounded-2xl p-6 border border-[color:var(--line)]">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-[color:var(--muted)]">Complete</p>
@@ -46,7 +43,6 @@ export default function DashboardPage() {
           </div>
           <p className="text-3xl">{completeDocuments}</p>
         </div>
-
         <div className="bg-[color:var(--panel)] rounded-2xl p-6 border border-[color:var(--line)]">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-[color:var(--muted)]">Incomplete</p>
@@ -54,7 +50,6 @@ export default function DashboardPage() {
           </div>
           <p className="text-3xl">{incompleteDocuments}</p>
         </div>
-
         <div className="bg-[color:var(--panel)] rounded-2xl p-6 border border-[color:var(--line)]">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-[color:var(--muted)]">Completion Rate</p>
@@ -86,7 +81,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Document Status Table */}
-      <div className="bg-[color:var(--panel)] rounded-2xl overflow-hidden">
+      <div className="bg-[color:var(--panel)] rounded-2xl overflow-hidden border border-[color:var(--line)]">
         <table className="w-full">
           <thead>
             <tr className="border-b border-[color:var(--line)]">
