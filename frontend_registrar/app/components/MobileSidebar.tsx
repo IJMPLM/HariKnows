@@ -5,10 +5,13 @@ import { Moon, Sun, Menu, X, LayoutGrid, Building2, BookOpen, ClipboardList } fr
 import { useTheme } from "next-themes";
 
 const navItems = [
-  { label: "Overview", icon: LayoutGrid },
+  { label: "Dashboard", icon: LayoutGrid },
   { label: "Registrar", icon: ClipboardList },
-  { label: "Colleges", icon: Building2 },
-  { label: "Programs", icon: BookOpen },
+  { label: "CISTM", icon: Building2 },
+  { label: "CN", icon: Building2 },
+  { label: "CA", icon: Building2 },
+  { label: "NSTP Office", icon: BookOpen },
+  { label: "OSD", icon: BookOpen },
 ];
 
 export default function MobileSidebar() {

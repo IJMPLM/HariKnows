@@ -6,10 +6,13 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 
 const navItems = [
-  { label: "Overview", icon: LayoutGrid, href: "/" },
+  { label: "Dashboard", icon: LayoutGrid, href: "/dashboard" },
   { label: "Registrar", icon: ClipboardList, href: "/registrar" },
-  { label: "Colleges", icon: Building2, href: "/colleges" },
-  { label: "Programs", icon: BookOpen, href: "/programs" },
+  { label: "CISTM", icon: Building2, href: "/cistm" },
+  { label: "CN", icon: Building2, href: "/cn" },
+  { label: "CA", icon: Building2, href: "/ca" },
+  { label: "NSTP Office", icon: BookOpen, href: "/nstp" },
+  { label: "OSD", icon: BookOpen, href: "/osds" },
 ];
 
 export default function DesktopSidebar() {
