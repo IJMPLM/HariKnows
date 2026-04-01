@@ -257,8 +257,8 @@ export default function HaribotPage() {
               </div>
               
               {/* Footer text */}
-              <p className="text-center text-[10px] text-gray-400 mt-3">
-                Haribot may display inaccurate info, so please verify important details with the Registrar.
+              <p className="text-center text-[11px] text-gray-400 mt-3">
+                Haribot provides general guidance. Please verify official details directly with the Registrar. <a href="/privacy-policy" className="underline hover:no-underline text-[#6e3102] dark:text-[#d4855a]">Privacy Policy</a>
               </p>
             </div>
 

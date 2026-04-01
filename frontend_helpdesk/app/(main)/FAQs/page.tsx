@@ -50,19 +50,19 @@ const faqsData = [
   }
 ];
 
-const categories = ["All", "General", "Enrollment", "Documents"];
+const categories = ["General", "Enrollment", "Documents"];
 
 export default function FAQsPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState("All");
+  const [activeCategory, setActiveCategory] = useState("General");
   const [openId, setOpenId] = useState<number | null>(1); // Default open first item
 
   // Filter FAQs based on search query and active category
   const filteredFaqs = faqsData.filter((faq) => {
     const matchesSearch = faq.question.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           faq.answer.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = activeCategory === "All" || faq.category === activeCategory;
+    const matchesCategory = faq.category === activeCategory;
     return matchesSearch && matchesCategory;
   });
 
