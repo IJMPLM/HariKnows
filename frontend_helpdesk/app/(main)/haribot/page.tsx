@@ -70,6 +70,9 @@ export default function HaribotPage() {
 
     inFlightRef.current = true;
     setBusy(true);
+    requestAnimationFrame(() => {
+      threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
+    });
     try {
       // Send message and get response
       const response = await sendChatMessage(trimmed, conversationId);
@@ -214,9 +217,35 @@ export default function HaribotPage() {
                   );
                 })}
                 
+                {/* Typing indicator */}
+                {busy && (
+                  <div className="flex w-full justify-start">
+                    <div className="flex gap-4 max-w-[85%] sm:max-w-[75%] flex-row">
+                      <div className="flex-shrink-0 mt-1">
+                        <div className="relative w-8 h-8 rounded-full bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10 flex items-center justify-center shadow-md overflow-hidden">
+                          <Image
+                            src="/Hari_LOGO.png"
+                            alt="Haribot Avatar"
+                            width={24}
+                            height={24}
+                            className="object-contain"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-start">
+                        <div className="px-5 py-3.5 rounded-2xl rounded-tl-sm bg-gray-100 dark:bg-[#27272a] flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500 animate-typing-dot" style={{ animationDelay: '0ms' }} />
+                          <span className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500 animate-typing-dot" style={{ animationDelay: '150ms' }} />
+                          <span className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500 animate-typing-dot" style={{ animationDelay: '300ms' }} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {messages.length > 0 && (
                   <div className="flex justify-center">
-                    <button 
+                    <button
                       className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-[#18181b] border border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/10 transition-colors shadow-sm"
                       onClick={handleClearHistory}
                     >
@@ -280,6 +309,13 @@ export default function HaribotPage() {
         @keyframes pulseSlow {
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0.7; transform: scale(1.1); }  
+        }
+        .animate-typing-dot {
+          animation: typingDot 1.2s ease-in-out infinite;
+        }
+        @keyframes typingDot {
+          0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+          30% { transform: translateY(-6px); opacity: 1; }
         }
         .animate-blob {
           animation: blob 7s infinite;

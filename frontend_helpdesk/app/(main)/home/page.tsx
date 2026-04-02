@@ -8,9 +8,6 @@ import {
   MessageCircle,
   BarChart2,
   HelpCircle,
-  Sun,
-  Moon,
-  User,
   MoreHorizontal,
   ChevronRight,
 } from "lucide-react";
@@ -80,7 +77,6 @@ export default function HomePage() {
               }}
               aria-label={mounted && theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             >
-              {mounted && theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
             </button>
             <button
               className="w-9 h-9 rounded-xl flex items-center justify-center
@@ -88,7 +84,6 @@ export default function HomePage() {
                           hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
               aria-label="Account settings"
             >
-              <User size={16} />
             </button>
           </div>
 
