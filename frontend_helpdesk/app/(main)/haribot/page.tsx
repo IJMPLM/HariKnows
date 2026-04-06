@@ -139,15 +139,15 @@ export default function HaribotPage() {
                 
                 {/* Mascot Core & Orb Container */}
                 <div className="relative flex items-center justify-center mb-8">
-                  <div className="absolute w-32 h-32 bg-[#6e3102]/25 dark:bg-[#d4855a]/25 rounded-full blur-[35px] animate-pulse-slow"></div>
-                  <div className="absolute w-24 h-24 bg-[#d4855a]/30 dark:bg-[#e09873]/15 rounded-full blur-[25px] animate-blob mix-blend-multiply dark:mix-blend-screen"></div>
-                  <div className="relative z-10 w-20 h-20 bg-white dark:bg-[#18181b] rounded-full shadow-2xl flex items-center justify-center border border-white/50 dark:border-white/10 overflow-hidden p-0">
+                  <div className="absolute w-40 h-40 bg-[#6e3102]/25 dark:bg-[#d4855a]/25 rounded-full blur-[35px] animate-pulse-slow"></div>
+                  <div className="absolute w-32 h-32 bg-[#d4855a]/30 dark:bg-[#e09873]/15 rounded-full blur-[25px] animate-blob mix-blend-multiply dark:mix-blend-screen"></div>
+                  <div className="relative z-10">
                     <Image 
-                      src="/Hari_LOGO.png" 
-                      alt="Haribot Logo" 
-                      width={120}
-                      height={120} 
-                      className="w-full h-full object-contain"
+                      src="/Hari_Bubble.png" 
+                      alt="Haribot Mascot" 
+                      width={200}
+                      height={200} 
+                      className="w-50 h-50 object-contain"
                     />
                   </div>
                 </div>
@@ -185,25 +185,23 @@ export default function HaribotPage() {
                                 ME
                               </div>
                           ) : (
-                            <div className="relative w-8 h-8 rounded-full bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10 flex items-center justify-center shadow-md overflow-hidden">
-                              <Image 
-                                src="/Hari_LOGO.png" 
-                                alt="Haribot Avatar" 
-                                width={24} 
-                                height={24} 
-                                className="object-contain" 
-                              />
-                            </div>
+                            <Image 
+                              src="/Hari_Bubble.png" 
+                              alt="Haribot Mascot" 
+                              width={35} 
+                              height={35} 
+                              className="object-contain" 
+                            />
                           )}
                         </div>
 
                         {/* Bubble */}
                         <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
                           <div 
-                            className={`px-5 py-3.5 rounded-2xl text-[0.95rem] leading-relaxed whitespace-pre-wrap ${
+                            className={`px-5 py-3.5 rounded-2xl text-[0.95rem] leading-relaxed whitespace-pre-wrap border backdrop-blur-sm ${
                               isUser 
-                                ? 'bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212] rounded-tr-sm' 
-                                : 'bg-gray-100 dark:bg-[#27272a] text-gray-800 dark:text-gray-200 rounded-tl-sm'
+                                ? 'bg-[#6e3102]/80 dark:bg-[#d4855a]/80 border-[#6e3102]/40 dark:border-[#d4855a]/40 text-white dark:text-[#121212] rounded-tr-sm' 
+                                : 'bg-gray-100/70 dark:bg-[#27272a]/70 border-gray-200/60 dark:border-white/10 text-gray-800 dark:text-gray-200 rounded-tl-sm'
                             }`}
                           >
                             {message.content}
@@ -222,18 +220,16 @@ export default function HaribotPage() {
                   <div className="flex w-full justify-start">
                     <div className="flex gap-4 max-w-[85%] sm:max-w-[75%] flex-row">
                       <div className="flex-shrink-0 mt-1">
-                        <div className="relative w-8 h-8 rounded-full bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10 flex items-center justify-center shadow-md overflow-hidden">
-                          <Image
-                            src="/Hari_LOGO.png"
-                            alt="Haribot Avatar"
-                            width={24}
-                            height={24}
-                            className="object-contain"
-                          />
-                        </div>
+                        <Image
+                          src="/Hari_Bubble.png"
+                          alt="Haribot Mascot"
+                          width={32}
+                          height={32}
+                          className="object-contain"
+                        />
                       </div>
                       <div className="flex flex-col items-start">
-                        <div className="px-5 py-3.5 rounded-2xl rounded-tl-sm bg-gray-100 dark:bg-[#27272a] flex items-center gap-1.5">
+                        <div className="px-5 py-3.5 rounded-2xl rounded-tl-sm bg-gray-100/70 dark:bg-[#27272a]/70 border border-gray-200/60 dark:border-white/10 backdrop-blur-sm flex items-center gap-1.5">
                           <span className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500 animate-typing-dot" style={{ animationDelay: '0ms' }} />
                           <span className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500 animate-typing-dot" style={{ animationDelay: '150ms' }} />
                           <span className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500 animate-typing-dot" style={{ animationDelay: '300ms' }} />

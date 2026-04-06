@@ -10,7 +10,8 @@ import {
   Lock,
   Hash,
   Eye,
-  EyeOff
+  EyeOff,
+  LogOut
 } from "lucide-react";
 import DesktopSidebar from "../../components/DesktopSidebar";
 import MobileSidebar from "../../components/MobileSidebar";
@@ -25,6 +26,7 @@ export default function AccountPage() {
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showLogOutModal, setShowLogOutModal] = useState(false);
 
   return (
     <>
@@ -228,7 +230,7 @@ export default function AccountPage() {
                         onClick={() => setIsChangingPassword(false)}
                         className="w-full md:w-auto md:self-end px-8 py-3 rounded-xl bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212] font-bold text-[0.95rem] hover:bg-[#5a2801] dark:hover:bg-[#e09873] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-md shadow-[#6e3102]/20 dark:shadow-[#d4855a]/10"
                       >
-                        Changed Password
+                        Change Password
                       </button>
                     </div>
                   )}
@@ -237,12 +239,48 @@ export default function AccountPage() {
               </div>
             </section>
 
+            {/* Log Out Card */}
+            <section className="bg-white dark:bg-[#18181b] border border-gray-200/80 dark:border-white/10 rounded-3xl p-6 lg:p-8 shadow-sm flex flex-col gap-4 animate-fade-in-up" style={{ animationDelay: "200ms" }}>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Account Actions</h3>
+              <button
+                onClick={() => setShowLogOutModal(true)}
+                className="w-full px-8 py-3 rounded-xl bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212] font-bold text-[0.95rem] hover:bg-[#5a2801] dark:hover:bg-[#e09873] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-md shadow-[#6e3102]/20 dark:shadow-[#d4855a]/10 flex items-center justify-center gap-2"
+              >
+                <LogOut size={18} />
+                Log Out
+              </button>
+            </section>
+
             {/* Bottom Padding for mobile scrolling */}
             <div className="h-10 lg:h-0" />
 
           </main>
         </div>
       </div>
+
+      {/* Log Out Confirmation Modal */}
+      {showLogOutModal && (
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-[#18181b] border border-gray-200/80 dark:border-white/10 rounded-3xl p-6 lg:p-8 shadow-lg max-w-md w-full animate-fade-in-up">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Confirm Log Out</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">Are you sure you want to log out?</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowLogOutModal(false)}
+                className="flex-1 px-4 py-3 rounded-xl bg-gray-200 dark:bg-[#2a2a2a] text-gray-900 dark:text-white font-bold text-[0.95rem] hover:bg-gray-300 dark:hover:bg-[#3a3a3a] active:scale-[0.98] transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => router.push("/sign-in")}
+                className="flex-1 px-4 py-3 rounded-xl bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212] font-bold text-[0.95rem] hover:bg-[#5a2801] dark:hover:bg-[#e09873] active:scale-[0.98] transition-all shadow-md shadow-[#6e3102]/20 dark:shadow-[#d4855a]/10"
+              >
+                Log Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         .animate-fade-in-up {
