@@ -4,16 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import {
-  Sun,
-  Moon,
-  User,
-  MessageCircle,
-  BarChart2,
-  HelpCircle,
-  Menu,
-  X,
-} from "lucide-react";
+import { Sun, Moon, User, MessageCircle, BarChart2, HelpCircle, Menu, X } from "lucide-react";
 
 const allLinks = [
   { href: "/haribot",      label: "Talk with Hari",       icon: <MessageCircle size={16} /> },
