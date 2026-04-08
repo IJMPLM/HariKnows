@@ -8,6 +8,7 @@ interface Document {
   dateUploaded: string;
   documentName: string;
   office: string;
+  attachmentStatus: "complete" | "incomplete";
 }
 
 const mockDocuments: Document[] = [
@@ -16,18 +17,21 @@ const mockDocuments: Document[] = [
     dateUploaded: "2024-03-30",
     documentName: "CN - Nursing Masterlist",
     office: "College of Nursing",
+    attachmentStatus: "complete",
   },
   {
     id: "2",
     dateUploaded: "2024-03-29",
     documentName: "CT - BSCS Report of Grades",
     office: "College of Technology",
+    attachmentStatus: "incomplete",
   },
   {
     id: "3",
     dateUploaded: "2024-03-28",
     documentName: "CT - BSIT Report of Grades",
     office: "College of Technology",
+    attachmentStatus: "complete",
   },
 ];
 
@@ -45,11 +49,13 @@ export default function DocumentRepository() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
   const [selectedOffice, setSelectedOffice] = useState("All Offices");
+  const [attachmentFilter, setAttachmentFilter] = useState<"all" | "complete" | "incomplete">("all");
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [archiveModalOpen, setArchiveModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadAttachmentStatus, setUploadAttachmentStatus] = useState<"complete" | "incomplete">("complete");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -77,8 +83,14 @@ export default function DocumentRepository() {
 
   const filteredDocuments =
     selectedOffice === "All Offices"
-      ? mockDocuments
-      : mockDocuments.filter((doc) => doc.office === selectedOffice);
+      ? mockDocuments.filter((doc) =>
+          attachmentFilter === "all" || doc.attachmentStatus === attachmentFilter
+        )
+      : mockDocuments.filter(
+          (doc) =>
+            doc.office === selectedOffice &&
+            (attachmentFilter === "all" || doc.attachmentStatus === attachmentFilter)
+        );
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -93,9 +105,10 @@ export default function DocumentRepository() {
 
   const handleUpload = () => {
     if (selectedFile) {
-      console.log("Uploading:", selectedFile.name);
+      console.log("Uploading:", selectedFile.name, "Status:", uploadAttachmentStatus);
       setUploadModalOpen(false);
       setSelectedFile(null);
+      setUploadAttachmentStatus("complete");
     }
   };
 
@@ -210,6 +223,45 @@ export default function DocumentRepository() {
               <Upload size={15} />
               Upload
             </button>
+          </div>
+
+          {/* Attachment Status Toggle */}
+          <div>
+            <label className="block text-xs font-semibold text-[#aaaaaa] uppercase tracking-wide mb-2">
+              Filter by Attachments
+            </label>
+            <div className="flex items-center gap-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-1 w-fit">
+              <button
+                onClick={() => setAttachmentFilter("all")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  attachmentFilter === "all"
+                    ? "bg-[#e8834a] text-[#121212]"
+                    : "text-[#aaaaaa] hover:text-white"
+                }`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setAttachmentFilter("complete")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  attachmentFilter === "complete"
+                    ? "bg-[#e8834a] text-[#121212]"
+                    : "text-[#aaaaaa] hover:text-white"
+                }`}
+              >
+                Complete
+              </button>
+              <button
+                onClick={() => setAttachmentFilter("incomplete")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  attachmentFilter === "incomplete"
+                    ? "bg-[#e8834a] text-[#121212]"
+                    : "text-[#aaaaaa] hover:text-white"
+                }`}
+              >
+                Incomplete
+              </button>
+            </div>
           </div>
 
           {/* Search Bar + Sort Button */}
@@ -368,6 +420,33 @@ export default function DocumentRepository() {
                 </div>
                 <p className="text-xs text-[#2a2a2a] mt-2">Required columns: Date, Document Name, Office</p>
               </div>
+
+              {/* Attachment Status Toggle */}
+              <div>
+                <label className="block text-xs font-semibold text-white mb-2 uppercase">Attachment Status</label>
+                <div className="flex items-center gap-2 bg-[#2a2a2a] border border-[#3a3a3a] rounded-xl p-1 w-fit">
+                  <button
+                    onClick={() => setUploadAttachmentStatus("complete")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      uploadAttachmentStatus === "complete"
+                        ? "bg-[#e8834a] text-[#121212]"
+                        : "text-[#aaaaaa] hover:text-white"
+                    }`}
+                  >
+                    Complete
+                  </button>
+                  <button
+                    onClick={() => setUploadAttachmentStatus("incomplete")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      uploadAttachmentStatus === "incomplete"
+                        ? "bg-[#e8834a] text-[#121212]"
+                        : "text-[#aaaaaa] hover:text-white"
+                    }`}
+                  >
+                    Incomplete
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="px-6 py-4 border-t border-[#2a2a2a] flex items-center justify-end gap-3">
@@ -375,6 +454,7 @@ export default function DocumentRepository() {
                 onClick={() => {
                   setUploadModalOpen(false);
                   setSelectedFile(null);
+                  setUploadAttachmentStatus("complete");
                 }}
                 className="px-4 py-2 text-[#aaaaaa] hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-all text-sm font-medium"
               >
