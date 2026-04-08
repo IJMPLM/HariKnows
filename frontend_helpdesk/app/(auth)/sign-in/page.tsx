@@ -61,9 +61,9 @@ export default function SignInPage() {
 
           {/* Subtext */}
           <p className="text-white/35 text-xs text-center mb-7">
-            Don&apos;t have an account?{" "}
-            <a href="/sign-up" className="text-[#d4855a] font-semibold hover:text-[#e09873] transition-colors">
-              Sign up
+            Proceed as guest - {" "}
+            <a href="/haribot" className="text-[#d4855a] font-semibold hover:text-[#e09873] transition-colors">
+              Sign in later
             </a>
           </p>
 
