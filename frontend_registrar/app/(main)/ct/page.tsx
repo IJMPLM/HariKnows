@@ -625,7 +625,7 @@ export default function CISTMPage() {
           >
             <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-[var(--muted)] mb-2">
               <ClipboardList size={12} />
-              CISTM · File Management
+              CT · File Management
             </div>
 
             <h1 className="text-2xl lg:text-[1.75rem] font-extrabold tracking-tight leading-tight text-[var(--text)]">

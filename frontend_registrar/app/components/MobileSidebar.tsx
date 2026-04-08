@@ -7,7 +7,7 @@ import { useTheme } from "next-themes";
 const navItems = [
   { label: "Dashboard", icon: LayoutGrid },
   { label: "Registrar", icon: ClipboardList },
-  { label: "CISTM", icon: Building2 },
+  { label: "CT", icon: Building2 },
   { label: "CN", icon: Building2 },
   { label: "CA", icon: Building2 },
   { label: "NSTP Office", icon: BookOpen },

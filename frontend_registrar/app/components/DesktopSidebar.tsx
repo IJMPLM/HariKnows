@@ -8,7 +8,7 @@ import Link from "next/link";
 const navItems = [
   { label: "Dashboard", icon: LayoutGrid, href: "/dashboard" },
   { label: "Registrar", icon: ClipboardList, href: "/registrar" },
-  { label: "CISTM", icon: Building2, href: "/cistm" },
+  { label: "CT", icon: Building2, href: "/ct" },
   { label: "CN", icon: Building2, href: "/cn" },
   { label: "CA", icon: Building2, href: "/ca" },
   { label: "NSTP Office", icon: BookOpen, href: "/nstp" },
