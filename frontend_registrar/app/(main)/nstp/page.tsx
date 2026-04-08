@@ -13,7 +13,6 @@ import MobileSidebar from "../../components/MobileSidebar";
 // ─── Types ────────────────────────────────────────────────────────────────────
 type DocType = "cwts" | "lts" | "rotc";
 type MainTab = "submitted" | "deficiencies";
-type SubTab = DocType | "all";
 type SortOrder = "doc-asc" | "doc-desc" | "ay-newest" | "ay-oldest";
 type DefStatus = "overdue" | "not-submitted";
 
@@ -198,8 +197,6 @@ export default function NSTPPage() {
 
   // Tabs
   const [mainTab,   setMainTab]   = useState<MainTab>("submitted");
-  const [subTab,    setSubTab]    = useState<SubTab>("all");
-  const [defSubTab, setDefSubTab] = useState<SubTab>("all");
 
   // Search & Sort
   const [searchQuery, setSearchQuery] = useState("");
@@ -220,7 +217,7 @@ export default function NSTPPage() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  useEffect(() => { setCurrentPage(1); }, [subTab, defSubTab, searchQuery, sortOrder, mainTab]);
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, sortOrder, mainTab]);
 
   useEffect(() => {
     if (!showUploadModal) return;
@@ -310,11 +307,10 @@ export default function NSTPPage() {
   // ── Derived ───────────────────────────────────────────────────────────────
   const filteredSubmitted = applySort(
     submittedFiles.filter(f => {
-      const matchType = subTab === "all" || f.type === subTab;
       const q = searchQuery.toLowerCase();
       const matchSearch = !q || f.title.toLowerCase().includes(q) || f.id.toLowerCase().includes(q)
         || f.ay.toLowerCase().includes(q) || f.filename.toLowerCase().includes(q);
-      return matchType && matchSearch;
+      return matchSearch;
     })
   );
   const submittedTotalPages = Math.ceil(filteredSubmitted.length / ITEMS_PER_PAGE);
@@ -322,11 +318,10 @@ export default function NSTPPage() {
 
   const filteredDeficiencies = applySort(
     deficiencies.filter(d => {
-      const matchType = defSubTab === "all" || d.type === defSubTab;
       const q = searchQuery.toLowerCase();
       const matchSearch = !q || d.title.toLowerCase().includes(q) || d.id.toLowerCase().includes(q)
         || d.ay.toLowerCase().includes(q);
-      return matchType && matchSearch;
+      return matchSearch;
     })
   );
   const defTotalPages = Math.ceil(filteredDeficiencies.length / ITEMS_PER_PAGE);
@@ -352,34 +347,7 @@ export default function NSTPPage() {
                          bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Not Yet Submitted</span>
   );
 
-  const SubTabPills = ({ activeTab, setTab, counts }: {
-    activeTab: SubTab; setTab: (t: SubTab) => void; counts: Record<string, number>;
-  }) => (
-    <div className="bg-[var(--bg-soft)] p-1 rounded-xl flex flex-wrap gap-1">
-      {[
-        { value: "all" as SubTab, label: "All", count: counts.all },
-        ...DOC_TYPES.map(d => ({ value: d.value as SubTab, label: d.short, count: counts[d.value] ?? 0 })),
-      ].map(tab => (
-        <button
-          key={tab.value} onClick={() => setTab(tab.value)}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
-                      whitespace-nowrap transition-all duration-150 focus:outline-none
-                      ${activeTab === tab.value
-                        ? "bg-[var(--panel)] text-[#6e3102] dark:text-[#d4855a] shadow-sm border border-[#6e3102]/20 dark:border-[#d4855a]/25"
-                        : "text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--panel)]/70"
-                      }`}
-        >
-          {tab.label}
-          <span className={`text-[10px] px-1.5 min-w-[18px] text-center rounded-full
-            ${activeTab === tab.value
-              ? "bg-[#6e3102]/15 dark:bg-[#d4855a]/20 text-[#6e3102] dark:text-[#d4855a]"
-              : "bg-[var(--line)] text-[var(--muted)]"}`}>
-            {tab.count}
-          </span>
-        </button>
-      ))}
-    </div>
-  );
+
 
   const Pagination = ({ total, current, onChange }: {
     total: number; current: number; onChange: (p: number) => void;
@@ -680,15 +648,8 @@ export default function NSTPPage() {
                 style={{ animation: "fadeUp 0.35s 0.05s ease both", opacity: 0, animationFillMode: "forwards" }}
                 className="space-y-3"
               >
-                <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-                  <SubTabPills
-                    activeTab={subTab} setTab={setSubTab}
-                    counts={{
-                      all: submittedFiles.length,
-                      ...Object.fromEntries(DOC_TYPES.map(d => [d.value, submittedFiles.filter(f => f.type === d.value).length])),
-                    }}
-                  />
-                  <div className="flex items-center gap-2 lg:ml-auto">
+                <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:ml-auto">
+                  <div className="flex items-center gap-2">
                     <div className="relative">
                       <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)] pointer-events-none" />
                       <input
@@ -782,15 +743,8 @@ export default function NSTPPage() {
                       </div>
                     )}
 
-                    <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-                      <SubTabPills
-                        activeTab={defSubTab} setTab={setDefSubTab}
-                        counts={{
-                          all: deficiencies.length,
-                          ...Object.fromEntries(DOC_TYPES.map(d => [d.value, deficiencies.filter(f => f.type === d.value).length])),
-                        }}
-                      />
-                      <div className="flex items-center gap-2 lg:ml-auto">
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:ml-auto">
+                      <div className="flex items-center gap-2">
                         <div className="relative">
                           <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)] pointer-events-none" />
                           <input
