@@ -4,17 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import Image from "next/image";
-import { 
-  Bot, 
-  Send, 
-  ChevronLeft, 
-  Loader2, 
-  MoreHorizontal,
-  Image as ImageIcon,
-  Sparkles,
-  Paperclip,
-  Trash2,
-} from "lucide-react";
+import { Send, Loader2, Image as ImageIcon, Trash2 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 import DesktopSidebar from "../../components/DesktopSidebar"; 
 import MobileSidebar from "../../components/MobileSidebar";
@@ -135,30 +126,38 @@ export default function HaribotPage() {
             
             {isEmpty && !isLoading ? (
               /* EMPTY STATE */
-              <div className="flex-1 flex flex-col items-center justify-center px-6 pb-20 animate-fade-in">
+              <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 pb-32 animate-fade-in w-full">
                 
-                {/* Mascot Core & Orb Container */}
-                <div className="relative flex items-center justify-center mb-8">
-                  <div className="absolute w-40 h-40 bg-[#6e3102]/25 dark:bg-[#d4855a]/25 rounded-full blur-[35px] animate-pulse-slow"></div>
-                  <div className="absolute w-32 h-32 bg-[#d4855a]/30 dark:bg-[#e09873]/15 rounded-full blur-[25px] animate-blob mix-blend-multiply dark:mix-blend-screen"></div>
-                  <div className="relative z-10">
-                    <Image 
-                      src="/Hari_Bubble.png" 
-                      alt="Haribot Mascot" 
-                      width={200}
-                      height={200} 
-                      className="w-50 h-50 object-contain"
-                    />
+                {/* Redesigned Banner Container */}
+                <div className="w-full max-w-3xl bg-white dark:bg-[#18181b] border border-gray-100 dark:border-white/10 rounded-3xl p-8 sm:p-10 shadow-sm flex flex-col sm:flex-row items-center gap-8 sm:gap-12 relative overflow-hidden">
+                  
+                  {/* Mascot Core & Orb Container (Left) */}
+                  <div className="relative flex items-center justify-center flex-shrink-0">
+                    <div className="absolute w-40 h-40 bg-[#6e3102]/25 dark:bg-[#d4855a]/25 rounded-full blur-[35px] animate-pulse-slow"></div>
+                    <div className="absolute w-32 h-32 bg-[#d4855a]/30 dark:bg-[#e09873]/15 rounded-full blur-[25px] animate-blob mix-blend-multiply dark:mix-blend-screen"></div>
+                    <div className="relative z-10">
+                      <Image 
+                        src="/Hari_HI2.gif" 
+                        alt="Haribot Mascot" 
+                        width={180}
+                        height={180} 
+                        className="w-44 h-44 object-contain drop-shadow-lg"
+                      />
+                    </div>
                   </div>
+
+                  {/* Greeting Text (Right) */}
+                  <div className="flex flex-col items-center sm:items-start text-center sm:text-left z-10">
+                    <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-3 text-gray-900 dark:text-gray-100">
+                      Let's get started, <span className="text-[#6e3102] dark:text-[#d4855a]">Jana</span>
+                    </h1>
+                    <p className="text-gray-500 dark:text-gray-400 text-[1.05rem] leading-relaxed">
+                      I'm Hari! Your AI-powered registrar helpdesk assistant. Ask me about enrollment, document requests, or your processing status.
+                    </p>  
+                  </div>
+                  
                 </div>
 
-                {/* Greeting */}
-                <h1 className="text-3xl sm:text-4xl font-semibold text-center tracking-tight mb-2">
-                  Good Day, <span className="text-[#6e3102] dark:text-[#d4855a]">Jana</span>
-                </h1>
-                <p className="text-gray-500 dark:text-gray-400 mb-10 text-center">
-                  I'm your registrar helpdesk assistant. Ask me about enrollment, document requests, or your processing status.
-                </p>  
               </div>
             ) : isLoading ? (
               /* LOADING STATE */
@@ -196,15 +195,29 @@ export default function HaribotPage() {
                         </div>
 
                         {/* Bubble */}
-                        <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
+                        <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} max-w-full overflow-hidden`}>
                           <div 
-                            className={`px-5 py-3.5 rounded-2xl text-[0.95rem] leading-relaxed whitespace-pre-wrap border backdrop-blur-sm ${
+                            className={`px-5 py-3.5 rounded-2xl border backdrop-blur-sm overflow-x-auto ${
                               isUser 
                                 ? 'bg-[#6e3102]/80 dark:bg-[#d4855a]/80 border-[#6e3102]/40 dark:border-[#d4855a]/40 text-white dark:text-[#121212] rounded-tr-sm' 
                                 : 'bg-gray-100/70 dark:bg-[#27272a]/70 border-gray-200/60 dark:border-white/10 text-gray-800 dark:text-gray-200 rounded-tl-sm'
                             }`}
                           >
-                            {message.content}
+                            {/* Rich text - React Markdown */}
+                            <div className="flex flex-col gap-2 break-words text-[0.95rem] leading-relaxed">
+                              <ReactMarkdown 
+                                components={{
+                                  strong: ({node, ...props}) => <strong className="font-bold" {...props} />,
+                                  p: ({node, ...props}) => <p className="m-0" {...props} />,
+                                  ul: ({node, ...props}) => <ul className="list-disc pl-5 m-0 space-y-1" {...props} />,
+                                  ol: ({node, ...props}) => <ol className="list-decimal pl-5 m-0 space-y-1" {...props} />,
+                                  li: ({node, ...props}) => <li className="m-0" {...props} />,
+                                  code: ({node, ...props}) => <code className="bg-black/10 dark:bg-white/10 rounded px-1 py-0.5 text-[0.85em]" {...props} />
+                                }}
+                              >
+                                {message.content}
+                              </ReactMarkdown>
+                            </div>
                           </div>
                           <span className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                             {formatTime(message.createdAt)}
