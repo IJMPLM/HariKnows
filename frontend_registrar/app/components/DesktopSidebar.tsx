@@ -1,6 +1,6 @@
 "use client";
 
-import { Moon, Sun, LayoutGrid, Building2, BookOpen, ClipboardList } from "lucide-react";
+import { Moon, Sun, LayoutGrid, Building2, BookOpen, ClipboardList, FileText } from "lucide-react";
 import { useTheme } from "next-themes";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -13,6 +13,7 @@ const navItems = [
   { label: "CA", icon: Building2, href: "/ca" },
   { label: "NSTP Office", icon: BookOpen, href: "/nstp" },
   { label: "OSD", icon: BookOpen, href: "/osds" },
+  { label: "Documents", icon: FileText, href: "/document" },
 ];
 
 export default function DesktopSidebar() {

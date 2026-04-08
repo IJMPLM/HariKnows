@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Moon, Sun, Menu, X, LayoutGrid, Building2, BookOpen, ClipboardList } from "lucide-react";
+import { Moon, Sun, Menu, X, LayoutGrid, Building2, BookOpen, ClipboardList, FileText } from "lucide-react";
 import { useTheme } from "next-themes";
 
 const navItems = [
@@ -12,6 +12,7 @@ const navItems = [
   { label: "CA", icon: Building2 },
   { label: "NSTP Office", icon: BookOpen },
   { label: "OSD", icon: BookOpen },
+  { label: "Documents", icon: FileText },
 ];
 
 export default function MobileSidebar() {
