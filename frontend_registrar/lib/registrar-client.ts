@@ -47,6 +47,55 @@ export type RegistrarState = {
   catalog: RegistrarCatalog;
 };
 
+export type EtlRow = {
+  stagingId: number;
+  category: string;
+  fileName: string;
+  sourceRow: number;
+  status: string;
+  conflictNote: string;
+  data: Record<string, string>;
+};
+
+export type EtlStagingDashboard = {
+  departments: EtlRow[];
+  admissions: EtlRow[];
+  discipline: EtlRow[];
+  service: EtlRow[];
+  technology: EtlRow[];
+  students: EtlRow[];
+  grades: EtlRow[];
+  curriculums: EtlRow[];
+  syllabi: EtlRow[];
+  thesis: EtlRow[];
+};
+
+export type EtlUploadHistoryEntry = {
+  batchId: string;
+  fileName: string;
+  category: string;
+  collegeCode: string;
+  programCode: string;
+  parsedRows: number;
+  status: string;
+  error: string;
+  parsedAt: string;
+};
+
+export type CollegeTab = {
+  code: string;
+  label: string;
+  href: string;
+};
+
+export type EtlBulkUploadResponse = {
+  batchId: string;
+  staging: EtlStagingDashboard;
+  files: Array<{ fileName: string; category: string; parsedRows: number; status: string; error: string }>;
+  conflicts: Array<{ stagingId: number; fileName: string; studentNo: string; note: string }>;
+  errors: Array<{ fileName: string; row: number; message: string }>;
+};
+
 async function parseJsonOrThrow(response: Response) {
   if (!response.ok) {
     const payload = await response.json().catch(() => null);
@@ -151,4 +200,71 @@ export async function moveDocument(documentId: number, toDepartmentId: number): 
   });
 
   return (await parseJsonOrThrow(response)) as { moved: boolean };
+}
+
+export async function bulkUploadRegistrarCsv(files: File[]): Promise<EtlBulkUploadResponse> {
+  const form = new FormData();
+  files.forEach((file) => form.append("files", file));
+
+  const response = await fetch(`${API_BASE}/api/registrar/etl/bulk-upload`, {
+    method: "POST",
+    body: form,
+  });
+
+  return (await parseJsonOrThrow(response)) as EtlBulkUploadResponse;
+}
+
+export async function commitRegistrarEtl(batchId: string, decisions: Array<{ stagingId: number; action: string }>) {
+  const response = await fetch(`${API_BASE}/api/registrar/etl/commit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ batchId, decisions }),
+  });
+
+  return parseJsonOrThrow(response);
+}
+
+export async function getRegistrarEtlStaging(batchId: string): Promise<EtlStagingDashboard> {
+  const response = await fetch(`${API_BASE}/api/registrar/etl/staging/${batchId}`);
+  return (await parseJsonOrThrow(response)) as EtlStagingDashboard;
+}
+
+export async function getRegistrarUploadHistory(limit = 100): Promise<EtlUploadHistoryEntry[]> {
+  const response = await fetch(`${API_BASE}/api/registrar/etl/upload-history?limit=${limit}`);
+  return (await parseJsonOrThrow(response)) as EtlUploadHistoryEntry[];
+}
+
+export async function getRegistrarCollegeTabs(): Promise<CollegeTab[]> {
+  const response = await fetch(`${API_BASE}/api/registrar/etl/college-tabs`);
+  return (await parseJsonOrThrow(response)) as CollegeTab[];
+}
+
+export async function clearRegistrarEtlStaging(batchId: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/api/registrar/etl/staging/${batchId}`, {
+    method: "DELETE",
+  });
+
+  await parseJsonOrThrow(response);
+}
+
+export async function flushRegistrarDatabase(confirmation: string): Promise<{
+  flushed: boolean;
+  deletedStudents: number;
+  deletedCurriculumCourses: number;
+  deletedStagingRows: number;
+  deletedStagingFiles: number;
+  deletedStagingBatches: number;
+  deletedDocuments: number;
+  deletedActivityLogs: number;
+  deletedPrograms: number;
+  deletedColleges: number;
+  deletedDepartments: number;
+}> {
+  const response = await fetch(`${API_BASE}/api/registrar/etl/flush-database`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ confirmation }),
+  });
+
+  return parseJsonOrThrow(response);
 }

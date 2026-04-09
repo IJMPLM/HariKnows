@@ -12,6 +12,13 @@ public class HariKnowsDbContext(DbContextOptions<HariKnowsDbContext> options) : 
     public DbSet<Document> Documents { get; set; }
     public DbSet<ActivityLog> ActivityLogs { get; set; }
     public DbSet<GeminiChat> GeminiChats { get; set; }
+    public DbSet<StudentMaster> StudentMasters { get; set; }
+    public DbSet<EtlUploadBatch> EtlUploadBatches { get; set; }
+    public DbSet<EtlUploadFile> EtlUploadFiles { get; set; }
+    public DbSet<EtlStagingRow> EtlStagingRows { get; set; }
+    public DbSet<CurriculumCourse> CurriculumCourses { get; set; }
+    public DbSet<GradeRecord> GradeRecords { get; set; }
+    public DbSet<SyllabusEntry> SyllabusEntries { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -95,6 +102,64 @@ public class HariKnowsDbContext(DbContextOptions<HariKnowsDbContext> options) : 
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.ConversationId).IsRequired();
             entity.HasIndex(e => e.ConversationId);
+        });
+
+        modelBuilder.Entity<StudentMaster>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.StudentNo).IsRequired();
+            entity.HasIndex(e => e.StudentNo).IsUnique();
+            entity.Property(e => e.DateCreated).IsRequired();
+            entity.Property(e => e.DateUpdated).IsRequired();
+        });
+
+        modelBuilder.Entity<EtlUploadBatch>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.BatchId).IsRequired();
+            entity.HasIndex(e => e.BatchId).IsUnique();
+            entity.Property(e => e.CreatedAt).IsRequired();
+        });
+
+        modelBuilder.Entity<EtlUploadFile>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.BatchId).IsRequired();
+            entity.Property(e => e.FileName).IsRequired();
+            entity.Property(e => e.ParsedAt).IsRequired();
+            entity.HasIndex(e => e.BatchId);
+        });
+
+        modelBuilder.Entity<EtlStagingRow>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.BatchId).IsRequired();
+            entity.Property(e => e.Category).IsRequired();
+            entity.Property(e => e.FileName).IsRequired();
+            entity.Property(e => e.PayloadJson).IsRequired();
+            entity.HasIndex(e => new { e.BatchId, e.Category });
+            entity.HasIndex(e => new { e.BatchId, e.Status });
+        });
+
+        modelBuilder.Entity<CurriculumCourse>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.DateUpdated).IsRequired();
+            entity.HasIndex(e => new { e.CollegeCode, e.ProgramCode, e.Level, e.Term, e.Code }).IsUnique();
+        });
+
+        modelBuilder.Entity<GradeRecord>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.DateUpdated).IsRequired();
+            entity.HasIndex(e => new { e.CollegeCode, e.ProgramCode, e.CourseCode, e.StudentNo }).IsUnique();
+        });
+
+        modelBuilder.Entity<SyllabusEntry>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.DateUpdated).IsRequired();
+            entity.HasIndex(e => new { e.CollegeCode, e.ProgramCode, e.Code }).IsUnique();
         });
     }
 }

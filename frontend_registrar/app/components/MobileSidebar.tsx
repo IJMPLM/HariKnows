@@ -3,21 +3,42 @@
 import { useEffect, useState } from "react";
 import { Moon, Sun, Menu, X, LayoutGrid, Building2, BookOpen, ClipboardList, FileText } from "lucide-react";
 import { useTheme } from "next-themes";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { CollegeTab, getRegistrarCollegeTabs } from "../../lib/registrar-client";
 
-const navItems = [
-  { label: "Dashboard", icon: LayoutGrid },
-  { label: "Registrar", icon: ClipboardList },
-  { label: "CT", icon: Building2 },
-  { label: "CN", icon: Building2 },
-  { label: "CA", icon: Building2 },
-  { label: "NSTP Office", icon: BookOpen },
-  { label: "OSD", icon: BookOpen },
-  { label: "Documents", icon: FileText },
+const baseNavItems = [
+  { label: "Dashboard", icon: LayoutGrid, href: "/dashboard" },
+  { label: "Registrar", icon: ClipboardList, href: "/registrar" },
+  { label: "NSTP Office", icon: BookOpen, href: "/nstp" },
+  { label: "OSD", icon: BookOpen, href: "/osds" },
+  { label: "Documents", icon: FileText, href: "/document" },
 ];
 
 export default function MobileSidebar() {
   const { theme, setTheme } = useTheme();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [collegeTabs, setCollegeTabs] = useState<CollegeTab[]>([]);
+
+  useEffect(() => {
+    const loadTabs = async () => {
+      try {
+        const tabs = await getRegistrarCollegeTabs();
+        setCollegeTabs(tabs);
+      } catch {
+        setCollegeTabs([]);
+      }
+    };
+
+    void loadTabs();
+  }, []);
+
+  const navItems = [
+    ...baseNavItems.slice(0, 2),
+    ...collegeTabs.map((tab) => ({ label: tab.label, icon: Building2, href: tab.href })),
+    ...baseNavItems.slice(2),
+  ];
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -49,20 +70,23 @@ export default function MobileSidebar() {
         </div>
 
         <nav className="px-3 py-4 space-y-1">
-          {navItems.map(({ label, icon: Icon }, index) => (
-            <button
+          {navItems.map(({ label, icon: Icon, href }) => {
+            const isActive = pathname === href;
+            return (
+            <Link
               key={label}
-              type="button"
+              href={href}
+              onClick={() => setOpen(false)}
               className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                index === 0
+                isActive
                   ? "bg-[#6e3102]/10 text-[#6e3102] dark:bg-[#d4855a]/20 dark:text-[#f0c0a5]"
                   : "text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10"
               }`}
             >
               <Icon size={16} />
               {label}
-            </button>
-          ))}
+            </Link>
+          )})}
         </nav>
 
         <div className="mt-auto px-3 py-4 border-t border-gray-100 dark:border-white/10 absolute bottom-0 left-0 right-0">

@@ -1,0 +1,14 @@
+OUR,OFFICES,
+DEPT ID,NAME,NAME ABBR
+1,Office of the University Registrar,OUR
+2,Admissions Ofifice,AO
+3,Information and Communications Technology Office,ICTO
+4,National Service Training Program,NSTP
+5,Office of Student Discipline,OSD
+6,College of Accountancy,CA
+6.1,Bachelor of Science in Accountancy,BSA
+7,College of Nursing,CN
+7.1,Bachelor of Science in Nursing,BSN
+8,College of Technology,CT
+8.1,Bachelor of Science in Computer Science,BSCS
+8.2,Bachelor of Science in Information Technology,BSIT

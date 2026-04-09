@@ -1,0 +1,145 @@
+CA,BSA,MASTERLIST
+,,
+ACC 0111,,
+NAME,STUDENT NO,GRADE
+Amielle Jenascia F. Daep,2026-00001,1.25
+Ameerah Janelle A. Jayogue,2026-00002,1.75
+Ma. Louniebele S. Torete,2026-00003,1.5
+,,
+EC0 0111,,
+NAME,STUDENT NO,GRADE
+Amielle Jenascia F. Daep,2026-00001,2.25
+Ameerah Janelle A. Jayogue,2026-00002,1.25
+Ma. Louniebele S. Torete,2026-00003,2
+,,
+ MAT 0111,,
+NAME,STUDENT NO,GRADE
+Amielle Jenascia F. Daep,2026-00001,1
+Ameerah Janelle A. Jayogue,2026-00002,1.5
+Ma. Louniebele S. Torete,2026-00003,1.75
+,,
+ACC 0121,,
+NAME,STUDENT NO,GRADE
+Amielle Jenascia F. Daep,2026-00001,1.5
+Ameerah Janelle A. Jayogue,2026-00002,2
+Ma. Louniebele S. Torete,2026-00003,1.25
+,,
+ACC 0122,,
+NAME,STUDENT NO,GRADE
+Amielle Jenascia F. Daep,2026-00001,1.75
+Ameerah Janelle A. Jayogue,2026-00002,2.5
+Ma. Louniebele S. Torete,2026-00003,2.225
+,,
+LAW 0121,,
+NAME,STUDENT NO,GRADE
+Amielle Jenascia F. Daep,2026-00001,1.25
+Ameerah Janelle A. Jayogue,2026-00002,1.5
+Ma. Louniebele S. Torete,2026-00003,1
+,,
+ACC 0211,,
+NAME,STUDENT NO,GRADE
+Ruth L. Cometa,2024-00051,1.75
+John Martin P. Domingo,2025-00001,2.25
+Algian Mitchell M. Villanueva,2023-00052,1.5
+,,
+ACC 0212,,
+NAME,STUDENT NO,GRADE
+Ruth L. Cometa,2024-00051,1.5
+John Martin P. Domingo,2025-00001,1.25
+Algian Mitchell M. Villanueva,2023-00052,2
+,,
+TAX 0211,,
+NAME,STUDENT NO,GRADE
+Ruth L. Cometa,2024-00051,2.5
+John Martin P. Domingo,2025-00001,2.75
+Algian Mitchell M. Villanueva,2023-00052,1.75
+,,
+ACC 0221,,
+NAME,STUDENT NO,GRADE
+Ruth L. Cometa,2024-00051,1.25
+John Martin P. Domingo,2025-00001,1.5
+Algian Mitchell M. Villanueva,2023-00052,1.25
+,,
+ACC 0222,,
+NAME,STUDENT NO,GRADE
+Ruth L. Cometa,2024-00051,2
+John Martin P. Domingo,2025-00001,1.75
+Algian Mitchell M. Villanueva,2023-00052,2.25
+,,
+LAW 0221,,
+NAME,STUDENT NO,GRADE
+Ruth L. Cometa,2024-00051,1.5
+John Martin P. Domingo,2025-00001,1.5
+Algian Mitchell M. Villanueva,2023-00052,1.75
+,,
+AUD 0311,,
+NAME,STUDENT NO,GRADE
+Charlene Kim A. Filart,2024-00003,1.25
+Rafael A. Torres,2024-00002,1.75
+Junie Erica J. Zapanta,2024-00001,1.5
+,,
+ACC 0311,,
+NAME,STUDENT NO,GRADE
+Charlene Kim A. Filart,2024-00003,2.225
+Rafael A. Torres,2024-00002,1.25
+Junie Erica J. Zapanta,2024-00001,2
+,,
+ACC 0312,,
+NAME,STUDENT NO,GRADE
+Charlene Kim A. Filart,2024-00003,1.5
+Rafael A. Torres,2024-00002,1.5
+Junie Erica J. Zapanta,2024-00001,1.25
+,,
+AUD 0321,,
+NAME,STUDENT NO,GRADE
+Charlene Kim A. Filart,2024-00003,1.75
+Rafael A. Torres,2024-00002,2
+Junie Erica J. Zapanta,2024-00001,1.5
+,,
+ACC 0321,,
+NAME,STUDENT NO,GRADE
+Charlene Kim A. Filart,2024-00003,1.25
+Rafael A. Torres,2024-00002,1.5
+Junie Erica J. Zapanta,2024-00001,1
+,,
+LAW 0321,,
+NAME,STUDENT NO,GRADE
+Charlene Kim A. Filart,2024-00003,2.25
+Rafael A. Torres,2024-00002,1.75
+Junie Erica J. Zapanta,2024-00001,2
+,,
+AUD 0411,,
+NAME,STUDENT NO,GRADE
+Jasmine P. Aliswag,2023-00003,1.5
+Lorenzo M. Mendoza,2023-00002,1.5
+Sofia Bianca M. Orpia,2023-00001,1.25
+,,
+ACC 0411,,
+NAME,STUDENT NO,GRADE
+Jasmine P. Aliswag,2023-00003,1.75
+Lorenzo M. Mendoza,2023-00002,1.5
+Sofia Bianca M. Orpia,2023-00001,2
+,,
+RES 0411,,
+NAME,STUDENT NO,GRADE
+Jasmine P. Aliswag,2023-00003,1
+Lorenzo M. Mendoza,2023-00002,1.5
+Sofia Bianca M. Orpia,2023-00001,1.5
+,,
+ACC 0421,,
+NAME,STUDENT NO,GRADE
+Jasmine P. Aliswag,2023-00003,1
+Lorenzo M. Mendoza,2023-00002,1
+Sofia Bianca M. Orpia,2023-00001,1
+,,
+AUD 0421,,
+NAME,STUDENT NO,GRADE
+Jasmine P. Aliswag,2023-00003,1
+Lorenzo M. Mendoza,2023-00002,1
+Sofia Bianca M. Orpia,2023-00001,1
+,,
+INT 0421,,
+NAME,STUDENT NO,GRADE
+Jasmine P. Aliswag,2023-00003,1
+Lorenzo M. Mendoza,2023-00002,1
+Sofia Bianca M. Orpia,2023-00001,1

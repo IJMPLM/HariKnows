@@ -1,0 +1,26 @@
+CN,BSN,CURRICULUM,,
+LEVEL,TERM,UNITS,CODE,TITLE
+1,1,3,NRS 0111,Theoretical Foundations in Nursing
+1,1,3,NRS 0112,Anatomy and Physiology
+1,1,3,CHEM 0113,Biochemistry
+1,2,3,NRS 0121,Health Assessment
+1,2,3,NRS 0122,Basic Concepts in Nursing
+1,2,3,NRS 0123,Microbiology and Parasitology
+2,1,3,NRS 0211,Maternal and Child Nursing I
+2,1,3,NRS 0212,Community Health Nursing I
+2,1,3,NRS 0213,Pharmacology
+2,2,3,NRS 0221,Maternal and Child Nursing II
+2,2,3,NRS 0222,Community Health Nursing II
+2,2,3,STS 0223,"Science, Technology and Society"
+3,1,3,NRS 0311,Medical-Surgical Nursing I
+3,1,3,NRS 0312,Care of the Chronically Ill and the Elderly
+3,1,3,NRS 0313,Nursing Informatics
+3,2,3,NRS 0321,Medical-Surgical Nursing II
+3,2,3,NRS 0322,Psychiatric Nursing
+3,2,3,NRS 0323,Nursing Research I
+4,1,3,NRS 0411,Intensive Care Nursing
+4,1,3,NRS 0412,Clinical Teaching
+4,1,3,NRS 0413,Nursing Research II
+4,2,3,NRS 0421,Nursing Leadership and Management
+4,2,3,NRS 0422,Disaster Nursing
+4,2,3,NRS 0423,Intensive Nursing Practicum

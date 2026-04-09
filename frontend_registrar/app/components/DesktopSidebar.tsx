@@ -1,16 +1,15 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Moon, Sun, LayoutGrid, Building2, BookOpen, ClipboardList, FileText } from "lucide-react";
 import { useTheme } from "next-themes";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { CollegeTab, getRegistrarCollegeTabs } from "../../lib/registrar-client";
 
-const navItems = [
+const baseNavItems = [
   { label: "Dashboard", icon: LayoutGrid, href: "/dashboard" },
   { label: "Registrar", icon: ClipboardList, href: "/registrar" },
-  { label: "CT", icon: Building2, href: "/ct" },
-  { label: "CN", icon: Building2, href: "/cn" },
-  { label: "CA", icon: Building2, href: "/ca" },
   { label: "NSTP Office", icon: BookOpen, href: "/nstp" },
   { label: "OSD", icon: BookOpen, href: "/osds" },
   { label: "Documents", icon: FileText, href: "/document" },
@@ -19,6 +18,26 @@ const navItems = [
 export default function DesktopSidebar() {
   const { theme, setTheme } = useTheme();
   const pathname = usePathname();
+  const [collegeTabs, setCollegeTabs] = useState<CollegeTab[]>([]);
+
+  useEffect(() => {
+    const loadTabs = async () => {
+      try {
+        const tabs = await getRegistrarCollegeTabs();
+        setCollegeTabs(tabs);
+      } catch {
+        setCollegeTabs([]);
+      }
+    };
+
+    void loadTabs();
+  }, []);
+
+  const navItems = [
+    ...baseNavItems.slice(0, 2),
+    ...collegeTabs.map((tab) => ({ label: tab.label, icon: Building2, href: tab.href })),
+    ...baseNavItems.slice(2)
+  ];
 
   return (
     <aside className="hidden lg:flex fixed left-0 top-0 h-full w-64 flex-col bg-white/85 dark:bg-[#18181b]/90 backdrop-blur-xl border-r border-gray-100 dark:border-white/10 z-30">

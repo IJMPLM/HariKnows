@@ -1,0 +1,14 @@
+CT,BSIT,MASTERLIST,,,,,,,,
+YEAR,BLOCK,LAST NAME,FIRST NAME,MIDDLE NAME,STUDENT NO,STATUS,,,,
+1,1,Abalajen,Bernadette,Ocampo,2026-00008,Regular,,,,"Report of Grades (table[name, student no., subject,grades] - csv/pdf) / subject - curriculum based"
+1,2,Albon,Mary Antonette,Alcantara,2026-00009,Regular,,,,"Thesis/Capstone Status (table[name, student no., status] - csv/pdf)"
+1,3,Chan,Angel Marie,Romero,2026-00007,Regular,,,,"Masterlist (table[name, student no.] - csv/pdf)"
+2,1,Lazam,Chrisdane,Valencia,2025-00009,Regular,,,,
+2,2,Lee,Deserie,Mercado,2025-00007,Regular,,,,"Curriculum (table[program, level, term, units, course code, course title])"
+2,3,Pablo,Alaina Jazmine,Vergara,2025-00008,Regular,,,,"Course Syllabus (table[course code, course title, course description])"
+3,1,Liwanag,Jikki Shien,Padilla,2023-00055,Irregular,,,,
+3,2,Picar,Alyssa Mae,Angeles,2023-00056,Irregular,,,,
+3,3,Sulit,Ruzzel Mae,Espiritu,2024-00007,Regular,,,,
+4,1,Ilasin,Tricia Mae,Legaspi,2023-00008,Regular,,,,
+4,2,Libang,Jansen,Peralta,2023-00009,Regular,,,,
+4,3,Melicor,Pauline Kane,Vargas,2023-00007,Regular,,,,
