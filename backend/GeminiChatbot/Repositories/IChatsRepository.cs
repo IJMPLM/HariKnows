@@ -9,4 +9,6 @@ public interface IChatsRepository
     Task<IReadOnlyList<ChatResponseDto>> GetChatHistoryAsync(string conversationId, int limit = 20);
 
     Task ClearHistoryAsync(string conversationId);
+
+    Task<IReadOnlyList<ConversationSessionDto>> GetConversationSessionsAsync(string studentNo, int maxAgeInDays = 30);
 }

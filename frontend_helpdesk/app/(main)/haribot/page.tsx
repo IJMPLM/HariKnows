@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useTheme } from "next-themes";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { Send, Loader2, Image as ImageIcon, Trash2 } from "lucide-react";
+import { Send, Loader2, Trash2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 import DesktopSidebar from "../../components/DesktopSidebar"; 
@@ -13,10 +13,17 @@ import {
   sendChatMessage, 
   getChatHistory, 
   clearChatHistory, 
-  type ChatMessage 
+  type ChatMessage,
+  type RagResponseMeta
 } from "../../../lib/gemini-client";
+import { initializeSession, type StudentProfile } from "../../../lib/auth-client";
 
 const PAGE_SIZE = 20;
+const GUEST_CONVERSATION_KEY = "hk.chat.conversation.guest";
+
+function getConversationStorageKey(studentNo: string) {
+  return `hk.chat.conversation.${studentNo}`;
+}
 
 function formatTime(value: string) {
   return new Date(value).toLocaleTimeString([], {
@@ -27,21 +34,38 @@ function formatTime(value: string) {
 
 export default function HaribotPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   
   // Chat State
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<StudentProfile | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [messageMeta, setMessageMeta] = useState<Record<number, RagResponseMeta>>({});
+  const tempMessageIdRef = useRef(1_000_000_000);
   const inFlightRef = useRef(false);
   const threadRef = useRef<HTMLDivElement | null>(null);
-  const [conversationId] = useState(() => `haribot-${Date.now()}`);
 
   // Load initial chat history
-  const loadInitial = async () => {
+  const loadInitial = async (activeConversationId: string | null, user: StudentProfile | null) => {
+    if (!activeConversationId) {
+      setMessages([]);
+      setMessageMeta({});
+      setIsLoading(false);
+      return;
+    }
+
+    if (!user) {
+      setMessages([]);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
-      const history = await getChatHistory(conversationId, PAGE_SIZE);
+      const history = await getChatHistory(activeConversationId, PAGE_SIZE);
       setMessages(history);
       requestAnimationFrame(() => {
         threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight });
@@ -64,14 +88,54 @@ export default function HaribotPage() {
     requestAnimationFrame(() => {
       threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
     });
+    const guestUserMessageId = tempMessageIdRef.current++;
+    if (!currentUser) {
+      setMessages((previous) => {
+        const nowIso = new Date().toISOString();
+        return [
+          ...previous,
+          { id: guestUserMessageId, role: "user", content: trimmed, createdAt: nowIso },
+        ];
+      });
+      setText("");
+    }
+
     try {
       // Send message and get response
-      const response = await sendChatMessage(trimmed, conversationId);
+      const response = await sendChatMessage(trimmed, conversationId ?? undefined);
+
+      if (!conversationId) {
+        if (currentUser) {
+          window.localStorage.setItem(getConversationStorageKey(currentUser.studentNo), response.conversationId);
+        } else {
+          window.localStorage.setItem(GUEST_CONVERSATION_KEY, response.conversationId);
+        }
+        setConversationId(response.conversationId);
+      }
       
-      // Reload chat history to display both user and assistant messages
-      const history = await getChatHistory(conversationId, PAGE_SIZE);
-      setMessages(history);
-      setText("");
+      // Guests do not have chat history access; keep their session local.
+      let assistantId = response.message.id;
+      if (currentUser) {
+        const history = await getChatHistory(response.conversationId, PAGE_SIZE);
+        setMessages(history);
+        setText("");
+      } else {
+        assistantId = tempMessageIdRef.current++;
+        setMessages((previous) => {
+          const nowIso = new Date().toISOString();
+          return [
+            ...previous,
+            { ...response.message, id: assistantId },
+          ];
+        });
+      }
+
+      if (response.meta) {
+        setMessageMeta((previous) => ({
+          ...previous,
+          [assistantId]: response.meta!,
+        }));
+      }
       
       requestAnimationFrame(() => {
         threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
@@ -91,8 +155,21 @@ export default function HaribotPage() {
     }
 
     try {
+      if (!conversationId) {
+        return;
+      }
+
+      if (!currentUser) {
+        window.localStorage.removeItem(GUEST_CONVERSATION_KEY);
+        setConversationId(null);
+        setMessages([]);
+        setMessageMeta({});
+        return;
+      }
+
       await clearChatHistory(conversationId);
       setMessages([]);
+      setMessageMeta({});
     } catch (error) {
       console.error("Failed to clear history:", error);
       alert("Failed to clear history. Please try again.");
@@ -100,10 +177,23 @@ export default function HaribotPage() {
   };
 
   useEffect(() => {
-    loadInitial();
-  }, []);
+    const initialize = async () => {
+      const resolvedUser = await initializeSession();
+      setCurrentUser(resolvedUser ?? null);
+      
+      // Check for conversation parameter in URL (from recent chats list)
+      const queryConversation = searchParams.get("conversation");
+      const activeConv = queryConversation;
+      
+      setConversationId(activeConv);
+      await loadInitial(activeConv, resolvedUser ?? null);
+    };
+
+    void initialize();
+  }, [router, searchParams]);
 
   const isEmpty = messages.length === 0;
+  const displayName = currentUser?.fullName?.split(" ")[0] || "there";
 
   return (
     <>
@@ -149,7 +239,7 @@ export default function HaribotPage() {
                   {/* Greeting Text (Right) */}
                   <div className="flex flex-col items-center sm:items-start text-center sm:text-left z-10">
                     <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-3 text-gray-900 dark:text-gray-100">
-                      Let's get started, <span className="text-[#6e3102] dark:text-[#d4855a]">Jana</span>
+                      Let's get started, <span className="text-[#6e3102] dark:text-[#d4855a]">{displayName}</span>
                     </h1>
                     <p className="text-gray-500 dark:text-gray-400 text-[1.05rem] leading-relaxed">
                       I'm Hari! Your AI-powered registrar helpdesk assistant. Ask me about enrollment, document requests, or your processing status.
@@ -172,6 +262,7 @@ export default function HaribotPage() {
               >
                 {messages.map((message) => {
                   const isUser = message.role === "user";
+                  const meta = !isUser ? messageMeta[message.id] : undefined;
 
                   return (
                     <div key={message.id} className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -222,6 +313,38 @@ export default function HaribotPage() {
                           <span className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                             {formatTime(message.createdAt)}
                           </span>
+                          {!isUser && meta && (
+                            <div className="mt-2 w-full rounded-xl border border-gray-200/70 dark:border-white/10 bg-white/70 dark:bg-[#18181b]/80 px-3 py-2 text-xs text-gray-600 dark:text-gray-300">
+                              <p>
+                                <span className="font-semibold">Routing:</span> {meta.routing} | <span className="font-semibold">Model:</span> {meta.modelSource} | <span className="font-semibold">Confidence:</span> {(meta.confidence * 100).toFixed(0)}%
+                              </p>
+                              {meta.redirectOffice ? (
+                                <p className="mt-1 text-amber-700 dark:text-amber-300">
+                                  Redirect: contact {meta.redirectOffice}. {meta.redirectReason ?? ""}
+                                </p>
+                              ) : null}
+                              {meta.citations.length > 0 ? (
+                                <div className="mt-1">
+                                  <p className="font-semibold">Sources</p>
+                                  <ul className="mt-1 space-y-1">
+                                    {meta.citations.slice(0, 4).map((citation) => (
+                                      <li key={citation.id}>
+                                        <a
+                                          href={citation.url}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="underline text-[#6e3102] dark:text-[#d4855a]"
+                                        >
+                                          {citation.title}
+                                        </a>
+                                        <span className="text-gray-400 dark:text-gray-500"> ({citation.category})</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ) : null}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

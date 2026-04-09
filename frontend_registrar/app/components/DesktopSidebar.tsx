@@ -1,32 +1,39 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Moon, Sun, LayoutGrid, Building2, BookOpen, ClipboardList, FileText } from "lucide-react";
+import { Moon, Sun, LayoutGrid, Building2, BookOpen, ClipboardList, FileText, MessageSquareQuote } from "lucide-react";
 import { useTheme } from "next-themes";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { CollegeTab, getRegistrarCollegeTabs } from "../../lib/registrar-client";
+import { CollegeTab, getCachedRegistrarCollegeTabs, getRegistrarCollegeTabs } from "../../lib/registrar-client";
 
 const baseNavItems = [
   { label: "Dashboard", icon: LayoutGrid, href: "/dashboard" },
   { label: "Registrar", icon: ClipboardList, href: "/registrar" },
   { label: "NSTP Office", icon: BookOpen, href: "/nstp" },
   { label: "OSD", icon: BookOpen, href: "/osds" },
+  { label: "FAQs & Context", icon: MessageSquareQuote, href: "/faq" },
   { label: "Documents", icon: FileText, href: "/document" },
 ];
 
 export default function DesktopSidebar() {
   const { theme, setTheme } = useTheme();
   const pathname = usePathname();
-  const [collegeTabs, setCollegeTabs] = useState<CollegeTab[]>([]);
+  const [collegeTabs, setCollegeTabs] = useState<CollegeTab[]>(() => getCachedRegistrarCollegeTabs() ?? []);
 
   useEffect(() => {
     const loadTabs = async () => {
       try {
         const tabs = await getRegistrarCollegeTabs();
-        setCollegeTabs(tabs);
+        setCollegeTabs((currentTabs) => {
+          if (currentTabs.length === tabs.length && currentTabs.every((tab, index) => tab.href === tabs[index]?.href && tab.label === tabs[index]?.label)) {
+            return currentTabs;
+          }
+
+          return tabs;
+        });
       } catch {
-        setCollegeTabs([]);
+        setCollegeTabs((currentTabs) => currentTabs);
       }
     };
 

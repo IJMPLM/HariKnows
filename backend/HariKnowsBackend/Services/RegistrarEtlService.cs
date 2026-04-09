@@ -11,7 +11,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace HariKnowsBackend.Services;
 
-public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration configuration, IHostEnvironment hostEnvironment) : IRegistrarEtlService
+public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration configuration, IHostEnvironment hostEnvironment, IAuthService authService) : IRegistrarEtlService
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
     private sealed record ParsedStagingRow(int SourceRowNumber, Dictionary<string, string> Data);
@@ -23,7 +23,7 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
         ["BSA"] = "CA"
     };
 
-    public async Task<BulkUploadResultDto> BulkUploadAsync(IReadOnlyList<IFormFile> files, CancellationToken cancellationToken)
+    public async Task<BulkUploadResultDto> BulkUploadAsync(IReadOnlyList<IFormFile> files, IReadOnlyList<string> incompleteFiles, CancellationToken cancellationToken)
     {
         if (files.Count == 0)
         {
@@ -43,6 +43,10 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
         var fileResults = new List<EtlFileResultDto>();
         var errors = new List<EtlErrorDto>();
         var stagedRows = new List<EtlStagingRow>();
+        var incompleteSet = incompleteFiles
+            .Select(f => f.Trim())
+            .Where(f => !string.IsNullOrWhiteSpace(f))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         foreach (var file in files)
         {
@@ -68,10 +72,24 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
                     throw new InvalidOperationException("CSV must contain metadata row and header row.");
                 }
 
-                var metadata = ParseCsvLine(allLines[0]).Select(x => x.Trim()).ToArray();
-                var category = ResolveCategory(metadata, allLines, file.FileName);
+                var delimiter = DetectDelimiter(allLines);
+                var metadata = ParseCsvLine(allLines[0], delimiter).Select(x => x.Trim()).ToArray();
+                var category = ResolveCategory(metadata, allLines, file.FileName, delimiter);
                 var (sourceCollegeCode, sourceProgramCode) = ResolveAcademicCodes(metadata, file.FileName);
-                var parsed = ParseRowsForCategory(category, metadata, allLines, sourceCollegeCode, sourceProgramCode);
+                var scopeKey = BuildScopeKey(category, sourceCollegeCode, sourceProgramCode, metadata, file.FileName);
+                var parsed = ParseRowsForCategory(category, metadata, allLines, sourceCollegeCode, sourceProgramCode, delimiter);
+
+                var obsoleteEntries = await db.EtlUploadFiles
+                    .Where(f => f.IsActive && f.ScopeKey == scopeKey)
+                    .ToListAsync(cancellationToken);
+                foreach (var obsolete in obsoleteEntries)
+                {
+                    obsolete.IsActive = false;
+                    obsolete.Status = "archived";
+                }
+
+                var isIncomplete = incompleteSet.Contains(file.FileName);
+                var lifecycleStatus = isIncomplete ? "active-incomplete" : "active";
 
                 foreach (var parsedRow in parsed)
                 {
@@ -97,13 +115,16 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
                     Category = category,
                     CollegeCode = sourceCollegeCode,
                     ProgramCode = sourceProgramCode,
+                    ScopeKey = scopeKey,
+                    IsActive = true,
+                    IsIncomplete = isIncomplete,
                     ParsedRows = parsed.Count,
-                    Status = "staged",
+                    Status = lifecycleStatus,
                     Error = string.Empty,
                     ParsedAt = now
                 });
 
-                fileResults.Add(new EtlFileResultDto(file.FileName, category, parsed.Count, "staged", string.Empty));
+                fileResults.Add(new EtlFileResultDto(file.FileName, category, parsed.Count, lifecycleStatus, string.Empty));
             }
             catch (Exception ex)
             {
@@ -115,6 +136,9 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
                     Category = "unknown",
                     CollegeCode = string.Empty,
                     ProgramCode = string.Empty,
+                    ScopeKey = BuildScopeKey("unknown", string.Empty, string.Empty, [], file.FileName),
+                    IsActive = false,
+                    IsIncomplete = incompleteSet.Contains(file.FileName),
                     ParsedRows = 0,
                     Status = "error",
                     Error = ex.Message,
@@ -181,6 +205,82 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
             ?? new EtlStagingDashboardDto([], [], [], [], [], [], [], [], [], []);
 
         return new BulkUploadResultDto(batchId, staging, fileResults, conflicts, errors);
+    }
+
+    public async Task<FaqImportResultDto> ImportFaqTextAsync(IFormFile file, CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length == 0)
+        {
+            throw new ArgumentException("FAQ file is empty.");
+        }
+
+        using var stream = file.OpenReadStream();
+        using var reader = new StreamReader(stream, Encoding.UTF8, true);
+        var content = await reader.ReadToEndAsync();
+        var entries = ParseFaqCsv(content, file.FileName);
+        if (entries.Count == 0)
+        {
+            throw new InvalidOperationException("No FAQ entries were found in the CSV file.");
+        }
+
+        var now = DateTime.UtcNow;
+        var imported = 0;
+        var updated = 0;
+        var skipped = 0;
+
+        foreach (var request in entries)
+        {
+            if (string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.Answer))
+            {
+                skipped++;
+                continue;
+            }
+
+            var normalizedScope = NormalizeFaqScopeType(request.ScopeType);
+            var normalizedCollege = request.CollegeCode.Trim().ToUpperInvariant();
+            var normalizedProgram = request.ProgramCode.Trim().ToUpperInvariant();
+            var normalizedCategory = string.IsNullOrWhiteSpace(request.Category) ? "faq" : request.Category.Trim();
+            var normalizedTitle = request.Title.Trim();
+
+            var existing = await db.FaqContextEntries.FirstOrDefaultAsync(entry =>
+                entry.ScopeType == normalizedScope &&
+                entry.CollegeCode == normalizedCollege &&
+                entry.ProgramCode == normalizedProgram &&
+                entry.Category == normalizedCategory &&
+                entry.Question == normalizedTitle,
+                cancellationToken);
+
+            if (existing is null)
+            {
+                db.FaqContextEntries.Add(new FaqContextEntry
+                {
+                    ScopeType = normalizedScope,
+                    CollegeCode = normalizedCollege,
+                    ProgramCode = normalizedProgram,
+                    Category = normalizedCategory,
+                    Question = normalizedTitle,
+                    Answer = request.Answer.Trim(),
+                    IsPublished = request.IsGuestVisible,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                });
+                imported++;
+                continue;
+            }
+
+            existing.ScopeType = normalizedScope;
+            existing.CollegeCode = normalizedCollege;
+            existing.ProgramCode = normalizedProgram;
+            existing.Category = normalizedCategory;
+            existing.Question = normalizedTitle;
+            existing.Answer = request.Answer.Trim();
+            existing.IsPublished = request.IsGuestVisible;
+            existing.UpdatedAt = now;
+            updated++;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        return new FaqImportResultDto(imported, updated, skipped);
     }
 
     public async Task<EtlCommitResultDto> CommitAsync(CommitEtlRequest request, CancellationToken cancellationToken)
@@ -348,6 +448,8 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
                 string.IsNullOrWhiteSpace(f.ProgramCode) ? programCode : f.ProgramCode,
                 f.ParsedRows,
                 f.Status,
+                f.IsActive,
+                f.IsIncomplete,
                 f.Error,
                 f.ParsedAt
             );
@@ -420,7 +522,7 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
             new CollegeTabDto("CA", "CA", "/ca")
         };
 
-        return knownTabs.Where(t => detectedCodes.Contains(t.Code)).ToList();
+        return knownTabs.Where(t => detectedCodes.Contains(t.Code)).OrderBy(t => t.Code).ToList();
     }
 
     public async Task<bool> ClearStagingAsync(string batchId, CancellationToken cancellationToken)
@@ -590,6 +692,12 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
         else if (sourceCategory == "technology")
         {
             student.Email = GetValue(payload, "email");
+
+            var rawPassword = GetTechnologyPassword(payload);
+            if (!string.IsNullOrWhiteSpace(rawPassword))
+            {
+                student.PasswordHash = authService.HashPassword(rawPassword);
+            }
         }
         else if (sourceCategory == "thesis")
         {
@@ -605,6 +713,29 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
         }
 
         student.DateUpdated = now;
+    }
+
+    private static string GetTechnologyPassword(Dictionary<string, string> payload)
+    {
+        var candidateKeys = new[]
+        {
+            "password",
+            "pass",
+            "passwordPlain",
+            "studentPassword",
+            "ictoPassword"
+        };
+
+        foreach (var key in candidateKeys)
+        {
+            var value = GetValue(payload, key);
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value;
+            }
+        }
+
+        return string.Empty;
     }
 
     private async Task ApplyGradeReferenceAsync(Dictionary<string, string> payload, CancellationToken cancellationToken)
@@ -796,12 +927,11 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
         return await db.StudentMasters.FirstOrDefaultAsync(s => s.StudentNo == studentNo, cancellationToken);
     }
 
-    private static string ResolveCategory(IReadOnlyList<string> metadata, IReadOnlyList<string> allLines, string fileName)
+    private static string ResolveCategory(IReadOnlyList<string> metadata, IReadOnlyList<string> allLines, string fileName, char delimiter)
     {
         var row0 = metadata.ToArray();
-        var col0 = row0.Length > 0 ? row0[0].Trim().ToUpperInvariant() : string.Empty;
-        var col1 = row0.Length > 1 ? row0[1].Trim().ToUpperInvariant() : string.Empty;
-        var col2 = row0.Length > 2 ? row0[2].Trim().ToUpperInvariant() : string.Empty;
+        var col0 = row0.Length > 0 ? NormalizeTag(row0[0]) : string.Empty;
+        var col2 = row0.Length > 2 ? NormalizeTag(row0[2]) : string.Empty;
 
         if (col0 is "OUR" or "AO" or "OSD" or "NSTP" or "ICTO")
         {
@@ -816,13 +946,13 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
             };
         }
 
-        if (col2 == "MASTERLIST")
+        if (col2 is "MASTERLIST" or "MASTER")
         {
             var normalizedHeader = allLines.Count > 1
-                ? ParseCsvLine(allLines[1]).Select(h => h.Trim().ToUpperInvariant()).ToHashSet()
+                ? ParseCsvLine(allLines[1], delimiter).Select(h => NormalizeTag(h)).ToHashSet()
                 : [];
 
-            if (normalizedHeader.Contains("LAST NAME") || normalizedHeader.Contains("FIRST NAME"))
+            if (normalizedHeader.Contains("LASTNAME") || normalizedHeader.Contains("FIRSTNAME"))
             {
                 return "students";
             }
@@ -837,12 +967,12 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
             return "students";
         }
 
-        if (col2 == "CURRICULUM")
+        if (col2 is "CURRICULUM" or "CURRICULA")
         {
             return "curriculums";
         }
 
-        if (col2 == "SYLLABUS")
+        if (col2 is "SYLLABUS" or "SYLLABI")
         {
             return "syllabi";
         }
@@ -852,7 +982,81 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
             return "thesis";
         }
 
+        var inferred = InferCategoryFromHeaderAndFile(allLines, fileName, delimiter);
+        if (!string.IsNullOrWhiteSpace(inferred))
+        {
+            return inferred;
+        }
+
         throw new InvalidOperationException("Unable to categorize CSV from metadata row.");
+    }
+
+    private static string InferCategoryFromHeaderAndFile(IReadOnlyList<string> allLines, string fileName, char delimiter)
+    {
+        var header = allLines.Count > 1
+            ? ParseCsvLine(allLines[1], delimiter).Select(NormalizeTag).Where(x => !string.IsNullOrWhiteSpace(x)).ToHashSet()
+            : new HashSet<string>();
+
+        var fileTag = NormalizeTag(fileName);
+
+        if (header.Contains("STUDENTNO") && header.Contains("GRADE"))
+        {
+            return "grades";
+        }
+
+        if (header.Contains("FIRSTNAME") || header.Contains("LASTNAME"))
+        {
+            return "students";
+        }
+
+        if (header.Contains("LEVEL") && header.Contains("TERM") && header.Contains("UNITS"))
+        {
+            return "curriculums";
+        }
+
+        if (header.Contains("DESCRIPTION") && header.Contains("CODE") && header.Contains("TITLE"))
+        {
+            return "syllabi";
+        }
+
+        if (header.Contains("EMAIL") && header.Contains("PASSWORD"))
+        {
+            return "technology";
+        }
+
+        if (fileTag.Contains("THESIS")) return "thesis";
+        if (fileTag.Contains("CURRICULUM")) return "curriculums";
+        if (fileTag.Contains("SYLLAB")) return "syllabi";
+        if (fileTag.Contains("GRADE") || fileTag.Contains("-G") || fileTag.EndsWith("GCSV")) return "grades";
+        if (fileTag.Contains("MASTERLIST") || fileTag.Contains("MASTER")) return "students";
+
+        return string.Empty;
+    }
+
+    private static string BuildScopeKey(string category, string collegeCode, string programCode, IReadOnlyList<string> metadata, string fileName)
+    {
+        if (category is "students" or "grades" or "curriculums" or "syllabi" or "thesis")
+        {
+            return $"{category}:{collegeCode.Trim().ToUpperInvariant()}:{programCode.Trim().ToUpperInvariant()}";
+        }
+
+        if (category is "departments" or "admissions" or "discipline" or "service" or "technology")
+        {
+            var officeTag = metadata.Count > 0 ? NormalizeTag(metadata[0]) : string.Empty;
+            return $"{category}:{officeTag}";
+        }
+
+        return $"{category}:{NormalizeTag(fileName)}";
+    }
+
+    private static string NormalizeTag(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        return Regex.Replace(value.Trim().ToUpperInvariant(), "[^A-Z0-9]", string.Empty);
     }
 
     private static List<ParsedStagingRow> ParseRowsForCategory(
@@ -860,11 +1064,12 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
         IReadOnlyList<string> metadata,
         IReadOnlyList<string> allLines,
         string sourceCollegeCode,
-        string sourceProgramCode)
+        string sourceProgramCode,
+        char delimiter)
     {
         return category == "grades"
-            ? ParseGradeRows(metadata, allLines, sourceCollegeCode, sourceProgramCode)
-            : ParseSimpleRows(category, metadata, allLines, sourceCollegeCode, sourceProgramCode);
+            ? ParseGradeRows(metadata, allLines, sourceCollegeCode, sourceProgramCode, delimiter)
+            : ParseSimpleRows(category, metadata, allLines, sourceCollegeCode, sourceProgramCode, delimiter);
     }
 
     private static List<ParsedStagingRow> ParseSimpleRows(
@@ -872,19 +1077,20 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
         IReadOnlyList<string> metadata,
         IReadOnlyList<string> allLines,
         string sourceCollegeCode,
-        string sourceProgramCode)
+        string sourceProgramCode,
+        char delimiter)
     {
         if (allLines.Count < 2)
         {
             return [];
         }
 
-        var headers = ParseCsvLine(allLines[1]).Select(x => x.Trim()).ToArray();
+        var headers = ParseCsvLine(allLines[1], delimiter).Select(x => x.Trim()).ToArray();
         var parsedRows = new List<ParsedStagingRow>();
 
         for (var lineIndex = 2; lineIndex < allLines.Count; lineIndex++)
         {
-            var row = ParseCsvLine(allLines[lineIndex]);
+            var row = ParseCsvLine(allLines[lineIndex], delimiter);
             if (IsBlankRow(row))
             {
                 continue;
@@ -912,7 +1118,8 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
         IReadOnlyList<string> metadata,
         IReadOnlyList<string> allLines,
         string sourceCollegeCode,
-        string sourceProgramCode)
+        string sourceProgramCode,
+        char delimiter)
     {
         var parsedRows = new List<ParsedStagingRow>();
         var currentCourseCode = string.Empty;
@@ -920,7 +1127,7 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
 
         for (var lineIndex = 1; lineIndex < allLines.Count; lineIndex++)
         {
-            var cells = ParseCsvLine(allLines[lineIndex]).Select(c => c.Trim()).ToList();
+            var cells = ParseCsvLine(allLines[lineIndex], delimiter).Select(c => c.Trim()).ToList();
             if (IsBlankRow(cells))
             {
                 continue;
@@ -1038,21 +1245,26 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
 
     private static string NormalizeHeader(string input)
     {
-        var normalized = input.Trim().ToUpperInvariant();
-        return normalized switch
+        var normalizedTag = NormalizeTag(input);
+        return normalizedTag switch
         {
-            "DEPT ID" => "deptId",
+            "DEPTID" => "deptId",
             "NAME" => "name",
-            "FIRST NAME" => "firstName",
-            "MIDDLE NAME" => "middleName",
-            "LAST NAME" => "lastName",
-            "NAME ABBR" => "nameAbbr",
-            "STUDENT NO" => "studentNo",
-            "BC_STATUS" => "bcStatus",
-            "F1_STATUS" => "f1Status",
+            "FIRSTNAME" => "firstName",
+            "MIDDLENAME" => "middleName",
+            "LASTNAME" => "lastName",
+            "NAMEABBR" => "nameAbbr",
+            "STUDENTNO" => "studentNo",
+            "BCSTATUS" => "bcStatus",
+            "F1STATUS" => "f1Status",
             "STATUS" => "status",
             "EMAIL" => "email",
+            "EMAILADDRESS" => "email",
+            "PLMEMAIL" => "email",
             "PASSWORD" => "password",
+            "PASS" => "password",
+            "STUDENTPASSWORD" => "password",
+            "ICTOPASSWORD" => "password",
             "YEAR" => "year",
             "BLOCK" => "block",
             "LEVEL" => "level",
@@ -1130,6 +1342,94 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
         }
     }
 
+    private static List<CreateFaqContextEntryDto> ParseFaqCsv(string content, string fileName)
+    {
+        var entries = new List<CreateFaqContextEntryDto>();
+        var lines = content
+            .Split(new[] { "\r\n", "\n" }, StringSplitOptions.None)
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .ToList();
+
+        if (lines.Count < 2)
+        {
+            return entries;
+        }
+
+        var delimiter = DetectDelimiter(lines);
+        var header = ParseCsvLine(lines[0], delimiter).Select(value => value.Trim()).ToArray();
+        for (var lineIndex = 1; lineIndex < lines.Count; lineIndex++)
+        {
+            var cells = ParseCsvLine(lines[lineIndex], delimiter).Select(value => value.Trim()).ToArray();
+            if (cells.All(string.IsNullOrWhiteSpace))
+            {
+                continue;
+            }
+
+            var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            for (var cellIndex = 0; cellIndex < header.Length; cellIndex++)
+            {
+                if (cellIndex < cells.Length)
+                {
+                    fields[header[cellIndex]] = cells[cellIndex];
+                }
+            }
+
+            var inferredCategory = fields.TryGetValue("category", out var category)
+                ? category
+                : fields.TryGetValue("section", out var section)
+                    ? section
+                    : Path.GetFileNameWithoutExtension(fileName).Contains("consolidated", StringComparison.OrdinalIgnoreCase) ? "context" : "general";
+
+            var title = fields.TryGetValue("title", out var titleValue)
+                ? titleValue
+                : fields.TryGetValue("question", out var q)
+                    ? q
+                    : fields.TryGetValue("section", out var sectionTitle) ? sectionTitle : string.Empty;
+
+            var answer = fields.TryGetValue("answer", out var a)
+                ? a
+                : fields.TryGetValue("context", out var contextValue)
+                    ? contextValue
+                : fields.TryGetValue("content", out var contentValue)
+                    ? contentValue
+                    : string.Empty;
+
+            var isGuestVisible = !fields.TryGetValue("isGuestVisible", out var isGuestVisibleRaw) || bool.TryParse(isGuestVisibleRaw, out var parsedGuestVisible) && parsedGuestVisible;
+
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                title = answer;
+            }
+
+            title = title.Replace("\\n", Environment.NewLine);
+            answer = answer.Replace("\\n", Environment.NewLine);
+
+            entries.Add(new CreateFaqContextEntryDto(
+                NormalizeFaqScopeType(fields.TryGetValue("scopeType", out var scopeType) ? scopeType : "general"),
+                fields.TryGetValue("collegeCode", out var collegeCode) ? collegeCode : string.Empty,
+                fields.TryGetValue("programCode", out var programCode) ? programCode : string.Empty,
+                inferredCategory,
+                title,
+                answer,
+                isGuestVisible
+            ));
+        }
+
+        return entries;
+    }
+
+    private static string NormalizeFaqScopeType(string rawScopeType)
+    {
+        var normalized = rawScopeType.Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "global" => "general",
+            "non_guest" => "non-guest",
+            "nonguest" => "non-guest",
+            _ => string.IsNullOrWhiteSpace(normalized) ? "general" : normalized
+        };
+    }
+
     private static (string CollegeCode, string ProgramCode) ResolveAcademicCodes(IReadOnlyList<string> metadata, string fileName)
     {
         var metaCollege = metadata.Count > 0 ? metadata[0].Trim().ToUpperInvariant() : string.Empty;
@@ -1190,7 +1490,29 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
         return (first, middle, last);
     }
 
-    private static List<string> ParseCsvLine(string line)
+    private static char DetectDelimiter(IReadOnlyList<string> lines)
+    {
+        foreach (var line in lines)
+        {
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                continue;
+            }
+
+            var tabCount = line.Count(c => c == '\t');
+            var commaCount = line.Count(c => c == ',');
+            if (tabCount == 0 && commaCount == 0)
+            {
+                continue;
+            }
+
+            return tabCount > commaCount ? '\t' : ',';
+        }
+
+        return ',';
+    }
+
+    private static List<string> ParseCsvLine(string line, char delimiter = ',')
     {
         var output = new List<string>();
         if (line is null)
@@ -1217,7 +1539,7 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
                 continue;
             }
 
-            if (c == ',' && !inQuotes)
+            if (c == delimiter && !inQuotes)
             {
                 output.Add(sb.ToString());
                 sb.Clear();

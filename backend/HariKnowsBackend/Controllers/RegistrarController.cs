@@ -193,4 +193,152 @@ public sealed class RegistrarController(IRegistrarService registrarService) : Co
 
         return Ok(new { moved = result.Moved });
     }
+
+    [HttpGet("students/search")]
+    public IActionResult SearchStudents([FromQuery] string? query, [FromQuery] int limit = 20)
+    {
+        return Ok(registrarService.SearchStudents(query, limit));
+    }
+
+    [HttpGet("requests")]
+    public IActionResult GetRequests([FromQuery] string? studentNo, [FromQuery] string? status, [FromQuery] int limit = 50)
+    {
+        return Ok(registrarService.GetStudentRequests(studentNo, status, limit));
+    }
+
+    [HttpPost("requests")]
+    public IActionResult CreateRequest([FromBody] CreateStudentDocumentRequestDto request)
+    {
+        try
+        {
+            return Ok(registrarService.CreateStudentRequest(request));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPatch("requests/{requestId:int}/status")]
+    public IActionResult UpdateRequestStatus(int requestId, [FromBody] UpdateStudentDocumentStatusDto request)
+    {
+        try
+        {
+            var result = registrarService.UpdateStudentRequestStatus(requestId, request);
+            if (!result.Success && result.NotFound)
+            {
+                return NotFound(new { error = result.Error });
+            }
+
+            if (!result.Success && result.InvalidTransition)
+            {
+                return BadRequest(new { error = result.Error });
+            }
+
+            return Ok(result.Request);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("faq")]
+    public IActionResult GetFaq([FromQuery] string? scopeType, [FromQuery] string? collegeCode, [FromQuery] string? programCode, [FromQuery] bool includeUnpublished = false, [FromQuery] int limit = 100)
+    {
+        return Ok(registrarService.GetFaqEntries(scopeType, collegeCode, programCode, includeUnpublished, limit));
+    }
+
+    [HttpGet("faq/{faqId:int}")]
+    public IActionResult GetFaqEntry(int faqId)
+    {
+        var faq = registrarService.GetFaqEntry(faqId);
+        return faq is null ? NotFound(new { error = "FAQ/context entry not found." }) : Ok(faq);
+    }
+
+    [HttpPost("faq")]
+    public IActionResult CreateFaqEntry([FromBody] CreateFaqContextEntryDto request)
+    {
+        try
+        {
+            return Ok(registrarService.CreateFaqEntry(request));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPut("faq/{faqId:int}")]
+    public IActionResult UpdateFaqEntry(int faqId, [FromBody] UpdateFaqContextEntryDto request)
+    {
+        try
+        {
+            var faq = registrarService.UpdateFaqEntry(faqId, request);
+            return faq is null ? NotFound(new { error = "FAQ/context entry not found." }) : Ok(faq);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpDelete("faq/{faqId:int}")]
+    public IActionResult DeleteFaqEntry(int faqId)
+    {
+        return registrarService.DeleteFaqEntry(faqId)
+            ? Ok(new { deleted = true })
+            : NotFound(new { error = "FAQ/context entry not found." });
+    }
+
+    [HttpPost("faq/seed-mockup")]
+    public IActionResult SeedMockupFaqData()
+    {
+        var mockupEntries = new[]
+        {
+            new CreateFaqContextEntryDto(
+                "global",
+                "",
+                "",
+                "documents",
+                "What is a Transcript of Records (TOR)?",
+                "A Transcript of Records is an official academic document that shows your complete enrollment history, grades achieved in each course, and your cumulative grade point average (GPA).",
+                true
+            ),
+            new CreateFaqContextEntryDto(
+                "global",
+                "",
+                "",
+                "enrollment",
+                "How do I enroll for the next semester?",
+                "Enrollment occurs online through the student portal during the designated enrollment period. You'll select courses, pay the appropriate fees, and confirm your registration.",
+                true
+            ),
+            new CreateFaqContextEntryDto(
+                "global",
+                "",
+                "",
+                "grades",
+                "When will my grades be posted?",
+                "Final grades are typically posted to your student portal 3-5 working days after the examination period ends. Instructors submit grades through the faculty portal.",
+                true
+            )
+        };
+
+        int created = 0;
+        foreach (var entry in mockupEntries)
+        {
+            try
+            {
+                registrarService.CreateFaqEntry(entry);
+                created++;
+            }
+            catch
+            {
+                // Skip duplicates or errors
+            }
+        }
+
+        return Ok(new { message = $"Seeded {created} mockup FAQ/context entries", count = created });
+    }
 }

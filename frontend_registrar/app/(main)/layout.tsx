@@ -7,7 +7,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen flex bg-[#121212] text-[#fafaf9]">
       <DesktopSidebar />
       <MobileSidebar />
-      <main className="flex-1 ml-64 p-6 md:p-10">
+      <main className="flex-1 ml-0 lg:ml-64 p-6 md:p-10">
         {children}
       </main>
     </div>

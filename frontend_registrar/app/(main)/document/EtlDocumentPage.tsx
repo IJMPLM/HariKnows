@@ -8,6 +8,7 @@ import {
   EtlBulkUploadResponse,
   EtlRow,
   flushRegistrarDatabase,
+  importFaqCsvFile,
 } from "../../../lib/registrar-client";
 import { AlertCircle, CheckCircle2, FileText, ListFilter, Upload, UploadCloud } from "lucide-react";
 
@@ -52,6 +53,7 @@ export default function EtlDocumentPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [decisions, setDecisions] = useState<Record<number, "merge" | "skip">>({});
+  const [incompleteByFile, setIncompleteByFile] = useState<Record<string, boolean>>({});
 
   const rows = useMemo(() => getRows(result, activeTab), [result, activeTab]);
   const columns = useMemo(() => {
@@ -62,13 +64,23 @@ export default function EtlDocumentPage() {
 
   const handleFilePick = (list: FileList | null) => {
     if (!list) return;
-    const accepted = Array.from(list).filter((f) => f.name.toLowerCase().endsWith(".csv"));
+    const accepted = Array.from(list).filter((f) => {
+      const name = f.name.toLowerCase();
+      return name.endsWith(".csv") || name.endsWith(".tsv");
+    });
     setFiles(accepted);
+    setIncompleteByFile((previous) => {
+      const next: Record<string, boolean> = {};
+      accepted.forEach((file) => {
+        next[file.name] = previous[file.name] ?? false;
+      });
+      return next;
+    });
   };
 
   const handleParse = async () => {
     if (files.length === 0) {
-      setError("Please select CSV files first.");
+      setError("Please select CSV or TSV files first.");
       return;
     }
 
@@ -76,14 +88,40 @@ export default function EtlDocumentPage() {
       setError("");
       setMessage("");
       setIsLoading(true);
-      const parsed = await bulkUploadRegistrarCsv(files);
-      setResult(parsed);
-      const initialDecisions: Record<number, "merge" | "skip"> = {};
-      parsed.conflicts.forEach((c) => {
-        initialDecisions[c.stagingId] = "merge";
+      const faqFiles = files.filter((file) => {
+        const name = file.name.toLowerCase();
+        return ["faqs.csv", "consolidated_context.csv", "faqs.tsv", "consolidated_context.tsv"].includes(name);
       });
-      setDecisions(initialDecisions);
-      setMessage(`Staged ${parsed.files.length} file(s). Batch: ${parsed.batchId}`);
+      const csvFiles = files.filter((file) => {
+        const name = file.name.toLowerCase();
+        const isDelimited = name.endsWith(".csv") || name.endsWith(".tsv");
+        return isDelimited && !faqFiles.includes(file);
+      });
+      const incompleteFiles = csvFiles.filter((file) => incompleteByFile[file.name]).map((file) => file.name);
+
+      let parsed: EtlBulkUploadResponse | null = null;
+      if (csvFiles.length > 0) {
+        parsed = await bulkUploadRegistrarCsv(csvFiles, incompleteFiles);
+        setResult(parsed);
+        const initialDecisions: Record<number, "merge" | "skip"> = {};
+        parsed.conflicts.forEach((c) => {
+          initialDecisions[c.stagingId] = "merge";
+        });
+        setDecisions(initialDecisions);
+      } else {
+        setResult(null);
+        setDecisions({});
+      }
+
+      const faqMessages: string[] = [];
+      for (const file of faqFiles) {
+        const summary = await importFaqCsvFile(file);
+        faqMessages.push(`${file.name}: imported ${summary.imported}, updated ${summary.updated}, skipped ${summary.skipped}`);
+      }
+
+      const stagingMessage = parsed ? `Staged ${parsed.files.length} file(s). Batch: ${parsed.batchId}` : "";
+      const faqMessage = faqMessages.length > 0 ? `Imported FAQs from ${faqMessages.join("; ")}.` : "";
+      setMessage([stagingMessage, faqMessage].filter(Boolean).join(" "));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to parse files.");
     } finally {
@@ -168,11 +206,11 @@ export default function EtlDocumentPage() {
           <FileText size={12} />
           REGISTRAR · DOCUMENT MANAGEMENT
         </div>
-        <h1 className="text-3xl lg:text-[2rem] font-extrabold tracking-tight leading-tight text-white mb-1">
-          Unified CSV Upload &amp; <span className="text-[#e8834a]">Staging</span>
+          <h1 className="text-3xl lg:text-[2rem] font-extrabold tracking-tight leading-tight text-white mb-1">
+          Unified Delimited Upload &amp; <span className="text-[#e8834a]">Staging</span>
         </h1>
         <p className="text-sm text-[#aaaaaa] mb-6">
-          Drag and drop multiple CSV files once. The backend auto-categorizes by metadata and stages records for review before save.
+          Drag and drop multiple CSV or TSV files once. The backend auto-categorizes by metadata and stages records for review before save.
         </p>
       </div>
 
@@ -194,15 +232,15 @@ export default function EtlDocumentPage() {
             <div>
               <p className="text-sm font-semibold text-white flex items-center gap-2">
                 <UploadCloud className="w-4 h-4 text-[#e8834a]" />
-                Drop multiple CSV files here
+                Drop CSV or TSV files here
               </p>
-              <p className="text-xs text-[#aaaaaa] mt-1">Supported patterns: office masterlists, college masterlists, curriculum, and thesis files.</p>
+              <p className="text-xs text-[#aaaaaa] mt-1">Registrar data files stage as usual. faq/context CSV or TSV files import into the registrar FAQ tab.</p>
             </div>
             <div className="flex items-center gap-2">
               <input
                 id="bulk-csv"
                 type="file"
-                accept=".csv"
+                accept=".csv,.tsv"
                 multiple
                 className="hidden"
                 onChange={(e) => handleFilePick(e.target.files)}
@@ -243,6 +281,27 @@ export default function EtlDocumentPage() {
           <p className="text-xs text-[#aaaaaa] mt-3">
             Selected: {files.length === 0 ? "none" : files.map((f) => f.name).join(", ")}
           </p>
+          {files.length > 0 && (
+            <div className="mt-3 border border-[#2a2a2a] rounded-xl p-3 bg-[#111] space-y-2">
+              <p className="text-xs uppercase tracking-wider text-[#aaaaaa]">Upload flags</p>
+              {files.map((file) => (
+                <label key={file.name} className="flex items-center justify-between gap-3 text-sm">
+                  <span className="text-[#ddd] truncate">{file.name}</span>
+                  <span className="inline-flex items-center gap-2 text-xs text-[#bbbbbb]">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(incompleteByFile[file.name])}
+                      onChange={(event) => {
+                        const checked = event.target.checked;
+                        setIncompleteByFile((previous) => ({ ...previous, [file.name]: checked }));
+                      }}
+                    />
+                    Mark as incomplete
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
         </div>
 
         {message && (

@@ -10,6 +10,9 @@ public class EtlUploadFile
     public string ProgramCode { get; set; } = string.Empty;
     public int ParsedRows { get; set; }
     public string Status { get; set; } = "staged";
+    public string ScopeKey { get; set; } = string.Empty;
+    public bool IsActive { get; set; } = true;
+    public bool IsIncomplete { get; set; }
     public string Error { get; set; } = string.Empty;
     public DateTime ParsedAt { get; set; }
 }

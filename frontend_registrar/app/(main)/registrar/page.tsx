@@ -1,10 +1,19 @@
 
 "use client";
 
-import { useState } from "react";
-import { AlertCircle, CheckCircle, FileText, Clock, XCircle, Search, ListFilter, Plus, X, ClipboardList } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ClipboardList, Plus, Search, RefreshCw, UserSearch, CheckCircle2, Clock3, Ban } from "lucide-react";
+import {
+  createRegistrarRequest,
+  getRegistrarRequests,
+  loadRegistrarState,
+  searchStudents,
+  updateRegistrarRequestStatus,
+  type Department,
+  type StudentDirectoryEntry,
+  type StudentDocumentRequest,
+} from "../../../lib/registrar-client";
 
-// Document types for creation
 const DOCUMENT_TYPES = [
   "Certificate of Enrollment",
   "Certificate of Grades",
@@ -22,304 +31,223 @@ const DOCUMENT_TYPES = [
   "Transfer Credentials (Honorable Dismissal)",
 ];
 
-// Placeholder for dynamic data fetching in the future
-const documents: any[] = [];
+const EMPTY_REQUEST = { studentNo: "", documentType: "", departmentId: 0, notes: "" };
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
 
 export default function RegistrarPage() {
-  // Example filter state (future: fetch from API)
-  const [currentStatus, setCurrentStatus] = useState("Pending");
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [requests, setRequests] = useState<StudentDocumentRequest[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [sortOpen, setSortOpen] = useState(false);
-
-  // Modal state
+  const [statusFilter, setStatusFilter] = useState<string>("requested");
+  const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [documentSearchInput, setDocumentSearchInput] = useState("");
-  const [selectedDocumentType, setSelectedDocumentType] = useState<string | null>(null);
+  const [requestForm, setRequestForm] = useState(EMPTY_REQUEST);
+  const [studentSearch, setStudentSearch] = useState("");
+  const [studentResults, setStudentResults] = useState<StudentDirectoryEntry[]>([]);
+  const [creating, setCreating] = useState(false);
 
-  // Filter document types based on search
-  const filteredDocumentTypes = DOCUMENT_TYPES.filter((doc) =>
-    doc.toLowerCase().startsWith(documentSearchInput.toLowerCase())
-  );
+  const load = async () => {
+    setLoading(true);
+    try {
+      const state = await loadRegistrarState();
+      const requestData = await getRegistrarRequests(undefined, undefined, 200);
+      setDepartments(state.departments);
+      setRequests(requestData);
+      if (!requestForm.departmentId && state.departments.length > 0) {
+        setRequestForm((current) => ({ ...current, departmentId: state.departments[0].id }));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Filtered documents (future: dynamic)
-  const filteredDocuments = documents.filter((doc) => {
-    const matchesSearch =
-      (doc.documentType?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
-      (doc.referenceCode?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
-      (doc.studentName?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
-      (doc.studentId?.toLowerCase() || "").includes(searchQuery.toLowerCase());
-    const matchesStatus = doc.status === currentStatus;
-    return matchesSearch && matchesStatus;
-  });
+  useEffect(() => {
+    void load();
+  }, []);
 
-  // Statistics (future: dynamic)
-  const pendingCount = documents.filter(d => d.status === "Pending").length;
-  const preparedCount = documents.filter(d => d.status === "Prepared").length;
-  const claimedCount = documents.filter(d => d.status === "Claimed").length;
-  const expiredCount = documents.filter(d => d.status === "Expired").length;
+  useEffect(() => {
+    const handle = window.setTimeout(async () => {
+      if (!studentSearch.trim()) {
+        setStudentResults([]);
+        return;
+      }
+
+      const results = await searchStudents(studentSearch, 8);
+      setStudentResults(results);
+    }, 250);
+
+    return () => window.clearTimeout(handle);
+  }, [studentSearch]);
+
+  const filteredRequests = useMemo(() => {
+    return requests.filter((request) => {
+      const matchesStatus = statusFilter === "all" || request.status === statusFilter;
+      const matchesSearch = [request.requestCode, request.studentName, request.studentNo, request.documentType].join(" ").toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesStatus && matchesSearch;
+    });
+  }, [requests, searchQuery, statusFilter]);
+
+  const pendingCount = requests.filter((request) => request.status === "requested").length;
+  const preparedCount = requests.filter((request) => request.status === "prepared").length;
+  const claimedCount = requests.filter((request) => request.status === "claimed").length;
+  const disposedCount = requests.filter((request) => request.status === "disposed").length;
+
+  const createRequest = async () => {
+    setCreating(true);
+    try {
+      await createRegistrarRequest(requestForm);
+      setShowCreateModal(false);
+      setRequestForm({ ...EMPTY_REQUEST, departmentId: departments[0]?.id ?? 0 });
+      setStudentSearch("");
+      setStudentResults([]);
+      await load();
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const updateStatus = async (requestId: number, status: string, disposedReason?: string) => {
+    const handledBy = window.prompt("Handled by (optional)") ?? undefined;
+    await updateRegistrarRequestStatus(requestId, { status, handledBy, disposedReason, notes: "" });
+    await load();
+  };
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f] text-white">
-      {/* Header Section */}
-      <div className="bg-[#1a1a1a] border-b border-[#2a2a2a] px-8 pt-8 pb-0">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-[#aaaaaa] mb-2">
-          <ClipboardList size={12} />
-          REGISTRAR · REQUEST TRACKING
-        </div>
+    <div className="relative min-h-screen bg-stone-50 dark:bg-[#121212] text-gray-900 dark:text-gray-100 overflow-hidden">
+      <div className="pt-16 lg:pt-0 px-5 lg:px-8 py-6 space-y-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <header className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <p className="text-xs uppercase tracking-[0.24em] font-bold text-[#6e3102] dark:text-[#d4855a] flex items-center gap-2"><ClipboardList size={13} /> Registrar request workflow</p>
+              <h1 className="text-3xl font-extrabold tracking-tight">Document Requests</h1>
+            </div>
+            <div className="flex items-center gap-3">
+              <button onClick={() => void load()} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#18181b]"><RefreshCw size={16} /> Refresh</button>
+              <button onClick={() => setShowCreateModal(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212] font-semibold"><Plus size={16} /> New Request</button>
+            </div>
+          </header>
 
-        {/* Page Header - Split Color Title */}
-        <h1 className="text-3xl lg:text-[2rem] font-extrabold tracking-tight leading-tight text-white mb-1">
-          Office of the University <span className="text-[#e8834a]">Registrar</span>
-        </h1>
-        <p className="text-sm text-[#aaaaaa] mb-6">
-          Administrative workspace for document management
-        </p>
-      </div>
-
-      {/* Main Content */}
-      <div className="px-8 py-7">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
-          <div className="bg-[#1a1a1a] rounded-xl p-6 border border-[#2a2a2a] hover:border-[#3a3a3a] transition-colors">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-[#aaaaaa] uppercase tracking-wide">Pending Requests</p>
-              <Clock className="w-5 h-5 text-yellow-500" />
-            </div>
-            <p className="text-4xl font-extrabold text-white">{pendingCount}</p>
-          </div>
-          <div className="bg-[#1a1a1a] rounded-xl p-6 border border-[#2a2a2a] hover:border-[#3a3a3a] transition-colors">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-[#aaaaaa] uppercase tracking-wide">Prepared</p>
-              <CheckCircle className="w-5 h-5 text-emerald-500" />
-            </div>
-            <p className="text-4xl font-extrabold text-white">{preparedCount}</p>
-          </div>
-          <div className="bg-[#1a1a1a] rounded-xl p-6 border border-[#2a2a2a] hover:border-[#3a3a3a] transition-colors">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-[#aaaaaa] uppercase tracking-wide">Claimed</p>
-              <FileText className="w-5 h-5 text-emerald-500" />
-            </div>
-            <p className="text-4xl font-extrabold text-white">{claimedCount}</p>
-          </div>
-          <div className="bg-[#1a1a1a] rounded-xl p-6 border border-[#2a2a2a] hover:border-[#3a3a3a] transition-colors">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-[#aaaaaa] uppercase tracking-wide">Expired</p>
-              <XCircle className="w-5 h-5 text-red-500" />
-            </div>
-            <p className="text-4xl font-extrabold text-white">{expiredCount}</p>
-          </div>
-        </div>
-
-        {/* Status Pills + Search + Sort */}
-        <div className="mb-8 space-y-4">
-          {/* Status Pills Row */}
-          <div className="flex items-center gap-2">
+          <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: 'Pending', key: 'Pending', count: pendingCount },
-              { label: 'Prepared', key: 'Prepared', count: preparedCount },
-              { label: 'Claimed', key: 'Claimed', count: claimedCount },
-              { label: 'Expired', key: 'Expired', count: expiredCount },
+              { label: "Requested", value: pendingCount, icon: Clock3 },
+              { label: "Prepared", value: preparedCount, icon: CheckCircle2 },
+              { label: "Claimed", value: claimedCount, icon: CheckCircle2 },
+              { label: "Disposed", value: disposedCount, icon: Ban },
             ].map((item) => (
-              <button
-                key={item.key}
-                onClick={() => setCurrentStatus(item.key)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-150 focus:outline-none ${
-                  currentStatus === item.key
-                    ? 'bg-[#e8834a] text-[#121212] border border-[#e8834a]'
-                    : 'bg-[#1a1a1a] text-white border border-[#2a2a2a] hover:border-[#3a3a3a]'
-                }`}
-              >
-                {item.label}
-                <span className={`text-[10px] px-1.5 min-w-[18px] text-center rounded-full font-medium ${
-                  currentStatus === item.key
-                    ? 'bg-[#d97639]/30 text-[#121212]'
-                    : 'bg-[#2a2a2a] text-[#aaaaaa]'
-                }`}>
-                  {item.count}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          {/* Search Bar + Sort Button */}
-          <div className="flex items-center gap-3">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#aaaaaa]" />
-              <input
-                type="search"
-                placeholder="Search documents..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-[#1a1a1a] border border-[#2a2a2a] text-white placeholder-[#666666] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#e8834a]/30 focus:border-[#e8834a] transition-all hover:border-[#3a3a3a]"
-              />
-            </div>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-[#e8834a] hover:bg-[#d97639] text-[#121212] rounded-xl font-semibold text-sm transition-all shadow-md shadow-[#e8834a]/20"
-            >
-              <Plus className="w-4 h-4" />
-              Create Request
-            </button>
-            <div className="relative">
-              <button
-                onClick={() => setSortOpen(!sortOpen)}
-                className="w-10 h-10 flex items-center justify-center rounded-xl bg-[#e8834a] hover:bg-[#d97639] text-[#121212] font-semibold transition-all shadow-md shadow-[#e8834a]/20"
-                title="Sort options"
-              >
-                <ListFilter className="w-4 h-4" />
-              </button>
-              {sortOpen && (
-                <div className="absolute right-0 mt-2 w-52 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl shadow-lg z-50 overflow-hidden">
-                  <p className="px-4 pt-3 pb-1 text-[10px] font-extrabold uppercase tracking-widest text-[#aaaaaa]">Sort By</p>
-                  <button
-                    onClick={() => { setSortOrder("asc"); setSortOpen(false); }}
-                    className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-                      sortOrder === "asc"
-                        ? "bg-[#e8834a] text-[#121212] font-semibold"
-                        : "text-white hover:bg-[#2a2a2a]"
-                    }`}
-                  >
-                    Date Requested (Oldest)
-                  </button>
-                  <button
-                    onClick={() => { setSortOrder("desc"); setSortOpen(false); }}
-                    className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-                      sortOrder === "desc"
-                        ? "bg-[#e8834a] text-[#121212] font-semibold"
-                        : "text-white hover:bg-[#2a2a2a]"
-                    }`}
-                  >
-                    Date Requested (Newest)
-                  </button>
+              <div key={item.label} className="rounded-3xl bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10 p-5 shadow-sm">
+                <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-gray-500">
+                  <span>{item.label}</span>
+                  <item.icon size={15} />
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
+                <div className="text-3xl font-extrabold mt-3">{item.value}</div>
+              </div>
+            ))}
+          </section>
 
-        {/* Documents Table */}
-        <div className="bg-[#1a1a1a] rounded-2xl overflow-hidden border border-[#2a2a2a]">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-[#2a2a2a] bg-[#222222]/50">
-                <th className="text-left p-4 text-white font-bold text-sm">Reference Code</th>
-                <th className="text-left p-4 text-white font-bold text-sm">Student No.</th>
-                <th className="text-left p-4 text-white font-bold text-sm">Document Type</th>
-                <th className="text-left p-4 text-white font-bold text-sm">Status</th>
-                <th className="text-left p-4 text-white font-bold text-sm">Date Requested</th>
-                <th className="text-left p-4 text-white font-bold text-sm">Date Prepared</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredDocuments.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-center text-[#aaaaaa] py-8">
-                    No documents found
-                  </td>
-                </tr>
-              ) : null}
-              {/* Map dynamic data here */}
-            </tbody>
-          </table>
+          <section className="grid grid-cols-1 gap-6">
+            <div className="rounded-3xl bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10 shadow-sm p-5 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                  <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search requests..." className="w-full pl-10 pr-4 py-3 rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#101014]" />
+                </div>
+                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="px-4 py-3 rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#101014]">
+                  <option value="all">All</option>
+                  <option value="requested">Requested</option>
+                  <option value="prepared">Prepared</option>
+                  <option value="claimed">Claimed</option>
+                  <option value="disposed">Disposed</option>
+                </select>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[900px]">
+                  <thead>
+                    <tr className="text-left text-xs uppercase tracking-[0.2em] text-gray-500 border-b border-gray-200 dark:border-white/10">
+                      <th className="py-3 pr-4">Request</th>
+                      <th className="py-3 pr-4">Student</th>
+                      <th className="py-3 pr-4">Document</th>
+                      <th className="py-3 pr-4">Status</th>
+                      <th className="py-3 pr-4">Updated</th>
+                      <th className="py-3 pr-4">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? <tr><td colSpan={6} className="py-8 text-center text-gray-500">Loading...</td></tr> : filteredRequests.map((request) => (
+                      <tr key={request.id} className="border-b border-gray-100 dark:border-white/5 align-top">
+                        <td className="py-4 pr-4 font-mono text-sm">{request.requestCode}</td>
+                        <td className="py-4 pr-4">
+                          <div className="font-semibold">{request.studentName}</div>
+                          <div className="text-xs text-gray-500">{request.studentNo}</div>
+                        </td>
+                        <td className="py-4 pr-4">
+                          <div className="font-medium">{request.documentType}</div>
+                          <div className="text-xs text-gray-500">Dept {request.departmentId}</div>
+                        </td>
+                        <td className="py-4 pr-4"><span className="inline-flex px-3 py-1 rounded-full text-xs font-bold bg-gray-100 dark:bg-white/10">{request.status}</span></td>
+                        <td className="py-4 pr-4 text-sm text-gray-600 dark:text-gray-400">{formatDate(request.updatedAt)}</td>
+                        <td className="py-4 pr-4">
+                          <div className="flex flex-wrap gap-2">
+                            <button onClick={() => void updateStatus(request.id, "prepared")} className="px-3 py-1.5 rounded-xl bg-[#6e3102] text-white text-xs font-semibold">Prepared</button>
+                            <button onClick={() => void updateStatus(request.id, "claimed")} className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-semibold">Claimed</button>
+                            <button onClick={() => { const reason = window.prompt("Disposed reason"); if (reason) void updateStatus(request.id, "disposed", reason); }} className="px-3 py-1.5 rounded-xl bg-red-600 text-white text-xs font-semibold">Disposed</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
         </div>
       </div>
 
-      {/* Create Document Request Modal */}
       {showCreateModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-          onClick={() => setShowCreateModal(false)}
-        >
-          <div
-            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl shadow-2xl w-full max-w-md"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#2a2a2a]">
-              <h2 className="text-lg font-bold text-white">Create Document Request</h2>
-              <button
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setDocumentSearchInput("");
-                  setSelectedDocumentType(null);
-                }}
-                className="p-1 hover:bg-[#2a2a2a] rounded-lg transition-colors text-[#aaaaaa]"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/45" onClick={() => setShowCreateModal(false)} />
+          <div className="relative w-full max-w-2xl rounded-3xl bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10 shadow-2xl p-6 space-y-4">
+            <div className="flex items-start justify-between gap-3">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-[#aaaaaa] mb-2">
-                  Select Document Type
-                </label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#aaaaaa]" />
-                  <input
-                    type="text"
-                    placeholder="Type to filter..."
-                    value={documentSearchInput}
-                    onChange={(e) => setDocumentSearchInput(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-[#2a2a2a] border border-[#3a3a3a] text-white placeholder-[#666666] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#e8834a]/30 focus:border-[#e8834a] transition-all"
-                    autoFocus
-                  />
-                </div>
+                <p className="text-xs uppercase tracking-[0.2em] text-gray-500">New request</p>
+                <h3 className="text-xl font-extrabold">Create student document request</h3>
               </div>
-
-              {/* Document Type List */}
-              <div className="max-h-64 overflow-y-auto space-y-1">
-                {filteredDocumentTypes.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-[#aaaaaa] text-sm">No documents match your search</p>
-                  </div>
-                ) : (
-                  filteredDocumentTypes.map((docType) => (
-                    <button
-                      key={docType}
-                      onClick={() => setSelectedDocumentType(docType)}
-                      className={`w-full text-left px-4 py-2.5 rounded-xl transition-all text-sm font-medium border ${
-                        selectedDocumentType === docType
-                          ? "bg-[#e8834a] text-[#121212] border-[#e8834a]"
-                          : "bg-[#2a2a2a] text-white border-[#2a2a2a] hover:bg-[#e8834a] hover:text-[#121212] hover:border-[#e8834a]"
-                      }`}
-                    >
-                      {docType}
-                    </button>
-                  ))
-                )}
-              </div>
+              <button className="px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-[#242428]" onClick={() => setShowCreateModal(false)}>Close</button>
             </div>
 
-            {/* Modal Footer */}
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#2a2a2a]">
-              <button
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setDocumentSearchInput("");
-                  setSelectedDocumentType(null);
-                }}
-                className="px-4 py-2.5 bg-[#2a2a2a] hover:bg-[#3a3a3a] text-white rounded-xl transition-all text-sm font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  if (selectedDocumentType) {
-                    console.log("Creating request for:", selectedDocumentType);
-                    setShowCreateModal(false);
-                    setDocumentSearchInput("");
-                    setSelectedDocumentType(null);
-                  }
-                }}
-                disabled={!selectedDocumentType}
-                className="px-4 py-2.5 bg-[#e8834a] hover:bg-[#d97639] disabled:bg-[#6a6a6a] disabled:cursor-not-allowed text-[#121212] disabled:text-[#999999] rounded-xl transition-all text-sm font-medium shadow-md shadow-[#e8834a]/20 disabled:shadow-none"
-              >
-                Create Request
-              </button>
+            <div className="relative">
+              <UserSearch size={16} className="absolute left-3 top-3.5 text-gray-400" />
+              <input value={studentSearch} onChange={(event) => setStudentSearch(event.target.value)} placeholder="Search student by no/name..." className="w-full pl-10 pr-4 py-3 rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#101014]" />
+            </div>
+
+            <div className="max-h-44 overflow-y-auto space-y-2 rounded-2xl border border-gray-200 dark:border-white/10 p-2">
+              {studentResults.map((student) => (
+                <button key={student.studentNo} onClick={() => setRequestForm((current) => ({ ...current, studentNo: student.studentNo }))} className={`w-full text-left p-3 rounded-2xl border ${requestForm.studentNo === student.studentNo ? "border-[#6e3102] dark:border-[#d4855a] bg-[#6e3102]/5 dark:bg-[#d4855a]/10" : "border-gray-200 dark:border-white/10"}`}>
+                  <div className="font-semibold">{student.fullName}</div>
+                  <div className="text-xs text-gray-500">{student.studentNo} · {student.collegeCode} / {student.programCode}</div>
+                </button>
+              ))}
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-3">
+              <select value={requestForm.departmentId} onChange={(event) => setRequestForm((current) => ({ ...current, departmentId: Number(event.target.value) }))} className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#101014]">
+                {departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
+              </select>
+              <select value={requestForm.documentType} onChange={(event) => setRequestForm((current) => ({ ...current, documentType: event.target.value }))} className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#101014]">
+                <option value="">Select document type</option>
+                {DOCUMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+              </select>
+            </div>
+
+            <textarea value={requestForm.notes} onChange={(event) => setRequestForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Notes" rows={3} className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#101014]" />
+
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-gray-500 leading-relaxed">Requests are student-linked and must move through requested, prepared, claimed, or disposed. Disposed requires a reason.</p>
+              <button disabled={creating || !requestForm.studentNo || !requestForm.documentType} onClick={() => void createRequest()} className="px-5 py-3 rounded-2xl bg-[#6e3102] text-white font-bold disabled:opacity-50 whitespace-nowrap">{creating ? "Creating..." : "Create Request"}</button>
             </div>
           </div>
         </div>

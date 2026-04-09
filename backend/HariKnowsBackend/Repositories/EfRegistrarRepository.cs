@@ -7,6 +7,53 @@ namespace HariKnowsBackend.Repositories;
 
 public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegistrarRepository
 {
+    private static string NormalizeFaqScope(string rawScope)
+    {
+        var normalized = rawScope.Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "global" => "general",
+            "non_guest" => "non-guest",
+            "nonguest" => "non-guest",
+            _ => normalized
+        };
+    }
+
+    private static StudentDocumentRequestDto ToRequestDto(StudentDocumentRequest request) =>
+        new(
+            request.Id,
+            request.RequestCode,
+            request.StudentNo,
+            request.StudentName,
+            request.DocumentType,
+            request.DepartmentId,
+            request.Status,
+            request.RequestedAt,
+            request.PreparedAt,
+            request.ClaimedAt,
+            request.DisposedAt,
+            request.DisposedReason,
+            request.HandledBy,
+            request.Notes,
+            request.UpdatedAt
+        );
+
+    private static FaqContextEntryDto ToFaqDto(FaqContextEntry entry) =>
+        new(
+            entry.Id,
+            entry.ScopeType,
+            entry.CollegeCode,
+            entry.ProgramCode,
+            entry.Category,
+            entry.Question,
+            entry.Answer,
+            entry.IsPublished,
+            entry.CreatedAt,
+            entry.UpdatedAt
+        );
+
+    private IQueryable<StudentDocumentRequest> RequestQuery() => dbContext.StudentDocumentRequests.AsQueryable();
+
     public IReadOnlyList<DepartmentDto> GetDepartments()
     {
         return dbContext.Departments
@@ -213,6 +260,244 @@ public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegis
 
         dbContext.ActivityLogs.Add(log);
         dbContext.SaveChanges();
+    }
+
+    public IReadOnlyList<StudentDirectoryEntryDto> SearchStudents(string? query, int limit)
+    {
+        var safeLimit = Math.Clamp(limit, 1, 100);
+        var normalized = query?.Trim() ?? string.Empty;
+
+        var students = dbContext.StudentMasters.AsNoTracking().AsQueryable();
+        if (!string.IsNullOrWhiteSpace(normalized))
+        {
+            students = students.Where(s =>
+                s.StudentNo.Contains(normalized) ||
+                s.FullName.Contains(normalized) ||
+                s.Email.Contains(normalized) ||
+                s.CollegeCode.Contains(normalized) ||
+                s.ProgramCode.Contains(normalized));
+        }
+
+        return students
+            .OrderBy(s => s.FullName)
+            .ThenBy(s => s.StudentNo)
+            .Take(safeLimit)
+            .AsEnumerable()
+            .Select(s => new StudentDirectoryEntryDto(s.StudentNo, s.FullName, s.CollegeCode, s.ProgramCode, s.Email))
+            .ToList();
+    }
+
+    public IReadOnlyList<StudentDocumentRequestDto> GetStudentRequests(string? studentNo, string? status, int limit)
+    {
+        var safeLimit = Math.Clamp(limit, 1, 200);
+        var requestQuery = RequestQuery().AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(studentNo))
+        {
+            requestQuery = requestQuery.Where(r => r.StudentNo == studentNo.Trim());
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            requestQuery = requestQuery.Where(r => r.Status == status.Trim());
+        }
+
+        return requestQuery
+            .OrderByDescending(r => r.RequestedAt)
+            .ThenByDescending(r => r.Id)
+            .Take(safeLimit)
+            .AsEnumerable()
+            .Select(ToRequestDto)
+            .ToList();
+    }
+
+    public StudentDocumentRequestDto? GetStudentRequest(int requestId)
+    {
+        var request = dbContext.StudentDocumentRequests.AsNoTracking().FirstOrDefault(r => r.Id == requestId);
+        return request is null ? null : ToRequestDto(request);
+    }
+
+    public StudentDocumentRequestDto CreateStudentRequest(string studentNo, string studentName, string documentType, int departmentId, string notes, DateTime now, string requestCode)
+    {
+        var request = new StudentDocumentRequest
+        {
+            RequestCode = requestCode,
+            StudentNo = studentNo,
+            StudentName = studentName,
+            DocumentType = documentType,
+            DepartmentId = departmentId,
+            Status = "requested",
+            RequestedAt = now,
+            UpdatedAt = now,
+            Notes = notes
+        };
+
+        dbContext.StudentDocumentRequests.Add(request);
+        dbContext.SaveChanges();
+        return ToRequestDto(request);
+    }
+
+    public StudentDocumentRequestDto? UpdateStudentRequestStatus(int requestId, string status, string? handledBy, string? disposedReason, string? notes, DateTime now)
+    {
+        var request = dbContext.StudentDocumentRequests.FirstOrDefault(r => r.Id == requestId);
+        if (request is null)
+        {
+            return null;
+        }
+
+        request.Status = status;
+        request.HandledBy = handledBy?.Trim() ?? request.HandledBy;
+        request.Notes = notes?.Trim() ?? request.Notes;
+        request.UpdatedAt = now;
+
+        if (status == "prepared")
+        {
+            request.PreparedAt ??= now;
+        }
+        else if (status == "claimed")
+        {
+            request.ClaimedAt ??= now;
+        }
+        else if (status == "disposed")
+        {
+            request.DisposedAt ??= now;
+            request.DisposedReason = disposedReason?.Trim() ?? string.Empty;
+        }
+
+        dbContext.SaveChanges();
+        return ToRequestDto(request);
+    }
+
+    public IReadOnlyList<FaqContextEntryDto> GetFaqEntries(string? scopeType, string? collegeCode, string? programCode, bool includeUnpublished, int limit)
+    {
+        var safeLimit = Math.Clamp(limit, 1, 250);
+        var query = dbContext.FaqContextEntries.AsNoTracking().AsQueryable();
+
+        if (!includeUnpublished)
+        {
+            query = query.Where(e => e.IsPublished);
+        }
+
+        if (!string.IsNullOrWhiteSpace(scopeType))
+        {
+            var normalizedScope = NormalizeFaqScope(scopeType);
+            if (normalizedScope == "general")
+            {
+                query = query.Where(e =>
+                    e.ScopeType.ToLower() == "general" ||
+                    e.ScopeType.ToLower() == "global");
+            }
+            else if (normalizedScope == "non-guest")
+            {
+                query = query.Where(e =>
+                    e.ScopeType.ToLower() == "non-guest" ||
+                    e.ScopeType.ToLower() == "non_guest" ||
+                    e.ScopeType.ToLower() == "nonguest");
+            }
+            else
+            {
+                query = query.Where(e =>
+                    e.ScopeType.ToLower() == normalizedScope);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(collegeCode))
+        {
+            query = query.Where(e => e.CollegeCode == collegeCode.Trim());
+        }
+
+        if (!string.IsNullOrWhiteSpace(programCode))
+        {
+            query = query.Where(e => e.ProgramCode == programCode.Trim());
+        }
+
+        return query
+            .OrderBy(e => e.Category)
+            .ThenBy(e => e.Question)
+            .Take(safeLimit)
+            .AsEnumerable()
+            .Select(ToFaqDto)
+            .ToList();
+    }
+
+    public FaqContextEntryDto? GetFaqEntry(int faqId)
+    {
+        var entry = dbContext.FaqContextEntries.AsNoTracking().FirstOrDefault(e => e.Id == faqId);
+        return entry is null ? null : ToFaqDto(entry);
+    }
+
+    public FaqContextEntryDto CreateFaqEntry(CreateFaqContextEntryDto request, DateTime now)
+    {
+        var entry = new FaqContextEntry
+        {
+            ScopeType = request.ScopeType,
+            CollegeCode = request.CollegeCode,
+            ProgramCode = request.ProgramCode,
+            Category = request.Category,
+            Question = request.Title,
+            Answer = request.Answer,
+            IsPublished = request.IsGuestVisible,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        dbContext.FaqContextEntries.Add(entry);
+        dbContext.SaveChanges();
+        return ToFaqDto(entry);
+    }
+
+    public FaqContextEntryDto? UpdateFaqEntry(int faqId, UpdateFaqContextEntryDto request, DateTime now)
+    {
+        var entry = dbContext.FaqContextEntries.FirstOrDefault(e => e.Id == faqId);
+        if (entry is null)
+        {
+            return null;
+        }
+
+        entry.ScopeType = request.ScopeType;
+        entry.CollegeCode = request.CollegeCode;
+        entry.ProgramCode = request.ProgramCode;
+        entry.Category = request.Category;
+        entry.Question = request.Title;
+        entry.Answer = request.Answer;
+        entry.IsPublished = request.IsGuestVisible;
+        entry.UpdatedAt = now;
+
+        dbContext.SaveChanges();
+        return ToFaqDto(entry);
+    }
+
+    public bool DeleteFaqEntry(int faqId)
+    {
+        var entry = dbContext.FaqContextEntries.FirstOrDefault(e => e.Id == faqId);
+        if (entry is null)
+        {
+            return false;
+        }
+
+        dbContext.FaqContextEntries.Remove(entry);
+        dbContext.SaveChanges();
+        return true;
+    }
+
+    public IReadOnlyList<FaqContextEntryDto> SearchFaqEntries(string query, string? scopeType, string? collegeCode, string? programCode, int limit)
+    {
+        var safeLimit = Math.Clamp(limit, 1, 50);
+        var normalized = query.Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return [];
+        }
+
+        var entries = GetFaqEntries(scopeType, collegeCode, programCode, false, safeLimit * 2)
+            .Where(entry =>
+                entry.Title.Contains(normalized, StringComparison.OrdinalIgnoreCase) ||
+                entry.Answer.Contains(normalized, StringComparison.OrdinalIgnoreCase) ||
+                entry.Category.Contains(normalized, StringComparison.OrdinalIgnoreCase))
+            .Take(safeLimit)
+            .ToList();
+
+        return entries;
     }
 
     public void EnsureDatabaseInitialized()

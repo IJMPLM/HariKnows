@@ -25,6 +25,24 @@ public interface IRegistrarService
     DocumentCreateResult CreateDocument(CreateRegistrarDocumentRequest request);
 
     DocumentMoveResult MoveDocument(int documentId, MoveDocumentRequest request);
+
+    IReadOnlyList<StudentDirectoryEntryDto> SearchStudents(string? query, int limit);
+
+    IReadOnlyList<StudentDocumentRequestDto> GetStudentRequests(string? studentNo, string? status, int limit);
+
+    StudentDocumentRequestDto CreateStudentRequest(CreateStudentDocumentRequestDto request);
+
+    RequestStatusMutationResult UpdateStudentRequestStatus(int requestId, UpdateStudentDocumentStatusDto request);
+
+    IReadOnlyList<FaqContextEntryDto> GetFaqEntries(string? scopeType, string? collegeCode, string? programCode, bool includeUnpublished, int limit);
+
+    FaqContextEntryDto? GetFaqEntry(int faqId);
+
+    FaqContextEntryDto CreateFaqEntry(CreateFaqContextEntryDto request);
+
+    FaqContextEntryDto? UpdateFaqEntry(int faqId, UpdateFaqContextEntryDto request);
+
+    bool DeleteFaqEntry(int faqId);
 }
 
 public record DepartmentCreateResult(bool Success, bool NameConflict, string? Error, DepartmentDto? Department);
@@ -38,3 +56,5 @@ public record MutationResult(bool Success, bool NotFound, string? Error);
 public record DocumentCreateResult(bool Success, string? Error, RegistrarDocumentDto? Document);
 
 public record DocumentMoveResult(bool Success, bool NotFound, string? Error, bool? Moved);
+
+public record RequestStatusMutationResult(bool Success, bool NotFound, bool InvalidTransition, string? Error, StudentDocumentRequestDto? Request);

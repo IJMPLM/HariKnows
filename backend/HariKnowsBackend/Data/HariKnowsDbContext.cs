@@ -13,6 +13,8 @@ public class HariKnowsDbContext(DbContextOptions<HariKnowsDbContext> options) : 
     public DbSet<ActivityLog> ActivityLogs { get; set; }
     public DbSet<GeminiChat> GeminiChats { get; set; }
     public DbSet<StudentMaster> StudentMasters { get; set; }
+    public DbSet<StudentDocumentRequest> StudentDocumentRequests { get; set; }
+    public DbSet<FaqContextEntry> FaqContextEntries { get; set; }
     public DbSet<EtlUploadBatch> EtlUploadBatches { get; set; }
     public DbSet<EtlUploadFile> EtlUploadFiles { get; set; }
     public DbSet<EtlStagingRow> EtlStagingRows { get; set; }
@@ -109,8 +111,41 @@ public class HariKnowsDbContext(DbContextOptions<HariKnowsDbContext> options) : 
             entity.HasKey(e => e.Id);
             entity.Property(e => e.StudentNo).IsRequired();
             entity.HasIndex(e => e.StudentNo).IsUnique();
+            entity.Property(e => e.PasswordHash).IsRequired();
             entity.Property(e => e.DateCreated).IsRequired();
             entity.Property(e => e.DateUpdated).IsRequired();
+        });
+
+        modelBuilder.Entity<StudentDocumentRequest>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.RequestCode).IsRequired();
+            entity.Property(e => e.StudentNo).IsRequired();
+            entity.Property(e => e.StudentName).IsRequired();
+            entity.Property(e => e.DocumentType).IsRequired();
+            entity.Property(e => e.Status).IsRequired();
+            entity.Property(e => e.RequestedAt).IsRequired();
+            entity.Property(e => e.UpdatedAt).IsRequired();
+            entity.HasIndex(e => e.RequestCode).IsUnique();
+            entity.HasIndex(e => new { e.StudentNo, e.Status });
+            entity.HasIndex(e => e.DepartmentId);
+            entity.HasOne(e => e.Department)
+                .WithMany()
+                .HasForeignKey(e => e.DepartmentId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<FaqContextEntry>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ScopeType).IsRequired();
+            entity.Property(e => e.Category).IsRequired();
+            entity.Property(e => e.Question).IsRequired();
+            entity.Property(e => e.Answer).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.UpdatedAt).IsRequired();
+            entity.HasIndex(e => new { e.ScopeType, e.CollegeCode, e.ProgramCode });
+            entity.HasIndex(e => e.IsPublished);
         });
 
         modelBuilder.Entity<EtlUploadBatch>(entity =>
@@ -126,8 +161,10 @@ public class HariKnowsDbContext(DbContextOptions<HariKnowsDbContext> options) : 
             entity.HasKey(e => e.Id);
             entity.Property(e => e.BatchId).IsRequired();
             entity.Property(e => e.FileName).IsRequired();
+            entity.Property(e => e.ScopeKey).IsRequired();
             entity.Property(e => e.ParsedAt).IsRequired();
             entity.HasIndex(e => e.BatchId);
+            entity.HasIndex(e => new { e.ScopeKey, e.IsActive });
         });
 
         modelBuilder.Entity<EtlStagingRow>(entity =>

@@ -49,4 +49,36 @@ public sealed class EfGeminiChatsRepository(HariKnowsDbContext dbContext) : ICha
         dbContext.GeminiChats.RemoveRange(messages);
         await dbContext.SaveChangesAsync();
     }
+
+    public async Task<IReadOnlyList<ConversationSessionDto>> GetConversationSessionsAsync(string studentNo, int maxAgeInDays = 30)
+    {
+        var cutoffDate = DateTime.UtcNow.AddDays(-maxAgeInDays);
+        var studentPattern = $"{studentNo}:";
+
+        var chatRows = await dbContext.GeminiChats
+            .Where(c => c.ConversationId.StartsWith(studentPattern) && c.CreatedAt >= cutoffDate)
+            .AsNoTracking()
+            .ToListAsync();
+
+        return chatRows
+            .GroupBy(c => c.ConversationId)
+            .Select(group =>
+            {
+                var orderedMessages = group.OrderBy(c => c.CreatedAt).ToList();
+                var latestMessage = orderedMessages.LastOrDefault();
+                var latestUserMessage = orderedMessages.LastOrDefault(c => c.Role == "user");
+                var previewSource = latestUserMessage?.Content ?? latestMessage?.Content ?? string.Empty;
+
+                return new ConversationSessionDto(
+                    group.Key,
+                    orderedMessages.First().CreatedAt,
+                    orderedMessages.Last().CreatedAt,
+                    orderedMessages.Count,
+                    previewSource.Length > 100 ? previewSource[..100] + "..." : previewSource,
+                    (int)Math.Ceiling((cutoffDate.AddDays(maxAgeInDays) - orderedMessages.Last().CreatedAt).TotalDays)
+                );
+            })
+            .OrderByDescending(session => session.LastMessageAt)
+            .ToList();
+    }
 }

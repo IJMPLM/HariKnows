@@ -1,3 +1,5 @@
+import { authFetch } from "./auth-client";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5240";
 
 export type ChatMessage = {
@@ -14,6 +16,34 @@ export type ChatHistory = {
 export type ChatResponse = {
   conversationId: string;
   message: ChatMessage;
+  meta?: RagResponseMeta;
+};
+
+export type RagCitation = {
+  id: number;
+  title: string;
+  url: string;
+  scopeType: string;
+  category: string;
+};
+
+export type RagResponseMeta = {
+  reply: string;
+  modelSource: string;
+  routing: string;
+  confidence: number;
+  citations: RagCitation[];
+  redirectOffice?: string | null;
+  redirectReason?: string | null;
+};
+
+export type ConversationSession = {
+  conversationId: string;
+  firstMessageAt: string;
+  lastMessageAt: string;
+  messageCount: number;
+  previewText: string;
+  expiresInDays: number;
 };
 
 /**
@@ -28,7 +58,7 @@ export async function sendChatMessage(
     url.searchParams.set("conversationId", conversationId);
   }
 
-  const response = await fetch(url.toString(), {
+  const response = await authFetch(url.toString(), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content }),
@@ -53,7 +83,7 @@ export async function getChatHistory(
   url.searchParams.set("conversationId", conversationId);
   url.searchParams.set("limit", String(limit));
 
-  const response = await fetch(url.toString());
+  const response = await authFetch(url.toString());
 
   if (!response.ok) {
     const error = await response.json();
@@ -71,7 +101,7 @@ export async function clearChatHistory(conversationId: string): Promise<void> {
   const url = new URL(`${API_BASE}/api/chat/history`);
   url.searchParams.set("conversationId", conversationId);
 
-  const response = await fetch(url.toString(), {
+  const response = await authFetch(url.toString(), {
     method: "DELETE",
   });
 
@@ -79,4 +109,22 @@ export async function clearChatHistory(conversationId: string): Promise<void> {
     const error = await response.json();
     throw new Error(error.error || "Failed to clear history");
   }
+}
+
+/**
+ * Get all conversation sessions for the current user
+ */
+export async function getConversationSessions(maxAgeInDays: number = 30): Promise<ConversationSession[]> {
+  const url = new URL(`${API_BASE}/api/chat/conversations`);
+  url.searchParams.set("maxAgeInDays", String(maxAgeInDays));
+
+  const response = await authFetch(url.toString());
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to load conversations");
+  }
+
+  const data = (await response.json()) as { sessions: ConversationSession[] };
+  return data.sessions;
 }

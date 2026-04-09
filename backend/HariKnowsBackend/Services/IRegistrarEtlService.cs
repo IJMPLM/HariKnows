@@ -5,7 +5,8 @@ namespace HariKnowsBackend.Services;
 
 public interface IRegistrarEtlService
 {
-    Task<BulkUploadResultDto> BulkUploadAsync(IReadOnlyList<IFormFile> files, CancellationToken cancellationToken);
+    Task<BulkUploadResultDto> BulkUploadAsync(IReadOnlyList<IFormFile> files, IReadOnlyList<string> incompleteFiles, CancellationToken cancellationToken);
+    Task<FaqImportResultDto> ImportFaqTextAsync(IFormFile file, CancellationToken cancellationToken);
     Task<EtlCommitResultDto> CommitAsync(CommitEtlRequest request, CancellationToken cancellationToken);
     Task<EtlStagingDashboardDto?> GetStagingAsync(string batchId, CancellationToken cancellationToken);
     Task<IReadOnlyList<EtlUploadHistoryEntryDto>> GetUploadHistoryAsync(int limit, CancellationToken cancellationToken);

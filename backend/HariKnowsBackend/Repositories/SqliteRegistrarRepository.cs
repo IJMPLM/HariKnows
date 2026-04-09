@@ -224,6 +224,61 @@ public sealed class SqliteRegistrarRepository(string connectionString) : IRegist
         WriteActivity(connection, action, actor);
     }
 
+    public IReadOnlyList<StudentDirectoryEntryDto> SearchStudents(string? query, int limit)
+    {
+        return [];
+    }
+
+    public IReadOnlyList<StudentDocumentRequestDto> GetStudentRequests(string? studentNo, string? status, int limit)
+    {
+        return [];
+    }
+
+    public StudentDocumentRequestDto? GetStudentRequest(int requestId)
+    {
+        return null;
+    }
+
+    public StudentDocumentRequestDto CreateStudentRequest(string studentNo, string studentName, string documentType, int departmentId, string notes, DateTime now, string requestCode)
+    {
+        throw new NotSupportedException("Student request operations are not supported by SqliteRegistrarRepository.");
+    }
+
+    public StudentDocumentRequestDto? UpdateStudentRequestStatus(int requestId, string status, string? handledBy, string? disposedReason, string? notes, DateTime now)
+    {
+        throw new NotSupportedException("Student request operations are not supported by SqliteRegistrarRepository.");
+    }
+
+    public IReadOnlyList<FaqContextEntryDto> GetFaqEntries(string? scopeType, string? collegeCode, string? programCode, bool includeUnpublished, int limit)
+    {
+        return [];
+    }
+
+    public FaqContextEntryDto? GetFaqEntry(int faqId)
+    {
+        return null;
+    }
+
+    public FaqContextEntryDto CreateFaqEntry(CreateFaqContextEntryDto request, DateTime now)
+    {
+        throw new NotSupportedException("FAQ operations are not supported by SqliteRegistrarRepository.");
+    }
+
+    public FaqContextEntryDto? UpdateFaqEntry(int faqId, UpdateFaqContextEntryDto request, DateTime now)
+    {
+        throw new NotSupportedException("FAQ operations are not supported by SqliteRegistrarRepository.");
+    }
+
+    public bool DeleteFaqEntry(int faqId)
+    {
+        throw new NotSupportedException("FAQ operations are not supported by SqliteRegistrarRepository.");
+    }
+
+    public IReadOnlyList<FaqContextEntryDto> SearchFaqEntries(string query, string? scopeType, string? collegeCode, string? programCode, int limit)
+    {
+        return [];
+    }
+
     public void EnsureDatabaseInitialized()
     {
         using var connection = new SqliteConnection(connectionString);

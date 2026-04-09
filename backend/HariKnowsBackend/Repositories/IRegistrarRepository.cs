@@ -40,5 +40,27 @@ public interface IRegistrarRepository
 
     void WriteActivity(string action, string actor);
 
+    IReadOnlyList<StudentDirectoryEntryDto> SearchStudents(string? query, int limit);
+
+    IReadOnlyList<StudentDocumentRequestDto> GetStudentRequests(string? studentNo, string? status, int limit);
+
+    StudentDocumentRequestDto? GetStudentRequest(int requestId);
+
+    StudentDocumentRequestDto CreateStudentRequest(string studentNo, string studentName, string documentType, int departmentId, string notes, DateTime now, string requestCode);
+
+    StudentDocumentRequestDto? UpdateStudentRequestStatus(int requestId, string status, string? handledBy, string? disposedReason, string? notes, DateTime now);
+
+    IReadOnlyList<FaqContextEntryDto> GetFaqEntries(string? scopeType, string? collegeCode, string? programCode, bool includeUnpublished, int limit);
+
+    FaqContextEntryDto? GetFaqEntry(int faqId);
+
+    FaqContextEntryDto CreateFaqEntry(CreateFaqContextEntryDto request, DateTime now);
+
+    FaqContextEntryDto? UpdateFaqEntry(int faqId, UpdateFaqContextEntryDto request, DateTime now);
+
+    bool DeleteFaqEntry(int faqId);
+
+    IReadOnlyList<FaqContextEntryDto> SearchFaqEntries(string query, string? scopeType, string? collegeCode, string? programCode, int limit);
+
     void EnsureDatabaseInitialized();
 }

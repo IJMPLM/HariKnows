@@ -37,6 +37,8 @@ public record EtlConflictDto(int StagingId, string FileName, string StudentNo, s
 
 public record EtlErrorDto(string FileName, int Row, string Message);
 
+public record FaqImportResultDto(int Imported, int Updated, int Skipped);
+
 public record CommitEtlRequest(string BatchId, IReadOnlyList<EtlDecisionDto> Decisions);
 
 public record EtlDecisionDto(int StagingId, string Action);
@@ -51,6 +53,8 @@ public record EtlUploadHistoryEntryDto(
     string ProgramCode,
     int ParsedRows,
     string Status,
+    bool IsActive,
+    bool IsIncomplete,
     string Error,
     DateTime ParsedAt
 );

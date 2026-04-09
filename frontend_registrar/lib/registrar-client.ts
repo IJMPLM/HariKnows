@@ -14,6 +14,45 @@ export type RegistrarDocument = {
   createdAt: string;
 };
 
+export type StudentDirectoryEntry = {
+  studentNo: string;
+  fullName: string;
+  collegeCode: string;
+  programCode: string;
+  email: string;
+};
+
+export type StudentDocumentRequest = {
+  id: number;
+  requestCode: string;
+  studentNo: string;
+  studentName: string;
+  documentType: string;
+  departmentId: number;
+  status: string;
+  requestedAt: string;
+  preparedAt?: string | null;
+  claimedAt?: string | null;
+  disposedAt?: string | null;
+  disposedReason: string;
+  handledBy: string;
+  notes: string;
+  updatedAt: string;
+};
+
+export type FaqContextEntry = {
+  id: number;
+  scopeType: string;
+  collegeCode: string;
+  programCode: string;
+  category: string;
+  title: string;
+  answer: string;
+  isGuestVisible: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type ActivityEntry = {
   id: number;
   action: string;
@@ -78,6 +117,8 @@ export type EtlUploadHistoryEntry = {
   programCode: string;
   parsedRows: number;
   status: string;
+  isActive: boolean;
+  isIncomplete: boolean;
   error: string;
   parsedAt: string;
 };
@@ -95,6 +136,19 @@ export type EtlBulkUploadResponse = {
   conflicts: Array<{ stagingId: number; fileName: string; studentNo: string; note: string }>;
   errors: Array<{ fileName: string; row: number; message: string }>;
 };
+
+export type FaqImportResult = {
+  imported: number;
+  updated: number;
+  skipped: number;
+};
+
+let registrarCollegeTabsCache: CollegeTab[] | null = null;
+let registrarCollegeTabsPromise: Promise<CollegeTab[]> | null = null;
+
+export function getCachedRegistrarCollegeTabs(): CollegeTab[] | null {
+  return registrarCollegeTabsCache;
+}
 
 async function parseJsonOrThrow(response: Response) {
   if (!response.ok) {
@@ -192,6 +246,85 @@ export async function createDocument(studentName: string, title: string, departm
   return (await parseJsonOrThrow(response)) as RegistrarDocument;
 }
 
+export async function searchStudents(query: string, limit = 20): Promise<StudentDirectoryEntry[]> {
+  const url = new URL(`${API_BASE}/api/registrar/students/search`);
+  url.searchParams.set("query", query);
+  url.searchParams.set("limit", String(limit));
+
+  const response = await fetch(url.toString());
+  return (await parseJsonOrThrow(response)) as StudentDirectoryEntry[];
+}
+
+export async function getRegistrarRequests(studentNo?: string, status?: string, limit = 50): Promise<StudentDocumentRequest[]> {
+  const url = new URL(`${API_BASE}/api/registrar/requests`);
+  if (studentNo) url.searchParams.set("studentNo", studentNo);
+  if (status) url.searchParams.set("status", status);
+  url.searchParams.set("limit", String(limit));
+
+  const response = await fetch(url.toString());
+  return (await parseJsonOrThrow(response)) as StudentDocumentRequest[];
+}
+
+export async function createRegistrarRequest(payload: { studentNo: string; documentType: string; departmentId: number; notes: string }): Promise<StudentDocumentRequest> {
+  const response = await fetch(`${API_BASE}/api/registrar/requests`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  return (await parseJsonOrThrow(response)) as StudentDocumentRequest;
+}
+
+export async function updateRegistrarRequestStatus(requestId: number, payload: { status: string; handledBy?: string; disposedReason?: string; notes?: string }): Promise<StudentDocumentRequest> {
+  const response = await fetch(`${API_BASE}/api/registrar/requests/${requestId}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  return (await parseJsonOrThrow(response)) as StudentDocumentRequest;
+}
+
+export async function getFaqEntries(filters: { scopeType?: string; collegeCode?: string; programCode?: string; includeUnpublished?: boolean; limit?: number }): Promise<FaqContextEntry[]> {
+  const url = new URL(`${API_BASE}/api/registrar/faq`);
+  if (filters.scopeType) url.searchParams.set("scopeType", filters.scopeType);
+  if (filters.collegeCode) url.searchParams.set("collegeCode", filters.collegeCode);
+  if (filters.programCode) url.searchParams.set("programCode", filters.programCode);
+  if (filters.includeUnpublished) url.searchParams.set("includeUnpublished", "true");
+  url.searchParams.set("limit", String(filters.limit ?? 100));
+
+  const response = await fetch(url.toString());
+  return (await parseJsonOrThrow(response)) as FaqContextEntry[];
+}
+
+export async function createFaqEntry(payload: Omit<FaqContextEntry, "id" | "createdAt" | "updatedAt">): Promise<FaqContextEntry> {
+  const response = await fetch(`${API_BASE}/api/registrar/faq`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  return (await parseJsonOrThrow(response)) as FaqContextEntry;
+}
+
+export async function updateFaqEntry(faqId: number, payload: Omit<FaqContextEntry, "id" | "createdAt" | "updatedAt">): Promise<FaqContextEntry> {
+  const response = await fetch(`${API_BASE}/api/registrar/faq/${faqId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  return (await parseJsonOrThrow(response)) as FaqContextEntry;
+}
+
+export async function deleteFaqEntry(faqId: number): Promise<void> {
+  const response = await fetch(`${API_BASE}/api/registrar/faq/${faqId}`, {
+    method: "DELETE",
+  });
+
+  await parseJsonOrThrow(response);
+}
+
 export async function moveDocument(documentId: number, toDepartmentId: number): Promise<{ moved: boolean }> {
   const response = await fetch(`${API_BASE}/api/registrar/documents/${documentId}/move`, {
     method: "POST",
@@ -202,9 +335,10 @@ export async function moveDocument(documentId: number, toDepartmentId: number): 
   return (await parseJsonOrThrow(response)) as { moved: boolean };
 }
 
-export async function bulkUploadRegistrarCsv(files: File[]): Promise<EtlBulkUploadResponse> {
+export async function bulkUploadRegistrarCsv(files: File[], incompleteFiles: string[] = []): Promise<EtlBulkUploadResponse> {
   const form = new FormData();
   files.forEach((file) => form.append("files", file));
+  incompleteFiles.forEach((name) => form.append("incompleteFiles", name));
 
   const response = await fetch(`${API_BASE}/api/registrar/etl/bulk-upload`, {
     method: "POST",
@@ -235,8 +369,36 @@ export async function getRegistrarUploadHistory(limit = 100): Promise<EtlUploadH
 }
 
 export async function getRegistrarCollegeTabs(): Promise<CollegeTab[]> {
-  const response = await fetch(`${API_BASE}/api/registrar/etl/college-tabs`);
-  return (await parseJsonOrThrow(response)) as CollegeTab[];
+  if (registrarCollegeTabsCache) {
+    return registrarCollegeTabsCache;
+  }
+
+  if (!registrarCollegeTabsPromise) {
+    registrarCollegeTabsPromise = fetch(`${API_BASE}/api/registrar/etl/college-tabs`)
+      .then((response) => parseJsonOrThrow(response) as Promise<CollegeTab[]>)
+      .then((tabs) => {
+        const sortedTabs = [...tabs].sort((left, right) => left.label.localeCompare(right.label));
+        registrarCollegeTabsCache = sortedTabs;
+        return sortedTabs;
+      })
+      .finally(() => {
+        registrarCollegeTabsPromise = null;
+      });
+  }
+
+  return registrarCollegeTabsPromise!;
+}
+
+export async function importFaqCsvFile(file: File): Promise<FaqImportResult> {
+  const form = new FormData();
+  form.append("file", file);
+
+  const response = await fetch(`${API_BASE}/api/registrar/etl/import-faqs`, {
+    method: "POST",
+    body: form,
+  });
+
+  return (await parseJsonOrThrow(response)) as FaqImportResult;
 }
 
 export async function clearRegistrarEtlStaging(batchId: string): Promise<void> {

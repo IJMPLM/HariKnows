@@ -4,23 +4,45 @@ import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
+import { signIn } from "../../../lib/auth-client";
 
 export default function SignInPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
-  const [studentNumber, setStudentNumber] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSignIn = (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Signing in with:", studentNumber);
-    router.push("/home");
-  };
+    if (isSubmitting) {
+      return;
+    }
 
-  const handleStudentNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const numericValue = e.target.value.replace(/\D/g, "");
-    if (numericValue.length <= 9) {
-      setStudentNumber(numericValue);
+    setError("");
+    const normalizedEmail = email.trim().toLowerCase();
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(normalizedEmail)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
+    if (!password.trim()) {
+      setError("Password is required.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await signIn(normalizedEmail, password);
+      router.push("/haribot");
+    } catch (signInError) {
+      const message = signInError instanceof Error ? signInError.message : "Failed to sign in.";
+      setError(message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -70,15 +92,13 @@ export default function SignInPage() {
           {/* Form */}
           <form onSubmit={handleSignIn} className="space-y-3">
 
-            {/* Student Number */}
+            {/* Email */}
             <input
-              id="studentNumber"
-              type="text"
-              inputMode="numeric"
-              value={studentNumber}
-              onChange={handleStudentNumberChange}
-              placeholder="Student Number"
-              maxLength={9}
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email"
               required
               className="w-full px-4 py-3 rounded-xl text-white placeholder-white/25 text-sm
                          focus:outline-none focus:ring-2 focus:ring-[#d4855a]/40
@@ -94,8 +114,8 @@ export default function SignInPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
-                minLength={8}
-                maxLength={64}
+                minLength={1}
+                maxLength={128}
                 required
                 className="w-full px-4 py-3 pr-11 rounded-xl text-white placeholder-white/25 text-sm
                            focus:outline-none focus:ring-2 focus:ring-[#d4855a]/40
@@ -112,25 +132,27 @@ export default function SignInPage() {
               </button>
             </div>
 
-            {/* Forgot Password */}
-            <div className="flex justify-end pb-1">
-              <a href="/forgot-password" className="text-xs font-semibold text-[#d4855a] hover:text-[#e09873] transition-colors">
-                Forgot Password?
-              </a>
-            </div>
+
 
             {/* Submit */}
             <button
               type="submit"
+              disabled={isSubmitting}
               className="w-full py-3 px-4 rounded-xl font-bold text-sm text-white
-                         active:scale-[0.98] transition-all duration-200"
+                         active:scale-[0.98] transition-all duration-200 disabled:opacity-60"
               style={{
                 background: "linear-gradient(135deg, #c4622a 0%, #d4855a 100%)",
                 boxShadow: "0 4px 24px rgba(196,98,42,0.35)",
               }}
             >
-              Sign In
+              {isSubmitting ? "Signing In..." : "Sign In"}
             </button>
+
+            {error ? (
+              <p className="text-xs text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
+                {error}
+              </p>
+            ) : null}
 
           </form>
 

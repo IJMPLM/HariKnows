@@ -1,32 +1,45 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   User,
   Mail,
   BookOpen,
   Building2,
-  Lock,
   Hash,
-  Eye,
-  EyeOff,
   LogOut
 } from "lucide-react";
 import DesktopSidebar from "../../components/DesktopSidebar";
 import MobileSidebar from "../../components/MobileSidebar";
+import { getCurrentUser, signOut, type StudentProfile } from "../../../lib/auth-client";
 
 export default function AccountPage() {
   const router = useRouter();
 
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showCurrent, setShowCurrent] = useState(false);
-  const [showNew, setShowNew] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
+  const [profile, setProfile] = useState<StudentProfile | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
   const [showLogOutModal, setShowLogOutModal] = useState(false);
+
+  useEffect(() => {
+    const init = async () => {
+      const user = await getCurrentUser();
+      if (!user) {
+        router.replace("/sign-in");
+        return;
+      }
+
+      setProfile(user);
+      setLoadingProfile(false);
+    };
+
+    void init();
+  }, [router]);
+
+  const handleLogout = async () => {
+    await signOut();
+    router.replace("/sign-in");
+  };
 
   return (
     <>
@@ -73,8 +86,8 @@ export default function AccountPage() {
 
               {/* Name & Quick Info */}
               <div className="flex-1 text-center md:text-left">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Rubilyn Gonzales</h2>
-                <p className="text-[#6e3102] dark:text-[#d4855a] font-medium mt-1">Student No: 2026-12345</p>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{loadingProfile ? "Loading profile..." : profile?.fullName ?? "Student"}</h2>
+                <p className="text-[#6e3102] dark:text-[#d4855a] font-medium mt-1">Student No: {profile?.studentNo ?? "-"}</p>
               </div>
             </section>
 
@@ -94,7 +107,7 @@ export default function AccountPage() {
                     <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <input
                       type="text"
-                      defaultValue="Rubilyn Gonzales"
+                      defaultValue={profile?.fullName ?? ""}
                       disabled
                       className="w-full pl-11 pr-4 py-3 rounded-xl bg-gray-100 dark:bg-[#1f1f1f] border border-gray-200 dark:border-white/5 text-[0.95rem] text-gray-600 dark:text-gray-400 outline-none cursor-not-allowed font-medium"
                     />
@@ -108,7 +121,7 @@ export default function AccountPage() {
                     <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <input
                       type="text"
-                      defaultValue="2026-10940"
+                      defaultValue={profile?.studentNo ?? ""}
                       disabled
                       className="w-full pl-11 pr-4 py-3 rounded-xl bg-gray-100 dark:bg-[#1f1f1f] border border-gray-200 dark:border-white/5 text-[0.95rem] text-gray-600 dark:text-gray-400 outline-none cursor-not-allowed font-medium"
                     />
@@ -122,7 +135,7 @@ export default function AccountPage() {
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <input
                       type="email"
-                      defaultValue="rubilyn.gonzales@gmail.com"
+                      defaultValue={profile?.email ?? ""}
                       disabled
                       className="w-full pl-11 pr-4 py-3 rounded-xl bg-gray-100 dark:bg-[#1f1f1f] border border-gray-200 dark:border-white/5 text-[0.95rem] text-gray-600 dark:text-gray-400 outline-none cursor-not-allowed font-medium"
                     />
@@ -136,7 +149,7 @@ export default function AccountPage() {
                     <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <input
                       type="text"
-                      defaultValue="College of Information Systems and Technology Management"
+                      defaultValue={profile?.collegeCode ?? ""}
                       disabled
                       className="w-full pl-11 pr-4 py-3 rounded-xl bg-gray-100 dark:bg-[#1f1f1f] border border-gray-200 dark:border-white/5 text-[0.95rem] text-gray-600 dark:text-gray-400 outline-none cursor-not-allowed font-medium"
                     />
@@ -150,7 +163,7 @@ export default function AccountPage() {
                     <BookOpen className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <input
                       type="text"
-                      defaultValue="Bachelor of Science in Computer Science"
+                      defaultValue={profile?.programCode ?? ""}
                       disabled
                       className="w-full pl-11 pr-4 py-3 rounded-xl bg-gray-100 dark:bg-[#1f1f1f] border border-gray-200 dark:border-white/5 text-[0.95rem] text-gray-600 dark:text-gray-400 outline-none cursor-not-allowed font-medium"
                     />
@@ -159,82 +172,6 @@ export default function AccountPage() {
 
                 {/* Divider */}
                 <div className="md:col-span-2 border-t border-gray-200 dark:border-white/10 my-2" />
-
-                {/* Password Section */}
-                <div className="space-y-1.5 md:col-span-2">
-                  <div className="flex items-center justify-between ml-1 mb-1">
-                    <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Password</label>
-                    <button
-                      onClick={() => setIsChangingPassword(!isChangingPassword)}
-                      className="text-xs font-bold text-[#6e3102] dark:text-[#d4855a] hover:underline"
-                    >
-                      {isChangingPassword ? "Cancel" : "Change Password"}
-                    </button>
-                  </div>
-
-                  {!isChangingPassword ? (
-                    <div className="relative">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                      <input
-                        type="password"
-                        defaultValue="********"
-                        disabled
-                        className="w-full pl-11 pr-4 py-3 rounded-xl bg-gray-100 dark:bg-[#1f1f1f] border border-gray-200 dark:border-white/5 text-[0.95rem] text-gray-600 dark:text-gray-400 outline-none cursor-not-allowed font-medium tracking-widest"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-3 animate-fade-in-up">
-                      {/* Current Password */}
-                      <div className="relative">
-                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                        <input
-                          type={showCurrent ? "text" : "password"}
-                          placeholder="Current password"
-                          value={currentPassword}
-                          onChange={e => setCurrentPassword(e.target.value)}
-                          className="w-full pl-11 pr-11 py-3 rounded-xl bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-white/10 text-[0.95rem] text-gray-900 dark:text-white focus:ring-2 focus:ring-[#6e3102]/30 dark:focus:ring-[#d4855a]/30 outline-none transition-all font-medium"
-                        />
-                        <button type="button" onClick={() => setShowCurrent(!showCurrent)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-                          {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
-                      </div>
-                      {/* New Password */}
-                      <div className="relative">
-                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                        <input
-                          type={showNew ? "text" : "password"}
-                          placeholder="New password"
-                          value={newPassword}
-                          onChange={e => setNewPassword(e.target.value)}
-                          className="w-full pl-11 pr-11 py-3 rounded-xl bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-white/10 text-[0.95rem] text-gray-900 dark:text-white focus:ring-2 focus:ring-[#6e3102]/30 dark:focus:ring-[#d4855a]/30 outline-none transition-all font-medium"
-                        />
-                        <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-                          {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
-                      </div>
-                      {/* Confirm Password */}
-                      <div className="relative">
-                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                        <input
-                          type={showConfirm ? "text" : "password"}
-                          placeholder="Confirm new password"
-                          value={confirmPassword}
-                          onChange={e => setConfirmPassword(e.target.value)}
-                          className="w-full pl-11 pr-11 py-3 rounded-xl bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-white/10 text-[0.95rem] text-gray-900 dark:text-white focus:ring-2 focus:ring-[#6e3102]/30 dark:focus:ring-[#d4855a]/30 outline-none transition-all font-medium"
-                        />
-                        <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-                          {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
-                      </div>
-                      <button
-                        onClick={() => setIsChangingPassword(false)}
-                        className="w-full md:w-auto md:self-end px-8 py-3 rounded-xl bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212] font-bold text-[0.95rem] hover:bg-[#5a2801] dark:hover:bg-[#e09873] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-md shadow-[#6e3102]/20 dark:shadow-[#d4855a]/10"
-                      >
-                        Change Password
-                      </button>
-                    </div>
-                  )}
-                </div>
 
               </div>
             </section>
@@ -272,7 +209,7 @@ export default function AccountPage() {
                 Cancel
               </button>
               <button
-                onClick={() => router.push("/sign-in")}
+                onClick={() => void handleLogout()}
                 className="flex-1 px-4 py-3 rounded-xl bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212] font-bold text-[0.95rem] hover:bg-[#5a2801] dark:hover:bg-[#e09873] active:scale-[0.98] transition-all shadow-md shadow-[#6e3102]/20 dark:shadow-[#d4855a]/10"
               >
                 Log Out

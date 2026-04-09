@@ -1,177 +1,194 @@
 "use client";
 
-import { useState } from "react";
-import { AlertCircle, CheckCircle, Filter, FileText, Search, ListFilter, ClipboardList } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { AlertCircle, Archive, CheckCircle2, ClipboardList, RefreshCw } from "lucide-react";
+import { getRegistrarUploadHistory, type EtlUploadHistoryEntry } from "../../../lib/registrar-client";
 
-const uploadData: any[] = [];
+type SummaryRow = {
+  key: string;
+  office: string;
+  college: string;
+  program: string;
+  active: number;
+  archived: number;
+  incomplete: number;
+  errors: number;
+  total: number;
+  lastUpdated: string;
+};
+
+function officeFromCategory(category: string) {
+  const lowered = category.toLowerCase();
+  if (lowered === "admissions") return "AO";
+  if (lowered === "discipline") return "OSDS";
+  if (lowered === "service") return "NSTP";
+  if (lowered === "technology") return "ICTO";
+  if (lowered === "departments") return "OUR";
+  return "OUR";
+}
 
 export default function DashboardPage() {
-  const [selectedDepartment, setSelectedDepartment] = useState<string>("All");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [sortOpen, setSortOpen] = useState(false);
+  const [history, setHistory] = useState<EtlUploadHistoryEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const filteredData =
-    selectedDepartment === "All"
-      ? uploadData
-      : uploadData.filter((item) => item.department === selectedDepartment);
+  const load = async () => {
+    try {
+      setError("");
+      setLoading(true);
+      const rows = await getRegistrarUploadHistory(500);
+      setHistory(rows);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Failed to load dashboard status.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const totalDocuments = filteredData.length;
-  const completeDocuments = filteredData.filter((d) => d.status === "Complete").length;
-  const incompleteDocuments = filteredData.filter((d) => d.status === "Incomplete").length;
-  const completionRate = totalDocuments > 0 ? Math.round((completeDocuments / totalDocuments) * 100) : 0;
+  useEffect(() => {
+    void load();
+  }, []);
+
+  const summaryRows = useMemo(() => {
+    const grouped = new Map<string, SummaryRow>();
+
+    for (const row of history) {
+      const office = officeFromCategory(row.category);
+      const college = row.collegeCode || "-";
+      const program = row.programCode || "-";
+      const key = `${office}|${college}|${program}`;
+      const existing = grouped.get(key) ?? {
+        key,
+        office,
+        college,
+        program,
+        active: 0,
+        archived: 0,
+        incomplete: 0,
+        errors: 0,
+        total: 0,
+        lastUpdated: row.parsedAt,
+      };
+
+      existing.total += 1;
+      if (row.status === "error") {
+        existing.errors += 1;
+      } else if (row.isActive) {
+        existing.active += 1;
+      } else {
+        existing.archived += 1;
+      }
+
+      if (row.isIncomplete) {
+        existing.incomplete += 1;
+      }
+
+      if (new Date(row.parsedAt).getTime() > new Date(existing.lastUpdated).getTime()) {
+        existing.lastUpdated = row.parsedAt;
+      }
+
+      grouped.set(key, existing);
+    }
+
+    return Array.from(grouped.values()).sort((a, b) => {
+      const officeCmp = a.office.localeCompare(b.office);
+      if (officeCmp !== 0) return officeCmp;
+      const collegeCmp = a.college.localeCompare(b.college);
+      if (collegeCmp !== 0) return collegeCmp;
+      return a.program.localeCompare(b.program);
+    });
+  }, [history]);
+
+  const totals = useMemo(() => {
+    return summaryRows.reduce(
+      (acc, row) => {
+        acc.total += row.total;
+        acc.active += row.active;
+        acc.archived += row.archived;
+        acc.incomplete += row.incomplete;
+        acc.errors += row.errors;
+        return acc;
+      },
+      { total: 0, active: 0, archived: 0, incomplete: 0, errors: 0 }
+    );
+  }, [summaryRows]);
 
   return (
     <div className="min-h-screen bg-[#0f0f0f] text-white">
-      {/* Header Section */}
       <div className="bg-[#1a1a1a] border-b border-[#2a2a2a] px-8 pt-8 pb-0">
-        {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-[#aaaaaa] mb-2">
           <ClipboardList size={12} />
           REGISTRAR · UPLOAD DASHBOARD
         </div>
 
-        {/* Page Header - Split Color Title */}
-        <h1 className="text-3xl lg:text-[2rem] font-extrabold tracking-tight leading-tight text-white mb-1">
-          Document Upload <span className="text-[#e8834a]">Dashboard</span>
-        </h1>
-        <p className="text-sm text-[#aaaaaa] mb-6">
-          Monitor document submission status across all departments
-        </p>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h1 className="text-3xl lg:text-[2rem] font-extrabold tracking-tight leading-tight text-white mb-1">
+              Document Upload <span className="text-[#e8834a]">Dashboard</span>
+            </h1>
+            <p className="text-sm text-[#aaaaaa] mb-6">Overall status across offices and colleges</p>
+          </div>
+          <button
+            onClick={() => void load()}
+            className="mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#e8834a] hover:bg-[#d97639] text-[#121212] font-semibold"
+          >
+            <RefreshCw size={14} />
+            Refresh
+          </button>
+        </div>
       </div>
 
-      {/* Main Content */}
-      <div className="px-8 py-7">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
-          <div className="bg-[#1a1a1a] rounded-xl p-6 border border-[#2a2a2a] hover:border-[#3a3a3a] transition-colors">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-[#aaaaaa] uppercase tracking-wide">Total Documents</p>
-              <FileText className="w-5 h-5 text-[#e8834a]" />
-            </div>
-            <p className="text-4xl font-extrabold text-white">{totalDocuments}</p>
+      <div className="px-8 py-7 space-y-6">
+        {error && (
+          <div className="rounded-xl border border-red-500/35 bg-red-500/10 text-red-200 px-4 py-3 text-sm">
+            {error}
           </div>
-          <div className="bg-[#1a1a1a] rounded-xl p-6 border border-[#2a2a2a] hover:border-[#3a3a3a] transition-colors">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-[#aaaaaa] uppercase tracking-wide">Complete</p>
-              <CheckCircle className="w-5 h-5 text-emerald-500" />
-            </div>
-            <p className="text-4xl font-extrabold text-white">{completeDocuments}</p>
-          </div>
-          <div className="bg-[#1a1a1a] rounded-xl p-6 border border-[#2a2a2a] hover:border-[#3a3a3a] transition-colors">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-[#aaaaaa] uppercase tracking-wide">Incomplete</p>
-              <AlertCircle className="w-5 h-5 text-red-500" />
-            </div>
-            <p className="text-4xl font-extrabold text-white">{incompleteDocuments}</p>
-          </div>
-          <div className="bg-[#1a1a1a] rounded-xl p-6 border border-[#2a2a2a] hover:border-[#3a3a3a] transition-colors">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-[#aaaaaa] uppercase tracking-wide">Completion Rate</p>
-              <div className="text-sm text-[#e8834a] font-extrabold">{completionRate}%</div>
-            </div>
-            <div className="w-full bg-[#2a2a2a] rounded-full h-2.5">
-              <div
-                className="bg-[#e8834a] h-2.5 rounded-full transition-all duration-300"
-                style={{ width: `${completionRate}%` }}
-              ></div>
-            </div>
-          </div>
+        )}
+
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="bg-[#1a1a1a] rounded-xl p-5 border border-[#2a2a2a]"><p className="text-xs text-[#aaaaaa] uppercase tracking-wide">Total</p><p className="text-3xl font-extrabold mt-2">{totals.total}</p></div>
+          <div className="bg-[#1a1a1a] rounded-xl p-5 border border-[#2a2a2a]"><p className="text-xs text-[#aaaaaa] uppercase tracking-wide">Active</p><p className="text-3xl font-extrabold mt-2 text-emerald-400">{totals.active}</p></div>
+          <div className="bg-[#1a1a1a] rounded-xl p-5 border border-[#2a2a2a]"><p className="text-xs text-[#aaaaaa] uppercase tracking-wide">Archived</p><p className="text-3xl font-extrabold mt-2 text-zinc-300">{totals.archived}</p></div>
+          <div className="bg-[#1a1a1a] rounded-xl p-5 border border-[#2a2a2a]"><p className="text-xs text-[#aaaaaa] uppercase tracking-wide">Incomplete</p><p className="text-3xl font-extrabold mt-2 text-amber-300">{totals.incomplete}</p></div>
+          <div className="bg-[#1a1a1a] rounded-xl p-5 border border-[#2a2a2a]"><p className="text-xs text-[#aaaaaa] uppercase tracking-wide">Errors</p><p className="text-3xl font-extrabold mt-2 text-red-400">{totals.errors}</p></div>
         </div>
 
-        {/* Filters & Search Section */}
-        <div className="space-y-4 mb-8">
-          {/* Department Filter Row */}
-          <div className="flex items-end gap-4">
-            <div className="flex-1 max-w-xs">
-              <label className="block text-xs font-semibold text-[#aaaaaa] uppercase tracking-wide mb-2">
-                <span className="flex items-center gap-1.5">
-                  <Filter size={14} />
-                  Filter by Department
-                </span>
-              </label>
-              <select
-                value={selectedDepartment}
-                onChange={e => setSelectedDepartment(e.target.value)}
-                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#e8834a]/30 focus:border-[#e8834a] transition-all hover:border-[#3a3a3a]"
-              >
-                <option value="All">All Departments</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Search Bar + Sort Button */}
-          <div className="flex items-center gap-3">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#aaaaaa]" />
-              <input
-                type="search"
-                placeholder="Search documents..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-[#1a1a1a] border border-[#2a2a2a] text-white placeholder-[#666666] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#e8834a]/30 focus:border-[#e8834a] transition-all hover:border-[#3a3a3a]"
-              />
-            </div>
-            <div className="relative">
-              <button
-                onClick={() => setSortOpen(!sortOpen)}
-                className="w-10 h-10 flex items-center justify-center rounded-xl bg-[#e8834a] hover:bg-[#d97639] text-[#121212] font-semibold transition-all shadow-md shadow-[#e8834a]/20"
-                title="Sort options"
-              >
-                <ListFilter className="w-4 h-4" />
-              </button>
-              {sortOpen && (
-                <div className="absolute right-0 mt-2 w-52 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl shadow-lg z-50 overflow-hidden">
-                  <p className="px-4 pt-3 pb-1 text-[10px] font-extrabold uppercase tracking-widest text-[#aaaaaa]">Sort By</p>
-                  <button
-                    onClick={() => { setSortOrder("asc"); setSortOpen(false); }}
-                    className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-                      sortOrder === "asc"
-                        ? "bg-[#e8834a] text-[#121212] font-semibold"
-                        : "text-white hover:bg-[#2a2a2a]"
-                    }`}
-                  >
-                    Department (A-Z)
-                  </button>
-                  <button
-                    onClick={() => { setSortOrder("desc"); setSortOpen(false); }}
-                    className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-                      sortOrder === "desc"
-                        ? "bg-[#e8834a] text-[#121212] font-semibold"
-                        : "text-white hover:bg-[#2a2a2a]"
-                    }`}
-                  >
-                    Department (Z-A)
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Documents Table */}
-        <div className="bg-[#1a1a1a] rounded-2xl overflow-hidden border border-[#2a2a2a]">
-          <table className="w-full">
+        <section className="bg-[#1a1a1a] rounded-2xl overflow-hidden border border-[#2a2a2a]">
+          <table className="w-full min-w-[920px]">
             <thead>
               <tr className="border-b border-[#2a2a2a] bg-[#222222]/50">
-                <th className="text-left p-4 text-white font-bold text-sm">Department</th>
-                <th className="text-left p-4 text-white font-bold text-sm">Document</th>
-                <th className="text-left p-4 text-white font-bold text-sm">Status</th>
+                <th className="text-left p-4 text-white font-bold text-sm">Office</th>
+                <th className="text-left p-4 text-white font-bold text-sm">College</th>
+                <th className="text-left p-4 text-white font-bold text-sm">Program</th>
+                <th className="text-left p-4 text-white font-bold text-sm">Active</th>
+                <th className="text-left p-4 text-white font-bold text-sm">Archived</th>
+                <th className="text-left p-4 text-white font-bold text-sm">Incomplete</th>
+                <th className="text-left p-4 text-white font-bold text-sm">Errors</th>
                 <th className="text-left p-4 text-white font-bold text-sm">Last Updated</th>
               </tr>
             </thead>
             <tbody>
-              {filteredData.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="text-center text-[#aaaaaa] py-8">
-                    No documents found
-                  </td>
-                </tr>
-              ) : null}
-              {/* Map dynamic data here */}
+              {loading ? (
+                <tr><td colSpan={8} className="text-center text-[#aaaaaa] py-8">Loading dashboard...</td></tr>
+              ) : summaryRows.length === 0 ? (
+                <tr><td colSpan={8} className="text-center text-[#aaaaaa] py-8">No upload records found.</td></tr>
+              ) : (
+                summaryRows.map((row) => (
+                  <tr key={row.key} className="border-t border-[#2a2a2a]">
+                    <td className="p-4"><span className="inline-flex items-center gap-1 text-xs uppercase tracking-wide text-[#aaaaaa]"><ClipboardList size={12} />{row.office}</span></td>
+                    <td className="p-4 uppercase text-xs text-[#d2d2d2]">{row.college}</td>
+                    <td className="p-4 uppercase text-xs text-[#d2d2d2]">{row.program}</td>
+                    <td className="p-4"><span className="inline-flex items-center gap-1 text-emerald-300"><CheckCircle2 size={14} />{row.active}</span></td>
+                    <td className="p-4"><span className="inline-flex items-center gap-1 text-zinc-300"><Archive size={14} />{row.archived}</span></td>
+                    <td className="p-4"><span className="inline-flex items-center gap-1 text-amber-300"><AlertCircle size={14} />{row.incomplete}</span></td>
+                    <td className="p-4 text-red-300">{row.errors}</td>
+                    <td className="p-4 text-[#aaaaaa] text-xs">{new Date(row.lastUpdated).toLocaleString()}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
-        </div>
+        </section>
       </div>
     </div>
   );

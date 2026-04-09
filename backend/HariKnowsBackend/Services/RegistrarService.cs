@@ -6,6 +6,12 @@ namespace HariKnowsBackend.Services;
 
 public sealed class RegistrarService(IRegistrarRepository repository) : IRegistrarService
 {
+    private static readonly HashSet<string> TerminalRequestStatuses = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "claimed",
+        "disposed"
+    };
+
     public RegistrarStateDto GetState()
     {
         var departments = repository.GetDepartments();
@@ -215,5 +221,128 @@ public sealed class RegistrarService(IRegistrarRepository repository) : IRegistr
         repository.WriteActivity($"Document {referenceCode} moved to {targetDepartmentName}", "Admin");
 
         return new DocumentMoveResult(true, false, null, true);
+    }
+
+    public IReadOnlyList<StudentDirectoryEntryDto> SearchStudents(string? query, int limit)
+    {
+        return repository.SearchStudents(query, limit);
+    }
+
+    public IReadOnlyList<StudentDocumentRequestDto> GetStudentRequests(string? studentNo, string? status, int limit)
+    {
+        return repository.GetStudentRequests(studentNo, status, limit);
+    }
+
+    public StudentDocumentRequestDto CreateStudentRequest(CreateStudentDocumentRequestDto request)
+    {
+        if (string.IsNullOrWhiteSpace(request.StudentNo) || string.IsNullOrWhiteSpace(request.DocumentType))
+        {
+            throw new ArgumentException("Student number and document type are required.");
+        }
+
+        var student = repository.SearchStudents(request.StudentNo, 1).FirstOrDefault();
+        if (student is null || !string.Equals(student.StudentNo, request.StudentNo.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Student not found.");
+        }
+
+        if (!repository.DepartmentExists(request.DepartmentId))
+        {
+            throw new ArgumentException("Department does not exist.");
+        }
+
+        var now = DateTime.UtcNow;
+        var requestCode = $"REQ-{now:yyyyMMdd}-{Random.Shared.Next(1000, 9999)}";
+        var created = repository.CreateStudentRequest(student.StudentNo, student.FullName, request.DocumentType.Trim(), request.DepartmentId, request.Notes?.Trim() ?? string.Empty, now, requestCode);
+        repository.WriteActivity($"Student request created: {created.RequestCode} for {created.StudentNo}", "Registrar");
+        return created;
+    }
+
+    public RequestStatusMutationResult UpdateStudentRequestStatus(int requestId, UpdateStudentDocumentStatusDto request)
+    {
+        var existing = repository.GetStudentRequest(requestId);
+        if (existing is null)
+        {
+            return new RequestStatusMutationResult(false, true, false, "Request not found.", null);
+        }
+
+        var nextStatus = request.Status.Trim().ToLowerInvariant();
+        var currentStatus = existing.Status.Trim().ToLowerInvariant();
+        var allowed = nextStatus switch
+        {
+            "requested" => currentStatus is "requested",
+            "prepared" => currentStatus is "requested",
+            "claimed" => currentStatus is "prepared",
+            "disposed" => currentStatus is "requested" or "prepared",
+            _ => false
+        };
+
+        if (!allowed)
+        {
+            return new RequestStatusMutationResult(false, false, true, $"Invalid transition from '{existing.Status}' to '{request.Status}'.", null);
+        }
+
+        if (nextStatus == "disposed" && string.IsNullOrWhiteSpace(request.DisposedReason))
+        {
+            return new RequestStatusMutationResult(false, false, true, "Disposed requests require a reason.", null);
+        }
+
+        var updated = repository.UpdateStudentRequestStatus(requestId, nextStatus, request.HandledBy, request.DisposedReason, request.Notes, DateTime.UtcNow);
+        if (updated is null)
+        {
+            return new RequestStatusMutationResult(false, true, false, "Request not found.", null);
+        }
+
+        repository.WriteActivity($"Request {updated.RequestCode} marked {updated.Status}", request.HandledBy?.Trim() ?? "Registrar");
+        return new RequestStatusMutationResult(true, false, false, null, updated);
+    }
+
+    public IReadOnlyList<FaqContextEntryDto> GetFaqEntries(string? scopeType, string? collegeCode, string? programCode, bool includeUnpublished, int limit)
+    {
+        return repository.GetFaqEntries(scopeType, collegeCode, programCode, includeUnpublished, limit);
+    }
+
+    public FaqContextEntryDto? GetFaqEntry(int faqId)
+    {
+        return repository.GetFaqEntry(faqId);
+    }
+
+    public FaqContextEntryDto CreateFaqEntry(CreateFaqContextEntryDto request)
+    {
+        ValidateFaqRequest(request.ScopeType, request.Category, request.Title, request.Answer);
+        var created = repository.CreateFaqEntry(request, DateTime.UtcNow);
+        repository.WriteActivity($"FAQ/context created: {created.Title}", "Registrar");
+        return created;
+    }
+
+    public FaqContextEntryDto? UpdateFaqEntry(int faqId, UpdateFaqContextEntryDto request)
+    {
+        ValidateFaqRequest(request.ScopeType, request.Category, request.Title, request.Answer);
+        var updated = repository.UpdateFaqEntry(faqId, request, DateTime.UtcNow);
+        if (updated is not null)
+        {
+            repository.WriteActivity($"FAQ/context updated: {updated.Title}", "Registrar");
+        }
+
+        return updated;
+    }
+
+    public bool DeleteFaqEntry(int faqId)
+    {
+        var deleted = repository.DeleteFaqEntry(faqId);
+        if (deleted)
+        {
+            repository.WriteActivity($"FAQ/context deleted: {faqId}", "Registrar");
+        }
+
+        return deleted;
+    }
+
+    private static void ValidateFaqRequest(string scopeType, string category, string title, string answer)
+    {
+        if (string.IsNullOrWhiteSpace(scopeType) || string.IsNullOrWhiteSpace(category) || string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(answer))
+        {
+            throw new ArgumentException("Scope, category, title, and answer are required.");
+        }
     }
 }

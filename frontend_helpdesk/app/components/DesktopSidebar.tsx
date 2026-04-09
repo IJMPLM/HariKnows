@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
@@ -11,12 +12,19 @@ import {
   MessageCircle,
   BarChart2,
   HelpCircle,
+  LogIn,
 } from "lucide-react";
+import { getSignedInSnapshot, hasLocalSession, initializeSession, setSignedInSnapshot } from "../../lib/auth-client";
 
-const allLinks = [
+const signedInLinks = [
   { href: "/haribot",      label: "Talk with Hari",       icon: <MessageCircle size={16} /> },
   { href: "/transactions", label: "Transaction History",   icon: <BarChart2 size={16} /> },
-  { href: "/faqs",         label: "FAQs",                  icon: <HelpCircle size={16} /> },
+  { href: "/FAQs",         label: "FAQs",                  icon: <HelpCircle size={16} /> },
+];
+
+const guestLinks = [
+  { href: "/haribot", label: "Talk with Hari", icon: <MessageCircle size={16} /> },
+  { href: "/FAQs", label: "FAQs", icon: <HelpCircle size={16} /> },
 ];
 
 const recentChatsLink = {
@@ -32,9 +40,35 @@ const recentChatsLink = {
 export default function DesktopSidebar() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [isSignedIn, setIsSignedIn] = useState(() => getSignedInSnapshot() ?? false);
   const pathname = usePathname(); // ← tracks current route
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+    let cancelled = false;
+    const syncAuth = async () => {
+      const user = await initializeSession();
+      setSignedInSnapshot(Boolean(user));
+      if (!cancelled) {
+        setIsSignedIn(Boolean(user));
+      }
+    };
+
+    void syncAuth();
+
+    const onStorage = () => {
+      const signedIn = hasLocalSession();
+      setSignedInSnapshot(signedIn);
+      setIsSignedIn(signedIn);
+    };
+    window.addEventListener("storage", onStorage);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
+  const allLinks = isSignedIn ? signedInLinks : guestLinks;
 
   const linkClass = (href: string) => { 
     const isActive = pathname === href || pathname.startsWith(href + "/");
@@ -59,7 +93,7 @@ export default function DesktopSidebar() {
                  border-r border-gray-100 dark:border-white/[0.06] z-40"
     >
       {/* Brand */}
-      <a
+      <Link
         href="/home"
         aria-label="HariKnows Home"
         className="flex items-center gap-3 px-6 py-6 font-bold text-xl
@@ -75,23 +109,25 @@ export default function DesktopSidebar() {
           />
         </div>
         HariKnows
-      </a>
+      </Link>
 
       {/* Primary nav */}
       <nav aria-label="Primary" className="flex-1 px-3 py-2 space-y-0.5">
         {allLinks.map((link) => (
-          <a key={link.href} href={link.href} className={linkClass(link.href)}>
+          <Link key={link.href} href={link.href} className={linkClass(link.href)}>
             {link.icon}
             {link.label}
-          </a>
+          </Link>
         ))}
 
         <div className="my-3 border-t border-gray-100 dark:border-white/[0.07]" />
 
-        <a href={recentChatsLink.href} className={linkClass(recentChatsLink.href)}>
-          {recentChatsLink.icon}
-          {recentChatsLink.label}
-        </a>
+        {isSignedIn ? (
+          <Link href={recentChatsLink.href} className={linkClass(recentChatsLink.href)}>
+            {recentChatsLink.icon}
+            {recentChatsLink.label}
+          </Link>
+        ) : null}
       </nav>
 
       {/* Bottom links */}
@@ -111,13 +147,10 @@ export default function DesktopSidebar() {
           {mounted && theme === "dark" ? "Light Mode" : "Dark Mode"}
         </button>
 
-        <a
-          href="/account"
-          className={linkClass("/account")}
-        >
-          <User size={16} />
-          Account
-        </a>
+        <Link href={isSignedIn ? "/account" : "/sign-in"} className={linkClass(isSignedIn ? "/account" : "/sign-in") }>
+          {isSignedIn ? <User size={16} /> : <LogIn size={16} />}
+          {isSignedIn ? "Account" : "Sign In"}
+        </Link>
       </div>
     </aside>
   );

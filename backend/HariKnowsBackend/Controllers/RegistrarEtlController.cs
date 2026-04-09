@@ -11,7 +11,7 @@ public sealed class RegistrarEtlController(IRegistrarEtlService etlService) : Co
 {
     [HttpPost("bulk-upload")]
     [RequestSizeLimit(50_000_000)]
-    public async Task<IActionResult> BulkUpload([FromForm] List<IFormFile> files, CancellationToken cancellationToken)
+    public async Task<IActionResult> BulkUpload([FromForm] List<IFormFile> files, [FromForm] List<string>? incompleteFiles, CancellationToken cancellationToken)
     {
         if (files.Count == 0)
         {
@@ -29,7 +29,32 @@ public sealed class RegistrarEtlController(IRegistrarEtlService etlService) : Co
 
         try
         {
-            var result = await etlService.BulkUploadAsync(csvFiles, cancellationToken);
+            var result = await etlService.BulkUploadAsync(csvFiles, incompleteFiles ?? [], cancellationToken);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("import-faqs")]
+    [RequestSizeLimit(10_000_000)]
+    public async Task<IActionResult> ImportFaqs([FromForm] IFormFile file, CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length == 0)
+        {
+            return BadRequest(new { error = "No FAQ file was uploaded." });
+        }
+
+        if (!file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { error = "Only .csv FAQ files are accepted." });
+        }
+
+        try
+        {
+            var result = await etlService.ImportFaqTextAsync(file, cancellationToken);
             return Ok(result);
         }
         catch (Exception ex)

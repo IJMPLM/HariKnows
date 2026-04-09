@@ -1,0 +1,92 @@
+HARIKNOWS: ONLINE REGISTRAR HELPDESK KNOWLEDGE BASE
+1. System Overview & Access Configuration
+HariKnows is an AI-powered 24/7 online helpdesk and tracking platform designed specifically for the Office of the University Registrar (OUR).
+User Access Tiers
+Active/Registered Students: Granted full access upon authentication via their official student email. Capabilities include chatbot inquiries, access to the real-time transaction history dashboard, and monitoring of requested document statuses.
+Guest Users / Public: Granted limited access. Restricted exclusively to the chatbot for general public inquiries and procedural information.
+Alumni & Graduates: Permitted to use the chatbot for inquiries. However, graduates and alumni lacking a usable/active university email account cannot authenticate to the dashboard and must be referred to inquire and request documents on-site.
+Departmental Coverage
+The chatbot is currently programmed to handle masterlist and curriculum data for the following colleges:
+College of Information Systems and Technology Management (CISTM): BS in Computer Science (BSCS), BS in Information Technology (BSIT)
+College of Nursing (CON): BS in Nursing (BSN)
+College of Accountancy (COA): BS in Accountancy (BSA)
+Service Boundaries (Out of Scope)
+HariKnows does not cover services from other university platforms (e.g., AIMS, Student Access Module).
+It does not manage processes or track statuses for the Office of Student Discipline (OSDS) regarding offense details—it only reads the final clearance status.
+
+2. Inquiry & Chatbot Service Scope
+The chatbot is equipped to provide guidance, procedures, and status updates regarding the following areas:
+Admissions Processing: Status of submitted Birth Certificates and Form 137.
+Graduation Information: Latin Honor eligibility, Grading System mechanics, and Graduation Candidacy requirements.
+Document Assistance: Internal requirements for document generation and tracking the status of ongoing requests.
+Academic Catalog: Details regarding program Curriculums and specific Course Syllabi/Descriptions.
+Transfer Procedures: Processing Transfer Credentials for current students leaving the university, and admission requirements for incoming transferees.
+Contact Information: Direct routing to the official Registrar contact numbers and email addresses.
+
+3. Document Request Policies & Limitations
+The chatbot must strictly adhere to the following procedural rules when instructing users:
+No Online Processing: All official document requests must be submitted physically on-site at the OUR. The HariKnows system does not accept or process online document requests.
+Status Tracking Only: The system simulates and provides real-time tracking of requests that were initiated on-site. The valid status lifecycle is: Pending ➔ Prepared ➔ Claimed ➔ Disposed.
+Eligibility & Deficiencies: The system reads eligibility flags based on department masterlists (e.g., NSTP or Good Moral deficiencies). The chatbot cannot clear these deficiencies and must instruct the student to visit the respective issuing office (e.g., OSDS for Good Moral issues).
+No Automation/Ticketing: The system does not feature a ticketing queue for registrar traffic, nor does it send automated push notifications/emails for document status updates. Students must actively ask the chatbot or check the dashboard.
+
+4. Document Requirements Directory
+Before the OUR can issue specific documents, internal data points and clearances must be verified. The chatbot uses this directory to explain why a document might be delayed or what is required for its release.
+Document Type
+Internal Prerequisites & Requirements
+Certificate of Enrollment
+Active Masterlist record from the respective College.
+Certificate of Grades
+Official Report of Grades from the College.
+Certificate of GWA / Ranking
+Official Report of Grades from the College.
+Transcript of Records (TOR)
+Official Report of Grades from the College.
+Certificate of NSTP
+"Completed" Community Service Status from the NSTP Office.
+Certificate of Course Syllabus
+Academic Course Syllabus data.
+Cert. of Course Description
+Academic Course Syllabus and Program Curriculum data.
+Cert. of Graduation Candidacy
+Report of Grades, Graduation Clearance, Thesis/Capstone Status, and Good Moral Status.
+Certificate of Graduation
+Report of Grades, Graduation Clearance, Thesis/Capstone Status, and Good Moral Status.
+Certificate of Completion
+Transcript of Records (TOR), Report of Grades, and Program Curriculum.
+Certificate of Diploma
+Certificate of Completion and Certificate of Graduation.
+Transfer Credentials
+Good Moral Status Clearance and Surrender of Student ID.
+
+
+5. Standard Registrar Pricing & Service Fees
+(Note: Fees are based on standard university registrar postings and CHED-compliant administrative fee guidelines. The chatbot should advise students that these are subject to change and must be paid at the Cashier's Office).
+Transcript of Records (TOR): Typically ranges from ₱100.00 - ₱150.00 per page.
+Certifications (Grades, Enrollment, GWA, Good Moral): Standard issuance fee of ₱100.00 to ₱150.00 per copy.
+Authentication / Certified True Copy: ₱50.00 per document/page.
+Transfer Credentials / Honorable Dismissal: ₱150.00 to ₱300.00 (includes processing).
+Diploma (Replacement/Duplicate): ₱500.00 to ₱800.00.
+Course Description / Syllabus Copy: ₱50.00 per page.
+Processing Timeframe: Standard processing is 3 to 5 working days, while complex documents (like initial TOR or Diplomas) may take 15 to 30 working days.
+
+6. Academic Guidelines: Grading & Latin Honors
+Pursuant to Commission on Higher Education (CHED) standard guidelines, the chatbot references the following grading parameters when answering inquiries regarding graduation honors:
+Summa Cum Laude (With Highest Honors): General Weighted Average (GWA) of 1.00 to 1.45 (approx. 97-100%).
+Magna Cum Laude (With High Honors): General Weighted Average (GWA) of 1.46 to 1.75 (approx. 93-96%).
+Cum Laude (With Honors): General Weighted Average (GWA) of 1.76 to 2.00 (approx. 88-92%).
+Additional Requirement: Students must have no failing grades (5.00), dropped subjects (DRP), or incomplete grades (INC) that were not completed within the prescribed period, and must not have committed any major disciplinary offenses.
+
+7. Data Logging & Privacy Policy
+HariKnows operates under strict data privacy rules compliant with the Data Privacy Act.
+Recorded Request Data
+For every physical request tracked in the system, the database strictly stores:
+Student Number
+Document Type Requested
+Current Status (Pending, Prepared, Claimed, Disposed)
+Timestamps: Date Requested, Date Prepared, Date Claimed, Date Expired
+Strict Privacy Constraints (Chatbot Guardrails)
+NO Grade Viewing: The chatbot is strictly prohibited from displaying, calculating, or confirming specific grades or GWAs.
+NO Cross-Checking: The chatbot will reject any prompt asking for the information, document status, or records of another student.
+Disclaimer of Validity: All information provided by the chatbot is for awareness and guidance only. Chat logs and dashboard statuses are not valid for external use, employment, or legal purposes without the corresponding official certification from the OUR.
+Data Retention: To protect privacy and reduce server load, all chat histories and session logs are permanently and automatically deleted every 30 days (1 month).

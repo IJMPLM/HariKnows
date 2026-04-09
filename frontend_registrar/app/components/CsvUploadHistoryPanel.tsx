@@ -139,9 +139,16 @@ export default function CsvUploadHistoryPanel({
                         <td className="px-4 py-3 uppercase tracking-wide text-xs text-[var(--muted)]">{entry.category}</td>
                         <td className="px-4 py-3">{entry.parsedRows}</td>
                         <td className="px-4 py-3">
-                          <span className={`px-2 py-1 rounded text-xs font-semibold ${entry.status === "error" ? "bg-red-500/15 text-red-300" : "bg-emerald-500/15 text-emerald-300"}`}>
-                            {entry.status}
-                          </span>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`px-2 py-1 rounded text-xs font-semibold ${entry.status === "error" ? "bg-red-500/15 text-red-300" : entry.isActive ? "bg-emerald-500/15 text-emerald-300" : "bg-zinc-500/15 text-zinc-300"}`}>
+                              {entry.status === "error" ? "error" : entry.isActive ? "active" : "archived"}
+                            </span>
+                            {entry.isIncomplete ? (
+                              <span className="px-2 py-1 rounded text-[10px] font-semibold uppercase tracking-wide bg-amber-500/15 text-amber-300">
+                                incomplete
+                              </span>
+                            ) : null}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-xs text-[var(--muted)]">{entry.batchId.slice(0, 10)}...</td>
                       </tr>

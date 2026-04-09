@@ -1,13 +1,24 @@
+using System.Text;
 using HariKnowsBackend.Data;
 using GeminiChatbot.Repositories;
 using GeminiChatbot.Services;
 using HariKnowsBackend.Models;
 using HariKnowsBackend.Repositories;
 using HariKnowsBackend.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddJsonFile("registrar-defaults.json", optional: false, reloadOnChange: true);
+
+var jwtOptions = builder.Configuration.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOptions();
+if (string.IsNullOrWhiteSpace(jwtOptions.SigningKey) || jwtOptions.SigningKey.Length < 32)
+{
+    throw new InvalidOperationException("Jwt:SigningKey must be configured with at least 32 characters.");
+}
+
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
 
 builder.Services.AddOpenApi();
 builder.Services.AddControllers()
@@ -18,10 +29,28 @@ builder.Services.AddCors(options =>
     {
         policy
             .WithOrigins("http://localhost:3001", "http://localhost:3002")
+            .AllowCredentials()
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
 });
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.SigningKey)),
+            ValidateIssuer = true,
+            ValidIssuer = jwtOptions.Issuer,
+            ValidateAudience = true,
+            ValidAudience = jwtOptions.Audience,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromSeconds(30)
+        };
+    });
+builder.Services.AddAuthorization();
 
 var databasePath = Path.Combine(builder.Environment.ContentRootPath, "hariknows.db");
 var connectionString = $"Data Source={databasePath}";
@@ -43,6 +72,9 @@ builder.Services.AddScoped<IGeminiService, GeminiService>();
 builder.Services.AddScoped<IHelpdeskService, HelpdeskService>();
 builder.Services.AddScoped<IRegistrarService, RegistrarService>();
 builder.Services.AddScoped<IRegistrarEtlService, RegistrarEtlService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.Configure<RagAssistantOptions>(builder.Configuration.GetSection("RagAssistant"));
+builder.Services.AddScoped<IRagAssistantService, RagAssistantService>();
 
 var app = builder.Build();
 
@@ -153,10 +185,12 @@ using (var scope = app.Services.CreateScope())
             ""NstpStatus"" TEXT NOT NULL DEFAULT '',
             ""TocStatus"" TEXT NOT NULL DEFAULT '',
             ""Email"" TEXT NOT NULL DEFAULT '',
+            ""PasswordHash"" TEXT NOT NULL DEFAULT '',
             ""DateCreated"" TEXT NOT NULL,
             ""DateUpdated"" TEXT NOT NULL
         );
     ");
+    await EnsureSqliteColumnAsync(db, "StudentMasters", "PasswordHash", "TEXT NOT NULL DEFAULT ''");
     await db.Database.ExecuteSqlRawAsync(@"
         CREATE UNIQUE INDEX IF NOT EXISTS ""IX_StudentMasters_StudentNo""
         ON ""StudentMasters"" (""StudentNo"");
@@ -181,6 +215,9 @@ using (var scope = app.Services.CreateScope())
             ""Category"" TEXT NOT NULL,
             ""CollegeCode"" TEXT NOT NULL DEFAULT '',
             ""ProgramCode"" TEXT NOT NULL DEFAULT '',
+            ""ScopeKey"" TEXT NOT NULL DEFAULT '',
+            ""IsActive"" INTEGER NOT NULL DEFAULT 1,
+            ""IsIncomplete"" INTEGER NOT NULL DEFAULT 0,
             ""ParsedRows"" INTEGER NOT NULL,
             ""Status"" TEXT NOT NULL,
             ""Error"" TEXT NOT NULL,
@@ -189,6 +226,9 @@ using (var scope = app.Services.CreateScope())
     ");
     await EnsureSqliteColumnAsync(db, "EtlUploadFiles", "CollegeCode", "TEXT NOT NULL DEFAULT ''");
     await EnsureSqliteColumnAsync(db, "EtlUploadFiles", "ProgramCode", "TEXT NOT NULL DEFAULT ''");
+    await EnsureSqliteColumnAsync(db, "EtlUploadFiles", "ScopeKey", "TEXT NOT NULL DEFAULT ''");
+    await EnsureSqliteColumnAsync(db, "EtlUploadFiles", "IsActive", "INTEGER NOT NULL DEFAULT 1");
+    await EnsureSqliteColumnAsync(db, "EtlUploadFiles", "IsIncomplete", "INTEGER NOT NULL DEFAULT 0");
     await db.Database.ExecuteSqlRawAsync(@"
         CREATE INDEX IF NOT EXISTS ""IX_EtlUploadFiles_BatchId""
         ON ""EtlUploadFiles"" (""BatchId"");
@@ -262,6 +302,81 @@ using (var scope = app.Services.CreateScope())
         CREATE UNIQUE INDEX IF NOT EXISTS ""IX_SyllabusEntries_Unique""
         ON ""SyllabusEntries"" (""CollegeCode"", ""ProgramCode"", ""Code"");
     ");
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS ""StudentDocumentRequests"" (
+            ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_StudentDocumentRequests"" PRIMARY KEY AUTOINCREMENT,
+            ""RequestCode"" TEXT NOT NULL,
+            ""StudentNo"" TEXT NOT NULL,
+            ""StudentName"" TEXT NOT NULL,
+            ""DocumentType"" TEXT NOT NULL,
+            ""DepartmentId"" INTEGER NOT NULL,
+            ""Status"" TEXT NOT NULL,
+            ""RequestedAt"" TEXT NOT NULL,
+            ""PreparedAt"" TEXT NULL,
+            ""ClaimedAt"" TEXT NULL,
+            ""DisposedAt"" TEXT NULL,
+            ""DisposedReason"" TEXT NOT NULL DEFAULT '',
+            ""HandledBy"" TEXT NOT NULL DEFAULT '',
+            ""Notes"" TEXT NOT NULL DEFAULT '',
+            ""UpdatedAt"" TEXT NOT NULL,
+            CONSTRAINT ""FK_StudentDocumentRequests_Departments_DepartmentId"" FOREIGN KEY (""DepartmentId"") REFERENCES ""Departments"" (""Id"") ON DELETE RESTRICT
+        );
+    ");
+    await EnsureSqliteColumnAsync(db, "StudentDocumentRequests", "DisposedReason", "TEXT NOT NULL DEFAULT ''");
+    await EnsureSqliteColumnAsync(db, "StudentDocumentRequests", "HandledBy", "TEXT NOT NULL DEFAULT ''");
+    await EnsureSqliteColumnAsync(db, "StudentDocumentRequests", "Notes", "TEXT NOT NULL DEFAULT ''");
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE UNIQUE INDEX IF NOT EXISTS ""IX_StudentDocumentRequests_RequestCode""
+        ON ""StudentDocumentRequests"" (""RequestCode"");
+    ");
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE INDEX IF NOT EXISTS ""IX_StudentDocumentRequests_StudentNo_Status""
+        ON ""StudentDocumentRequests"" (""StudentNo"", ""Status"");
+    ");
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE INDEX IF NOT EXISTS ""IX_StudentDocumentRequests_DepartmentId""
+        ON ""StudentDocumentRequests"" (""DepartmentId"");
+    ");
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS ""FaqContextEntries"" (
+            ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_FaqContextEntries"" PRIMARY KEY AUTOINCREMENT,
+            ""ScopeType"" TEXT NOT NULL,
+            ""CollegeCode"" TEXT NOT NULL DEFAULT '',
+            ""ProgramCode"" TEXT NOT NULL DEFAULT '',
+            ""Category"" TEXT NOT NULL,
+            ""Question"" TEXT NOT NULL,
+            ""Answer"" TEXT NOT NULL,
+            ""AvailabilityCriteria"" TEXT NOT NULL DEFAULT '',
+            ""EligibilityRules"" TEXT NOT NULL DEFAULT '',
+            ""PricingDetails"" TEXT NOT NULL DEFAULT '',
+            ""Requirements"" TEXT NOT NULL DEFAULT '',
+            ""Caveats"" TEXT NOT NULL DEFAULT '',
+            ""EscalationGuidance"" TEXT NOT NULL DEFAULT '',
+            ""CitationUrl"" TEXT NOT NULL DEFAULT '',
+            ""TagsCsv"" TEXT NOT NULL DEFAULT '',
+            ""IsPublished"" INTEGER NOT NULL,
+            ""CreatedAt"" TEXT NOT NULL,
+            ""UpdatedAt"" TEXT NOT NULL
+        );
+    ");
+    await EnsureSqliteColumnAsync(db, "FaqContextEntries", "CollegeCode", "TEXT NOT NULL DEFAULT ''");
+    await EnsureSqliteColumnAsync(db, "FaqContextEntries", "ProgramCode", "TEXT NOT NULL DEFAULT ''");
+    await EnsureSqliteColumnAsync(db, "FaqContextEntries", "AvailabilityCriteria", "TEXT NOT NULL DEFAULT ''");
+    await EnsureSqliteColumnAsync(db, "FaqContextEntries", "EligibilityRules", "TEXT NOT NULL DEFAULT ''");
+    await EnsureSqliteColumnAsync(db, "FaqContextEntries", "PricingDetails", "TEXT NOT NULL DEFAULT ''");
+    await EnsureSqliteColumnAsync(db, "FaqContextEntries", "Requirements", "TEXT NOT NULL DEFAULT ''");
+    await EnsureSqliteColumnAsync(db, "FaqContextEntries", "Caveats", "TEXT NOT NULL DEFAULT ''");
+    await EnsureSqliteColumnAsync(db, "FaqContextEntries", "EscalationGuidance", "TEXT NOT NULL DEFAULT ''");
+    await EnsureSqliteColumnAsync(db, "FaqContextEntries", "CitationUrl", "TEXT NOT NULL DEFAULT ''");
+    await EnsureSqliteColumnAsync(db, "FaqContextEntries", "TagsCsv", "TEXT NOT NULL DEFAULT ''");
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE INDEX IF NOT EXISTS ""IX_FaqContextEntries_Scope""
+        ON ""FaqContextEntries"" (""ScopeType"", ""CollegeCode"", ""ProgramCode"");
+    ");
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE INDEX IF NOT EXISTS ""IX_FaqContextEntries_IsPublished""
+        ON ""FaqContextEntries"" (""IsPublished"");
+    ");
     
     // Seed data if needed
     if (!db.Departments.Any() || !db.Colleges.Any() || !db.AcademicPrograms.Any())
@@ -276,6 +391,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("frontends");
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

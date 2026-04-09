@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import DesktopSidebar from "../../components/DesktopSidebar";
 import MobileSidebar from "../../components/MobileSidebar";
+import { getCurrentUser, type StudentProfile } from "../../../lib/auth-client";
+import { loadMyRequests, type StudentDocumentRequest } from "../../../lib/registrar-api";
 
 type StepStatus = "completed" | "in-progress" | "pending";
 
@@ -36,95 +38,17 @@ interface Transaction {
   steps: Step[];
 }
 
-const transactions: Transaction[] = [
-  {
-    id: 1,
-    serviceName: "Certificate of Grades",
-    date: "March 27, 2026, 09:00 AM",
-    location: "Processing in the College of Engineering",
-    status: "Pending",
-    category: "Pending",
-    referenceCode: "REG-2024-089",
-    steps: [
-      { label: "Order Placed", description: "Request submitted successfully.", date: "Mar 27, 09:00 AM", status: "completed" },
-      { label: "Processing", description: "Processing in the College of Engineering.", date: "Mar 28, 02:15 PM", status: "in-progress" },
-      { label: "Prepared", description: "Document ready for release.", date: "Estimated: Mar 30", status: "pending" },
-      { label: "Released", description: "Document claimed by student.", date: "", status: "pending" },
-    ],
-  },
-  {
-    id: 2,
-    serviceName: "Transcript of Records",
-    date: "April 1, 2026, 10:30 AM",
-    location: "Document prepared and ready for pickup.",
-    status: "Prepared",
-    category: "Prepared",
-    referenceCode: "CISTM-2024-045",
-    steps: [
-      { label: "Order Placed", description: "Request submitted successfully.", date: "Apr 1, 10:30 AM", status: "completed" },
-      { label: "Processing", description: "Reviewed and processed by the Registrar.", date: "Apr 2, 11:00 AM", status: "completed" },
-      { label: "Prepared", description: "Document ready for pickup at the OUR window.", date: "Apr 3, 09:00 AM", status: "in-progress" },
-      { label: "Released", description: "Document claimed by student.", date: "", status: "pending" },
-    ],
-  },
-  {
-    id: 3,
-    serviceName: "Certificate of Marriage",
-    date: "January 15, 2025, 08:45 AM",
-    location: "Released by the Registrar.",
-    status: "Complete",
-    category: "Complete",
-    referenceCode: "ADM-2024-112",
-    steps: [
-      { label: "Order Placed", description: "Request submitted successfully.", date: "Jan 15, 08:45 AM", status: "completed" },
-      { label: "Processing", description: "Processed and verified by Registrar staff.", date: "Jan 16, 01:00 PM", status: "completed" },
-      { label: "Prepared", description: "Document sealed and prepared.", date: "Jan 17, 10:00 AM", status: "completed" },
-      { label: "Released", description: "Document claimed by student.", date: "Jan 18, 09:30 AM", status: "completed" },
-    ],
-  },
-  {
-    id: 4,
-    serviceName: "Certificate of Good Moral",
-    date: "November 5, 2024, 02:00 PM",
-    location: "Archived due to non-claim past 30 days.",
-    status: "Expired",
-    category: "Expired",
-    referenceCode: "NUR-2024-023",
-    steps: [
-      { label: "Order Placed", description: "Request submitted successfully.", date: "Nov 5, 02:00 PM", status: "completed" },
-      { label: "Processing", description: "Processed by the Registrar.", date: "Nov 6, 10:00 AM", status: "completed" },
-      { label: "Prepared", description: "Document prepared and awaiting claim.", date: "Nov 7, 09:00 AM", status: "completed" },
-      { label: "Released", description: "Unclaimed. Archived after 30 days.", date: "Dec 7, 09:00 AM", status: "completed" },
-    ],
-  },
-  {
-    id: 5,
-    serviceName: "Official Transcript of Records",
-    date: "August 12, 2025, 11:00 AM",
-    location: "Awaiting Clearance Approval.",
-    status: "Pending",
-    category: "Pending",
-    referenceCode: "REG-2024-089",
-    steps: [
-      { label: "Order Placed", description: "Request submitted successfully.", date: "Aug 12, 11:00 AM", status: "completed" },
-      { label: "Processing", description: "Awaiting clearance approval.", date: "Aug 13, 08:00 AM", status: "in-progress" },
-      { label: "Prepared", description: "Document ready for release.", date: "Estimated: Aug 15", status: "pending" },
-      { label: "Released", description: "Document claimed by student.", date: "", status: "pending" },
-    ],
-  },
-];
-
-const tabs = ["All", "Pending", "Prepared", "Complete", "Expired"];
+const tabs = ["All", "requested", "prepared", "claimed", "disposed"];
 
 function getStatusStyles(status: string) {
   switch (status) {
-    case "Complete":
+    case "claimed":
       return "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400 border-green-200 dark:border-green-500/20";
-    case "Expired":
+    case "disposed":
       return "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400 border-red-200 dark:border-red-500/20";
-    case "Prepared":
+    case "prepared":
       return "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400 border-blue-200 dark:border-blue-500/20";
-    case "Pending":
+    case "requested":
     default:
       return "bg-gray-100 text-gray-600 dark:bg-white/5 dark:text-gray-400 border-gray-200 dark:border-white/10";
   }
@@ -132,13 +56,13 @@ function getStatusStyles(status: string) {
 
 function getTransactionIcon(category: string, className = "w-5 h-5 lg:w-6 lg:h-6") {
   switch (category) {
-    case "Complete":
+    case "claimed":
       return <FileCheck className={`text-green-600 dark:text-green-400 ${className}`} />;
-    case "Expired":
+    case "disposed":
       return <FileWarning className={`text-red-600 dark:text-red-400 ${className}`} />;
-    case "Prepared":
+    case "prepared":
       return <Package className={`text-blue-600 dark:text-blue-400 ${className}`} />;
-    case "Pending":
+    case "requested":
     default:
       return <Hourglass className={`text-gray-500 dark:text-gray-400 ${className}`} />;
   }
@@ -260,15 +184,97 @@ function TransactionModal({ transaction, onClose }: { transaction: Transaction; 
   );
 }
 
+function formatDate(value: string) {
+  if (!value) {
+    return "Pending";
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
+}
+
+function toTransaction(request: StudentDocumentRequest): Transaction {
+  const status = request.status.toLowerCase();
+  const steps: Step[] = [
+    {
+      label: "Requested",
+      description: request.notes || "Request submitted successfully.",
+      date: formatDate(request.requestedAt),
+      status: "completed",
+    },
+    {
+      label: "Prepared",
+      description: request.preparedAt ? "Document prepared for release." : "Waiting for registrar preparation.",
+      date: formatDate(request.preparedAt ?? ""),
+      status: request.preparedAt ? (status === "prepared" || status === "claimed" || status === "disposed" ? "completed" : "in-progress") : "pending",
+    },
+    {
+      label: "Claimed",
+      description: request.claimedAt ? "Document has been claimed." : "Awaiting student claim.",
+      date: formatDate(request.claimedAt ?? ""),
+      status: request.claimedAt ? "completed" : status === "claimed" ? "in-progress" : "pending",
+    },
+    {
+      label: "Disposed",
+      description: request.disposedReason || "Removed from active queue.",
+      date: formatDate(request.disposedAt ?? ""),
+      status: request.disposedAt ? "completed" : "pending",
+    },
+  ];
+
+  return {
+    id: request.id,
+    serviceName: request.documentType,
+    date: formatDate(request.requestedAt),
+    location: request.notes || request.disposedReason || "In the registrar queue.",
+    status: request.status,
+    category: request.status,
+    referenceCode: request.requestCode,
+    steps,
+  };
+}
+
 export default function TransactionsPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("All");
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [profile, setProfile] = useState<StudentProfile | null>(null);
+
+  useEffect(() => {
+    const init = async () => {
+      const user = await getCurrentUser();
+      if (!user) {
+        router.replace("/sign-in");
+        return;
+      }
+
+      setProfile(user);
+      const requests = await loadMyRequests(user.studentNo);
+      const mapped = requests.map(toTransaction);
+      setTransactions(mapped);
+      if (mapped.length > 0) {
+        setSelectedTransaction(mapped[0]);
+      }
+    };
+
+    void init();
+  }, [router]);
+
+  const totalCounts = useMemo(() => {
+    return transactions.reduce<Record<string, number>>((counts, transaction) => {
+      counts[transaction.category] = (counts[transaction.category] ?? 0) + 1;
+      return counts;
+    }, {});
+  }, [transactions]);
 
   const filteredTransactions = transactions.filter((t) => {
     const matchesTab = activeTab === "All" || t.category === activeTab;
-    const matchesSearch = t.serviceName.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch =
+      t.serviceName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.referenceCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.location.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesTab && matchesSearch;
   });
 
@@ -293,6 +299,9 @@ export default function TransactionsPage() {
               <h1 className="text-2xl lg:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
                 Transaction History
               </h1>
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                Requests for {profile?.studentNo ?? "your account"} are shown here.
+              </p>
             </header>
 
             {/* Tabs */}
@@ -308,6 +317,11 @@ export default function TransactionsPage() {
                   }`}
                 >
                   {tab}
+                  {tab !== "All" && totalCounts[tab] ? (
+                    <span className="ml-2 inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-gray-100 dark:bg-white/10 text-[10px] text-gray-600 dark:text-gray-300">
+                      {totalCounts[tab]}
+                    </span>
+                  ) : null}
                   {activeTab === tab && (
                     <div className="absolute bottom-0 left-0 w-full h-[2px] bg-[#6e3102] dark:bg-[#d4855a]" />
                   )}
@@ -387,10 +401,6 @@ export default function TransactionsPage() {
       )}
 
       <style>{`
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(14px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
         @keyframes modalIn {
           from { opacity: 0; transform: scale(0.95) translateY(10px); }
           to   { opacity: 1; transform: scale(1) translateY(0); }

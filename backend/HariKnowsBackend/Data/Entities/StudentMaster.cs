@@ -19,6 +19,7 @@ public class StudentMaster
     public string NstpStatus { get; set; } = string.Empty;
     public string TocStatus { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
+    public string PasswordHash { get; set; } = string.Empty;
     public DateTime DateCreated { get; set; }
     public DateTime DateUpdated { get; set; }
 }
