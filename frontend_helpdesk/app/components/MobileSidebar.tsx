@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { Sun, Moon, User, MessageCircle, BarChart2, HelpCircle, Menu, X, LogIn } from "lucide-react";
+import { Sun, Moon, User, MessageCircle, BarChart2, HelpCircle, Menu, X, LogIn, LogOut } from "lucide-react";
 import { getSignedInSnapshot, hasLocalSession, initializeSession, setSignedInSnapshot } from "../../lib/auth-client";
 
 const signedInLinks = [
@@ -35,6 +35,10 @@ export default function MobileSidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isSignedIn, setIsSignedIn] = useState(() => getSignedInSnapshot() ?? false);
   const pathname = usePathname();
+  const router = useRouter();
+
+  // Modal State
+  const [showLogOutModal, setShowLogOutModal] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -61,6 +65,14 @@ export default function MobileSidebar() {
     };
   }, []);
 
+  const handleLogout = async () => {
+    setSignedInSnapshot(false);
+    window.dispatchEvent(new Event("storage")); 
+    setShowLogOutModal(false);
+    setIsOpen(false); // Close the mobile sidebar
+    router.push("/sign-in");
+  };
+
   const allLinks = isSignedIn ? signedInLinks : guestLinks;
 
   // Close sidebar when route changes
@@ -68,15 +80,15 @@ export default function MobileSidebar() {
     setIsOpen(false);
   }, [pathname]);
 
-  // Lock body scroll when sidebar is open
+  // Lock body scroll when sidebar is open or modal is open
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen || showLogOutModal) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "unset";
     }
     return () => { document.body.style.overflow = "unset"; };
-  }, [isOpen]);
+  }, [isOpen, showLogOutModal]);
 
   const linkClass = (href: string) => { 
     const isActive = pathname === href || pathname.startsWith(href + "/");
@@ -189,8 +201,56 @@ export default function MobileSidebar() {
             {isSignedIn ? <User size={16} /> : <LogIn size={16} />}
             {isSignedIn ? "Account" : "Sign In"}
           </Link>
+
+          {/* Conditional Log Out Button */}
+          {isSignedIn && (
+            <button
+              onClick={() => setShowLogOutModal(true)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
+                         text-gray-500 dark:text-gray-400
+                         hover:bg-red-50 dark:hover:bg-red-900/10
+                         hover:text-red-600 dark:hover:text-red-400 transition-all duration-150"
+            >
+              <LogOut size={16} />
+              Log Out
+            </button>
+          )}
         </div>
       </aside>
+
+      {/* Log Out Confirmation Modal (z-[60] to ensure it sits above the mobile sidebar) */}
+      {showLogOutModal && (
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white dark:bg-[#18181b] border border-gray-200/80 dark:border-white/10 rounded-3xl p-6 lg:p-8 shadow-lg max-w-md w-full animate-fade-in-up">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Confirm Log Out</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">Are you sure you want to log out?</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowLogOutModal(false)}
+                className="flex-1 px-4 py-3 rounded-xl bg-gray-200 dark:bg-[#2a2a2a] text-gray-900 dark:text-white font-bold text-[0.95rem] hover:bg-gray-300 dark:hover:bg-[#3a3a3a] active:scale-[0.98] transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => void handleLogout()}
+                className="flex-1 px-4 py-3 rounded-xl bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212] font-bold text-[0.95rem] hover:bg-[#5a2801] dark:hover:bg-[#e09873] active:scale-[0.98] transition-all shadow-md shadow-[#6e3102]/20 dark:shadow-[#d4855a]/10"
+              >
+                Log Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes fade-in-up {
+          0% { opacity: 0; transform: translateY(10px) scale(0.98); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .animate-fade-in-up {
+          animation: fade-in-up 0.2s ease-out forwards;
+        }
+      `}</style>
     </>
   );
 }

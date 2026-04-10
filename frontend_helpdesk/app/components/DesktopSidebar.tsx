@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
   Sun,
@@ -13,6 +13,7 @@ import {
   BarChart2,
   HelpCircle,
   LogIn,
+  LogOut,
 } from "lucide-react";
 import { getSignedInSnapshot, hasLocalSession, initializeSession, setSignedInSnapshot } from "../../lib/auth-client";
 
@@ -41,7 +42,11 @@ export default function DesktopSidebar() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [isSignedIn, setIsSignedIn] = useState(() => getSignedInSnapshot() ?? false);
-  const pathname = usePathname(); // ← tracks current route
+  const pathname = usePathname();
+  const router = useRouter();
+
+  // Modal State
+  const [showLogOutModal, setShowLogOutModal] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -68,90 +73,146 @@ export default function DesktopSidebar() {
     };
   }, []);
 
+  const handleLogout = async () => {
+    // Note: If you have a backend sign-out call, you can await it here.
+    setSignedInSnapshot(false);
+    window.dispatchEvent(new Event("storage")); // Triggers sync for other components
+    setShowLogOutModal(false);
+    router.push("/sign-in");
+  };
+
   const allLinks = isSignedIn ? signedInLinks : guestLinks;
 
   const linkClass = (href: string) => { 
     const isActive = pathname === href || pathname.startsWith(href + "/");
     return isActive
-      ? // Active state
-        "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium \
+      ? "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium \
          bg-[#6e3102]/10 dark:bg-white/5 \
          text-[#6e3102] dark:text-[#d4855a] \
          border border-[#6e3102]/20 dark:border-white/10"
-      : // Inactive state
-        "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium \
+      : "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium \
          text-gray-500 dark:text-gray-400 \
          hover:bg-gray-50 dark:hover:bg-white/[0.06] \
          hover:text-gray-900 dark:hover:text-white transition-all duration-150";
   };
 
   return (
-    <aside
-      aria-label="Sidebar navigation"
-      className="hidden lg:flex flex-col fixed left-0 top-0 h-full w-64
-                 bg-white/75 dark:bg-[#18181b]/90 backdrop-blur-xl
-                 border-r border-gray-100 dark:border-white/[0.06] z-40"
-    >
-      {/* Brand */}
-      <Link
-        href="/home"
-        aria-label="HariKnows Home"
-        className="flex items-center gap-3 px-6 py-6 font-bold text-xl
-                   text-gray-900 dark:text-white hover:opacity-80 transition-opacity"
+    <>
+      <aside
+        aria-label="Sidebar navigation"
+        className="hidden lg:flex flex-col fixed left-0 top-0 h-full w-64
+                   bg-white/75 dark:bg-[#18181b]/90 backdrop-blur-xl
+                   border-r border-gray-100 dark:border-white/[0.06] z-40"
       >
-        <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0">
-          <Image
-            src="/Hari_LOGO.png"
-            alt="HariKnows logo"
-            width={36}
-            height={36}
-            style={{ objectFit: "contain" }}
-          />
-        </div>
-        HariKnows
-      </Link>
-
-      {/* Primary nav */}
-      <nav aria-label="Primary" className="flex-1 px-3 py-2 space-y-0.5">
-        {allLinks.map((link) => (
-          <Link key={link.href} href={link.href} className={linkClass(link.href)}>
-            {link.icon}
-            {link.label}
-          </Link>
-        ))}
-
-        <div className="my-3 border-t border-gray-100 dark:border-white/[0.07]" />
-
-        {isSignedIn ? (
-          <Link href={recentChatsLink.href} className={linkClass(recentChatsLink.href)}>
-            {recentChatsLink.icon}
-            {recentChatsLink.label}
-          </Link>
-        ) : null}
-      </nav>
-
-      {/* Bottom links */}
-      <div className="px-3 py-4 border-t border-gray-100 dark:border-white/[0.07] space-y-0.5">
-        <button
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
-                     text-gray-500 dark:text-gray-400
-                     hover:bg-gray-50 dark:hover:bg-white/[0.06]
-                     hover:text-gray-900 dark:hover:text-white transition-all duration-150"
-          onClick={(e) => {
-            e.stopPropagation();
-            setTheme(theme === "dark" ? "light" : "dark");
-          }}
-          aria-label={mounted && theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+        {/* Brand */}
+        <Link
+          href="/home"
+          aria-label="HariKnows Home"
+          className="flex items-center gap-3 px-6 py-6 font-bold text-xl
+                     text-gray-900 dark:text-white hover:opacity-80 transition-opacity"
         >
-          {mounted && theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-          {mounted && theme === "dark" ? "Light Mode" : "Dark Mode"}
-        </button>
-
-        <Link href={isSignedIn ? "/account" : "/sign-in"} className={linkClass(isSignedIn ? "/account" : "/sign-in") }>
-          {isSignedIn ? <User size={16} /> : <LogIn size={16} />}
-          {isSignedIn ? "Account" : "Sign In"}
+          <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0">
+            <Image
+              src="/Hari_LOGO.png"
+              alt="HariKnows logo"
+              width={36}
+              height={36}
+              style={{ objectFit: "contain" }}
+            />
+          </div>
+          HariKnows
         </Link>
-      </div>
-    </aside>
+
+        {/* Primary nav */}
+        <nav aria-label="Primary" className="flex-1 px-3 py-2 space-y-0.5">
+          {allLinks.map((link) => (
+            <Link key={link.href} href={link.href} className={linkClass(link.href)}>
+              {link.icon}
+              {link.label}
+            </Link>
+          ))}
+
+          <div className="my-3 border-t border-gray-100 dark:border-white/[0.07]" />
+
+          {isSignedIn ? (
+            <Link href={recentChatsLink.href} className={linkClass(recentChatsLink.href)}>
+              {recentChatsLink.icon}
+              {recentChatsLink.label}
+            </Link>
+          ) : null}
+        </nav>
+
+        {/* Bottom links */}
+        <div className="px-3 py-4 border-t border-gray-100 dark:border-white/[0.07] space-y-0.5">
+          <button
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
+                       text-gray-500 dark:text-gray-400
+                       hover:bg-gray-50 dark:hover:bg-white/[0.06]
+                       hover:text-gray-900 dark:hover:text-white transition-all duration-150"
+            onClick={(e) => {
+              e.stopPropagation();
+              setTheme(theme === "dark" ? "light" : "dark");
+            }}
+            aria-label={mounted && theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {mounted && theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+            {mounted && theme === "dark" ? "Light Mode" : "Dark Mode"}
+          </button>
+
+          <Link href={isSignedIn ? "/account" : "/sign-in"} className={linkClass(isSignedIn ? "/account" : "/sign-in") }>
+            {isSignedIn ? <User size={16} /> : <LogIn size={16} />}
+            {isSignedIn ? "Account" : "Sign In"}
+          </Link>
+
+          {/* Conditional Log Out Button */}
+          {isSignedIn && (
+            <button
+              onClick={() => setShowLogOutModal(true)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
+                         text-gray-500 dark:text-gray-400
+                         hover:bg-red-50 dark:hover:bg-red-900/10
+                         hover:text-red-600 dark:hover:text-red-400 transition-all duration-150"
+            >
+              <LogOut size={16} />
+              Log Out
+            </button>
+          )}
+        </div>
+      </aside>
+
+      {/* Log Out Confirmation Modal */}
+      {showLogOutModal && (
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-[#18181b] border border-gray-200/80 dark:border-white/10 rounded-3xl p-6 lg:p-8 shadow-lg max-w-md w-full animate-fade-in-up">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Confirm Log Out</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">Are you sure you want to log out?</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowLogOutModal(false)}
+                className="flex-1 px-4 py-3 rounded-xl bg-gray-200 dark:bg-[#2a2a2a] text-gray-900 dark:text-white font-bold text-[0.95rem] hover:bg-gray-300 dark:hover:bg-[#3a3a3a] active:scale-[0.98] transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => void handleLogout()}
+                className="flex-1 px-4 py-3 rounded-xl bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212] font-bold text-[0.95rem] hover:bg-[#5a2801] dark:hover:bg-[#e09873] active:scale-[0.98] transition-all shadow-md shadow-[#6e3102]/20 dark:shadow-[#d4855a]/10"
+              >
+                Log Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <style>{`
+        @keyframes fade-in-up {
+          0% { opacity: 0; transform: translateY(10px) scale(0.98); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .animate-fade-in-up {
+          animation: fade-in-up 0.2s ease-out forwards;
+        }
+      `}</style>
+    </>
   );
 }
