@@ -26,9 +26,10 @@ function getConversationStorageKey(studentNo: string) {
 }
 
 function formatTime(value: string) {
-  return new Date(value).toLocaleTimeString([], {
+  return new Date(value).toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "Asia/Manila", // Philippine Standard Time (UTC+8)
   });
 }
 
