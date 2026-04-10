@@ -287,6 +287,29 @@ public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegis
             .ToList();
     }
 
+    public StudentStatusDto? GetStudentStatus(string studentNo)
+    {
+        var student = dbContext.StudentMasters.AsNoTracking().FirstOrDefault(s => s.StudentNo == studentNo.Trim());
+        if (student is null)
+        {
+            return null;
+        }
+
+        return new StudentStatusDto(
+            student.StudentNo,
+            student.FullName,
+            student.CollegeCode,
+            student.ProgramCode,
+            student.CurrentYear,
+            student.EnrollmentStatus,
+            student.GoodMoralStatus,
+            student.NstpStatus,
+            student.BirthCertStatus,
+            student.Form137Status,
+            student.Email
+        );
+    }
+
     public IReadOnlyList<StudentDocumentRequestDto> GetStudentRequests(string? studentNo, string? status, int limit)
     {
         var safeLimit = Math.Clamp(limit, 1, 200);

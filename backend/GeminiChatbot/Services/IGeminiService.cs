@@ -61,7 +61,7 @@ public sealed class GeminiService(IConfiguration config, ILogger<GeminiService> 
             contents.Add(new Content
             {
                 Role = NormalizeRoleForGemini(message.Role),
-                Parts = new List<Part>
+                Parts = new List<Part> 
                 {
                     new Part { Text = message.Content }
                 }

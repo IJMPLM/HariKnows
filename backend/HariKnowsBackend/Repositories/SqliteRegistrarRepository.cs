@@ -229,6 +229,11 @@ public sealed class SqliteRegistrarRepository(string connectionString) : IRegist
         return [];
     }
 
+    public StudentStatusDto? GetStudentStatus(string studentNo)
+    {
+        return null;
+    }
+
     public IReadOnlyList<StudentDocumentRequestDto> GetStudentRequests(string? studentNo, string? status, int limit)
     {
         return [];

@@ -66,7 +66,7 @@ export default function EtlDocumentPage() {
     if (!list) return;
     const accepted = Array.from(list).filter((f) => {
       const name = f.name.toLowerCase();
-      return name.endsWith(".csv") || name.endsWith(".tsv");
+      return name.endsWith(".csv");
     });
     setFiles(accepted);
     setIncompleteByFile((previous) => {
@@ -80,7 +80,7 @@ export default function EtlDocumentPage() {
 
   const handleParse = async () => {
     if (files.length === 0) {
-      setError("Please select CSV or TSV files first.");
+      setError("Please select CSV files first.");
       return;
     }
 
@@ -90,11 +90,11 @@ export default function EtlDocumentPage() {
       setIsLoading(true);
       const faqFiles = files.filter((file) => {
         const name = file.name.toLowerCase();
-        return ["faqs.csv", "consolidated_context.csv", "faqs.tsv", "consolidated_context.tsv"].includes(name);
+        return ["faqs.csv", "consolidated_context.csv"].includes(name);
       });
       const csvFiles = files.filter((file) => {
         const name = file.name.toLowerCase();
-        const isDelimited = name.endsWith(".csv") || name.endsWith(".tsv");
+        const isDelimited = name.endsWith(".csv");
         return isDelimited && !faqFiles.includes(file);
       });
       const incompleteFiles = csvFiles.filter((file) => incompleteByFile[file.name]).map((file) => file.name);
@@ -210,7 +210,7 @@ export default function EtlDocumentPage() {
           Unified Delimited Upload &amp; <span className="text-[#e8834a]">Staging</span>
         </h1>
         <p className="text-sm text-[#aaaaaa] mb-6">
-          Drag and drop multiple CSV or TSV files once. The backend auto-categorizes by metadata and stages records for review before save.
+          Drag and drop multiple CSV files once. The backend auto-categorizes by metadata and stages records for review before save.
         </p>
       </div>
 
@@ -232,15 +232,15 @@ export default function EtlDocumentPage() {
             <div>
               <p className="text-sm font-semibold text-white flex items-center gap-2">
                 <UploadCloud className="w-4 h-4 text-[#e8834a]" />
-                Drop CSV or TSV files here
+                Drop CSV files here
               </p>
-              <p className="text-xs text-[#aaaaaa] mt-1">Registrar data files stage as usual. faq/context CSV or TSV files import into the registrar FAQ tab.</p>
+              <p className="text-xs text-[#aaaaaa] mt-1">Registrar data files stage as usual. faq/context CSV files import into the registrar FAQ tab.</p>
             </div>
             <div className="flex items-center gap-2">
               <input
                 id="bulk-csv"
                 type="file"
-                accept=".csv,.tsv"
+                accept=".csv"
                 multiple
                 className="hidden"
                 onChange={(e) => handleFilePick(e.target.files)}
