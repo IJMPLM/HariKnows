@@ -26,9 +26,10 @@ function getConversationStorageKey(studentNo: string) {
 }
 
 function formatTime(value: string) {
-  return new Date(value).toLocaleTimeString([], {
+  return new Date(value).toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "Asia/Manila", // Philippine Standard Time (UTC+8)
   });
 }
 
@@ -315,9 +316,11 @@ export default function HaribotPage() {
                           </span>
                           {!isUser && meta && (
                             <div className="mt-2 w-full rounded-xl border border-gray-200/70 dark:border-white/10 bg-white/70 dark:bg-[#18181b]/80 px-3 py-2 text-xs text-gray-600 dark:text-gray-300">
+                              {/*
                               <p>
                                 <span className="font-semibold">Routing:</span> {meta.routing} | <span className="font-semibold">Model:</span> {meta.modelSource} | <span className="font-semibold">Confidence:</span> {(meta.confidence * 100).toFixed(0)}%
                               </p>
+                              */}
                               {meta.redirectOffice ? (
                                 <p className="mt-1 text-amber-700 dark:text-amber-300">
                                   Redirect: contact {meta.redirectOffice}. {meta.redirectReason ?? ""}
