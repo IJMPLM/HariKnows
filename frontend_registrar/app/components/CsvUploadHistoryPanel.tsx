@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Clock3, FileSpreadsheet, RefreshCcw, UploadCloud } from "lucide-react";
 import { EtlUploadHistoryEntry, getRegistrarUploadHistory } from "../../lib/registrar-client";
-import DesktopSidebar from "./DesktopSidebar";
-import MobileSidebar from "./MobileSidebar";
 
 type CsvUploadHistoryPanelProps = {
   title: string;
@@ -65,14 +63,8 @@ export default function CsvUploadHistoryPanel({
   }, []);
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
-      <DesktopSidebar />
-      <MobileSidebar />
-
-      <main className="lg:pl-64 pt-16 lg:pt-0 min-h-screen">
-        <div className="px-5 sm:px-6 lg:px-8 py-6 lg:py-8">
-          <div className="max-w-[1200px] mx-auto space-y-5">
-            <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5 sm:p-6">
+    <div className="space-y-5 px-8 py-7">
+      <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5 sm:p-6">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-extrabold uppercase tracking-widest text-[var(--muted)] mb-1">Upload Tracking</p>
@@ -164,9 +156,6 @@ export default function CsvUploadHistoryPanel({
                 </table>
               </div>
             </section>
-          </div>
-        </div>
-      </main>
     </div>
   );
 }
