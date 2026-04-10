@@ -8,3 +8,4 @@ frontend_registrar/node_modules
 frontend_registrar/.next
 
 backend/HariKnowsBackend/HariKnowsBackend/hariknows.db
+backend/HariKnowsBackend/hariknows.db

@@ -74,5 +74,8 @@ public record FlushDatabaseResultDto(
     int DeletedActivityLogs,
     int DeletedPrograms,
     int DeletedColleges,
-    int DeletedDepartments
+    int DeletedDepartments,
+    int DeletedStudentRequests,
+    int DeletedFaqEntries,
+    int DeletedGeminiChats
 );

@@ -562,6 +562,12 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
             throw new ArgumentException("Confirmation token mismatch. Enter FLUSH to continue.");
         }
 
+        // Delete in order of foreign key dependencies (reverse of creation order)
+        // StudentDocumentRequests must be deleted before Departments (has FK to Dept with Restrict)
+        var deletedStudentRequests = await db.StudentDocumentRequests.ExecuteDeleteAsync(cancellationToken);
+        var deletedGeminiChats = await db.GeminiChats.ExecuteDeleteAsync(cancellationToken);
+        var deletedFaqEntries = await db.FaqContextEntries.ExecuteDeleteAsync(cancellationToken);
+        
         var deletedStudents = await db.StudentMasters.ExecuteDeleteAsync(cancellationToken);
         var deletedCurriculumCourses = await db.CurriculumCourses.ExecuteDeleteAsync(cancellationToken);
         var deletedGradeRecords = await db.GradeRecords.ExecuteDeleteAsync(cancellationToken);
@@ -569,6 +575,8 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
         var deletedStagingRows = await db.EtlStagingRows.ExecuteDeleteAsync(cancellationToken);
         var deletedStagingFiles = await db.EtlUploadFiles.ExecuteDeleteAsync(cancellationToken);
         var deletedStagingBatches = await db.EtlUploadBatches.ExecuteDeleteAsync(cancellationToken);
+        
+        // Documents has FK to Departments with Restrict, delete before Departments
         var deletedDocuments = await db.Documents.ExecuteDeleteAsync(cancellationToken);
         var deletedActivityLogs = await db.ActivityLogs.ExecuteDeleteAsync(cancellationToken);
         var deletedPrograms = await db.AcademicPrograms.ExecuteDeleteAsync(cancellationToken);
@@ -592,7 +600,10 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
             DeletedActivityLogs: deletedActivityLogs,
             DeletedPrograms: deletedPrograms,
             DeletedColleges: deletedColleges,
-            DeletedDepartments: deletedDepartments
+            DeletedDepartments: deletedDepartments,
+            DeletedStudentRequests: deletedStudentRequests,
+            DeletedFaqEntries: deletedFaqEntries,
+            DeletedGeminiChats: deletedGeminiChats
         );
     }
 
@@ -1357,6 +1368,14 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
 
         var delimiter = DetectDelimiter(lines);
         var header = ParseCsvLine(lines[0], delimiter).Select(value => value.Trim()).ToArray();
+        var headerLookup = header.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var hasAnswerLikeColumn = headerLookup.Contains("answer") || headerLookup.Contains("context") || headerLookup.Contains("content");
+
+        if (!headerLookup.Contains("scopeType") || !headerLookup.Contains("category") || !headerLookup.Contains("title") || !hasAnswerLikeColumn)
+        {
+            throw new InvalidOperationException("FAQ/context CSV must include scopeType, category, title, and answer (or context/content) columns.");
+        }
+
         for (var lineIndex = 1; lineIndex < lines.Count; lineIndex++)
         {
             var cells = ParseCsvLine(lines[lineIndex], delimiter).Select(value => value.Trim()).ToArray();
@@ -1394,7 +1413,8 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
                     ? contentValue
                     : string.Empty;
 
-            var isGuestVisible = !fields.TryGetValue("isGuestVisible", out var isGuestVisibleRaw) || bool.TryParse(isGuestVisibleRaw, out var parsedGuestVisible) && parsedGuestVisible;
+            var scopeType = NormalizeFaqScopeType(fields.TryGetValue("scopeType", out var scopeTypeRaw) ? scopeTypeRaw : "general");
+            var isGuestVisible = ParseGuestVisibility(fields.TryGetValue("isGuestVisible", out var isGuestVisibleRaw) ? isGuestVisibleRaw : null, scopeType);
 
             if (string.IsNullOrWhiteSpace(title))
             {
@@ -1405,7 +1425,7 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
             answer = answer.Replace("\\n", Environment.NewLine);
 
             entries.Add(new CreateFaqContextEntryDto(
-                NormalizeFaqScopeType(fields.TryGetValue("scopeType", out var scopeType) ? scopeType : "general"),
+                scopeType,
                 fields.TryGetValue("collegeCode", out var collegeCode) ? collegeCode : string.Empty,
                 fields.TryGetValue("programCode", out var programCode) ? programCode : string.Empty,
                 inferredCategory,
@@ -1427,6 +1447,22 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
             "non_guest" => "non-guest",
             "nonguest" => "non-guest",
             _ => string.IsNullOrWhiteSpace(normalized) ? "general" : normalized
+        };
+    }
+
+    private static bool ParseGuestVisibility(string? rawValue, string normalizedScopeType)
+    {
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            return normalizedScopeType != "non-guest";
+        }
+
+        var normalized = rawValue.Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "true" or "1" or "yes" or "y" => true,
+            "false" or "0" or "no" or "n" => false,
+            _ => normalizedScopeType != "non-guest"
         };
     }
 

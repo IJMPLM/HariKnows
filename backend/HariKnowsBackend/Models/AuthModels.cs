@@ -13,6 +13,20 @@ public sealed record LoginRequestDto(string Email, string Password);
 
 public sealed record StudentProfileDto(string StudentNo, string FullName, string CollegeCode, string ProgramCode, string Email);
 
+public sealed record StudentStatusDto(
+    string StudentNo,
+    string FullName,
+    string CollegeCode,
+    string ProgramCode,
+    int? CurrentYear,
+    string EnrollmentStatus,
+    string GoodMoralStatus,
+    string NstpStatus,
+    string BirthCertStatus,
+    string Form137Status,
+    string Email
+);
+
 public sealed record TokenResponseDto(
     string AccessToken,
     DateTime ExpiresAtUtc,

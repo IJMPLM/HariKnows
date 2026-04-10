@@ -21,16 +21,29 @@ public sealed class RagAssistantService(
     IOptions<RagAssistantOptions> optionsAccessor
 ) : GeminiChatbot.Services.IRagAssistantService
 {
+    private const string AssistantIdentityTitle = "Assistant Identity";
+    private const string ContextGuidanceHeaderTitle = "Context Guidance Header";
+    private const string ContextUnavailableTitle = "Context Unavailable Fallback";
+    private const string GuestModeTagTitle = "Guest Mode Tag";
+    private const string AuthStatusGuestReplyTitle = "Auth Status Reply (Guest)";
+    private const string AuthStatusSignedInReplyTitle = "Auth Status Reply (Signed In)";
+    private const string RedirectReplyGuestTitle = "Redirect Reply (Guest)";
+    private const string RedirectReplySignedInTitle = "Redirect Reply (Signed In)";
+    private const string RedirectNoteGuestTitle = "Redirect Note (Guest)";
+    private const string RedirectNoteSignedInTitle = "Redirect Note (Signed In)";
+
     private readonly RagAssistantOptions _options = optionsAccessor.Value;
 
     public async Task<RagResponseDto> AnswerAsync(string? studentNo, string conversationId, string message, IReadOnlyList<ChatResponseDto> conversationHistory, CancellationToken cancellationToken)
     {
         var isGuest = string.IsNullOrWhiteSpace(studentNo);
         var student = isGuest ? null : await authService.GetProfileAsync(studentNo!, cancellationToken);
+        var studentStatus = isGuest ? null : registrarRepository.GetStudentStatus(studentNo!);
         var recentRequests = isGuest
             ? Array.Empty<StudentDocumentRequestDto>()
             : registrarRepository.GetStudentRequests(studentNo, null, 10);
         var faqScopeType = isGuest ? "general" : null;
+        var contextEntries = registrarRepository.GetFaqEntries(faqScopeType, student?.CollegeCode, student?.ProgramCode, false, 120);
         var faqMatches = registrarRepository.SearchFaqEntries(message, faqScopeType, student?.CollegeCode, student?.ProgramCode, 6);
 
         var routing = DetermineRouting(message, faqMatches, recentRequests);
@@ -46,9 +59,11 @@ public sealed class RagAssistantService(
 
         if (IsAuthStatusQuestion(message))
         {
-            var authReply = isGuest
-                ? "You are currently using Hari in guest mode and are not signed in. Sign in to access account-specific request status and personalized records."
-                : $"Yes, you are signed in as {student?.FullName ?? "your account"} ({studentNo}).";
+            var authReplyTemplate = isGuest
+                ? ResolveTemplate(contextEntries, AuthStatusGuestReplyTitle, "You are currently using Hari in guest mode and are not signed in. Sign in to access account-specific request status and personalized records.")
+                : ResolveTemplate(contextEntries, AuthStatusSignedInReplyTitle, "Yes, you are signed in as {fullName} ({studentNo}).");
+
+            var authReply = RenderTemplate(authReplyTemplate, student?.FullName ?? "your account", studentNo ?? string.Empty);
 
             return new RagResponseDto(
                 authReply,
@@ -63,20 +78,25 @@ public sealed class RagAssistantService(
 
         if (string.Equals(routing, "redirect", StringComparison.OrdinalIgnoreCase) && faqMatches.Count == 0)
         {
+            var redirectReplyTemplate = isGuest
+                ? ResolveTemplate(contextEntries, RedirectReplyGuestTitle, "I can help with general registrar FAQs and published policies. For account-specific concerns, please sign in or contact the registrar office.")
+                : ResolveTemplate(contextEntries, RedirectReplySignedInTitle, "I can help with registrar document requests, student records, and published FAQ/context topics. For this question, please contact the appropriate office directly.");
+            var redirectNote = isGuest
+                ? ResolveTemplate(contextEntries, RedirectNoteGuestTitle, "Guest mode provides general guidance only.")
+                : ResolveTemplate(contextEntries, RedirectNoteSignedInTitle, "Question appears out of scope for the helpdesk knowledge base.");
+
             return new RagResponseDto(
-                isGuest
-                    ? "I can help with general registrar FAQs and published policies. For account-specific concerns, please sign in or contact the registrar office."
-                    : "I can help with registrar document requests, student records, and published FAQ/context topics. For this question, please contact the appropriate office directly.",
+                RenderTemplate(redirectReplyTemplate, student?.FullName ?? "your account", studentNo ?? string.Empty),
                 "gemini",
                 routing,
                 0.58,
                 citations,
                 "registrar",
-                isGuest ? "Guest mode provides general guidance only." : "Question appears out of scope for the helpdesk knowledge base."
+                RenderTemplate(redirectNote, student?.FullName ?? "your account", studentNo ?? string.Empty)
             );
         }
 
-        var context = BuildContext(student, recentRequests, faqMatches, conversationHistory, message, isGuest);
+        var context = BuildContext(student, studentStatus, recentRequests, faqMatches, contextEntries, conversationHistory, message, isGuest);
         var geminiReply = await geminiService.GetChatResponseAsync(context, conversationHistory);
         var resolvedRouting = routing == "faq" ? "faq+gemini" : routing;
         var confidence = EstimateConfidence(resolvedRouting, faqMatches.Count, recentRequests.Count);
@@ -129,22 +149,65 @@ public sealed class RagAssistantService(
             || lowered.Contains("celebrity");
     }
 
-    private string BuildContext(StudentProfileDto? student, IReadOnlyList<StudentDocumentRequestDto> recentRequests, IReadOnlyList<FaqContextEntryDto> faqMatches, IReadOnlyList<ChatResponseDto> recentConversation, string message, bool isGuest)
+    private string BuildContext(StudentProfileDto? student, StudentStatusDto? studentStatus, IReadOnlyList<StudentDocumentRequestDto> recentRequests, IReadOnlyList<FaqContextEntryDto> faqMatches, IReadOnlyList<FaqContextEntryDto> contextEntries, IReadOnlyList<ChatResponseDto> recentConversation, string message, bool isGuest)
     {
         var builder = new StringBuilder();
-        builder.AppendLine("You are Hari, a registrar helpdesk assistant.");
-        builder.AppendLine("You must protect student privacy. Never reveal another student's records, requests, or identifiers.");
-        builder.AppendLine("Use only known registrar policies and supplied context. If uncertain, say what is missing and suggest the correct office.");
-        builder.AppendLine("If the question is out of scope, briefly redirect the student to the correct office.");
+        var guidanceHeader = ResolveTemplate(contextEntries, ContextGuidanceHeaderTitle, "Registrar knowledge base guidance:");
+        var noGuidanceFallback = ResolveTemplate(contextEntries, ContextUnavailableTitle, "Registrar knowledge base guidance is unavailable. Use only verified student/request data and clearly state uncertainties.");
+        var guestModeTag = ResolveTemplate(contextEntries, GuestModeTagTitle, "Mode: guest");
+        var assistantIdentity = ResolveTemplate(contextEntries, AssistantIdentityTitle, string.Empty);
+
+        var guidanceEntries = contextEntries
+            .Where(entry => !string.Equals(entry.Category, "faq", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(entry => GetGuidancePriority(entry.Category))
+            .ThenBy(entry => entry.Title)
+            .Take(20)
+            .ToList();
+
+        if (guidanceEntries.Count > 0)
+        {
+            if (!string.IsNullOrWhiteSpace(assistantIdentity))
+            {
+                builder.AppendLine(RenderTemplate(assistantIdentity, student?.FullName ?? "your account", student?.StudentNo ?? string.Empty));
+            }
+
+            builder.AppendLine(guidanceHeader);
+            foreach (var entry in guidanceEntries)
+            {
+                builder.AppendLine($"- [{entry.ScopeType}/{entry.Category}] {CompressText(entry.Title, 120)}: {CompressText(entry.Answer, Math.Max(180, _options.MaxFaqCharsPerEntry))}");
+            }
+        }
+        else
+        {
+            if (!string.IsNullOrWhiteSpace(assistantIdentity))
+            {
+                builder.AppendLine(RenderTemplate(assistantIdentity, student?.FullName ?? "your account", student?.StudentNo ?? string.Empty));
+            }
+
+            builder.AppendLine(noGuidanceFallback);
+        }
+
         if (isGuest)
         {
-            builder.AppendLine("Guest mode is active: only provide general registrar guidance and published policies. Do not infer student-specific statuses.");
+            builder.AppendLine(guestModeTag);
         }
+
         builder.AppendLine();
 
         if (student is not null)
         {
             builder.AppendLine($"Student: {student.FullName} ({student.StudentNo}), College={student.CollegeCode}, Program={student.ProgramCode}, Email={student.Email}");
+        }
+
+        if (studentStatus is not null)
+        {
+            builder.AppendLine("Student Status Record:");
+            builder.AppendLine($"- Current Year: {studentStatus.CurrentYear}");
+            builder.AppendLine($"- Enrollment Status: {studentStatus.EnrollmentStatus}");
+            builder.AppendLine($"- Good Moral Status: {studentStatus.GoodMoralStatus}");
+            builder.AppendLine($"- NSTP Status: {studentStatus.NstpStatus}");
+            builder.AppendLine($"- Birth Certificate Status: {studentStatus.BirthCertStatus}");
+            builder.AppendLine($"- Form 137 Status: {studentStatus.Form137Status}");
         }
 
         if (recentRequests.Count > 0)
@@ -193,6 +256,40 @@ public sealed class RagAssistantService(
         return string.Equals(role, "user", StringComparison.OrdinalIgnoreCase)
             ? "user"
             : "assistant";
+    }
+
+    private static int GetGuidancePriority(string category)
+    {
+        return category.ToLowerInvariant() switch
+        {
+            "assistant" => 0,
+            "overview" => 0,
+            "scope" => 1,
+            "policy" => 2,
+            "services" => 3,
+            "requirements" => 4,
+            "document" => 5,
+            "privacy" => 6,
+            _ => 10
+        };
+    }
+
+    private static string ResolveTemplate(IReadOnlyList<FaqContextEntryDto> contextEntries, string title, string fallback)
+    {
+        var template = contextEntries
+            .FirstOrDefault(entry =>
+                string.Equals(entry.Title, title, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(entry.Category, "assistant", StringComparison.OrdinalIgnoreCase))
+            ?.Answer;
+
+        return string.IsNullOrWhiteSpace(template) ? fallback : template;
+    }
+
+    private static string RenderTemplate(string template, string fullName, string studentNo)
+    {
+        return template
+            .Replace("{fullName}", string.IsNullOrWhiteSpace(fullName) ? "your account" : fullName, StringComparison.OrdinalIgnoreCase)
+            .Replace("{studentNo}", string.IsNullOrWhiteSpace(studentNo) ? "N/A" : studentNo, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string CompressText(string? text, int maxChars)

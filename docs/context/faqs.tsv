@@ -1,6 +1,0 @@
-scopeType	category	title	answer	isGuestVisible
-general	faq	How do I request a registrar document?	All official registrar requests must be submitted on-site at the Office of the University Registrar. HariKnows only tracks requests that were filed physically; it does not accept online requests.	true
-general	faq	What is the status flow for document requests?	The standard request lifecycle is Pending, Prepared, Claimed, then Disposed. HariKnows reflects only records that were created on-site and tracked in the registrar database.	true
-general	faq	Can I use HariKnows without signing in?	Yes. Guests can ask general questions and read published FAQs. Signed-in students can also see account-aware help and their own request history.	true
-general	faq	Where should I update FAQ content?	Import the FAQ CSV through the registrar document upload, then edit the entries in the registrar FAQ tab. Helpdesk reads the published FAQ entries from the registrar API.	true
-non-guest	faq	Can guests see account-specific request tracking?	No. Account-specific request status and student-linked records are available only for signed-in users. Guests can access general FAQs and registrar guidance.	false

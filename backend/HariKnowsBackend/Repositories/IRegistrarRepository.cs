@@ -42,6 +42,8 @@ public interface IRegistrarRepository
 
     IReadOnlyList<StudentDirectoryEntryDto> SearchStudents(string? query, int limit);
 
+    StudentStatusDto? GetStudentStatus(string studentNo);
+
     IReadOnlyList<StudentDocumentRequestDto> GetStudentRequests(string? studentNo, string? status, int limit);
 
     StudentDocumentRequestDto? GetStudentRequest(int requestId);
