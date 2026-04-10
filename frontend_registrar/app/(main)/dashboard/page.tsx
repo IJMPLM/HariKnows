@@ -114,23 +114,23 @@ export default function DashboardPage() {
   }, [summaryRows]);
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f] text-white">
-      <div className="bg-[#1a1a1a] border-b border-[#2a2a2a] px-8 pt-8 pb-0">
-        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-[#aaaaaa] mb-2">
+    <div className="min-h-screen bg-stone-50 text-gray-900 dark:bg-[#0f0f0f] dark:text-white">
+      <div className="bg-white border-b border-gray-200 dark:bg-[#1a1a1a] dark:border-[#2a2a2a] px-8 pt-8 pb-0">
+        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-gray-600 dark:text-[#aaaaaa] mb-2">
           <ClipboardList size={12} />
           REGISTRAR · UPLOAD DASHBOARD
         </div>
 
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-3xl lg:text-[2rem] font-extrabold tracking-tight leading-tight text-white mb-1">
-              Document Upload <span className="text-[#e8834a]">Dashboard</span>
+            <h1 className="text-3xl lg:text-[2rem] font-extrabold tracking-tight leading-tight text-gray-900 dark:text-white mb-1">
+              Document Upload <span className="text-[#6e3102] dark:text-[#d4855a]">Dashboard</span>
             </h1>
-            <p className="text-sm text-[#aaaaaa] mb-6">Overall status across offices and colleges</p>
+            <p className="text-sm text-gray-600 dark:text-[#aaaaaa] mb-6">Overall status across offices and colleges</p>
           </div>
           <button
             onClick={() => void load()}
-            className="mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#e8834a] hover:bg-[#d97639] text-[#121212] font-semibold"
+            className="mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#6e3102] hover:bg-[#5a2801] dark:bg-[#d4855a] dark:hover:bg-[#e9a67f] text-white dark:text-[#121212] font-semibold"
           >
             <RefreshCw size={14} />
             Refresh
@@ -146,43 +146,43 @@ export default function DashboardPage() {
         )}
 
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="bg-[#1a1a1a] rounded-xl p-5 border border-[#2a2a2a]"><p className="text-xs text-[#aaaaaa] uppercase tracking-wide">Total</p><p className="text-3xl font-extrabold mt-2">{totals.total}</p></div>
-          <div className="bg-[#1a1a1a] rounded-xl p-5 border border-[#2a2a2a]"><p className="text-xs text-[#aaaaaa] uppercase tracking-wide">Active</p><p className="text-3xl font-extrabold mt-2 text-emerald-400">{totals.active}</p></div>
-          <div className="bg-[#1a1a1a] rounded-xl p-5 border border-[#2a2a2a]"><p className="text-xs text-[#aaaaaa] uppercase tracking-wide">Archived</p><p className="text-3xl font-extrabold mt-2 text-zinc-300">{totals.archived}</p></div>
-          <div className="bg-[#1a1a1a] rounded-xl p-5 border border-[#2a2a2a]"><p className="text-xs text-[#aaaaaa] uppercase tracking-wide">Incomplete</p><p className="text-3xl font-extrabold mt-2 text-amber-300">{totals.incomplete}</p></div>
-          <div className="bg-[#1a1a1a] rounded-xl p-5 border border-[#2a2a2a]"><p className="text-xs text-[#aaaaaa] uppercase tracking-wide">Errors</p><p className="text-3xl font-extrabold mt-2 text-red-400">{totals.errors}</p></div>
+          <div className="bg-white dark:bg-[#1a1a1a] rounded-xl p-5 border border-gray-200 dark:border-[#2a2a2a]"><p className="text-xs text-gray-600 dark:text-[#aaaaaa] uppercase tracking-wide">Total</p><p className="text-3xl font-extrabold mt-2">{totals.total}</p></div>
+          <div className="bg-white dark:bg-[#1a1a1a] rounded-xl p-5 border border-gray-200 dark:border-[#2a2a2a]"><p className="text-xs text-gray-600 dark:text-[#aaaaaa] uppercase tracking-wide">Active</p><p className="text-3xl font-extrabold mt-2 text-emerald-400">{totals.active}</p></div>
+          <div className="bg-white dark:bg-[#1a1a1a] rounded-xl p-5 border border-gray-200 dark:border-[#2a2a2a]"><p className="text-xs text-gray-600 dark:text-[#aaaaaa] uppercase tracking-wide">Archived</p><p className="text-3xl font-extrabold mt-2 text-zinc-300">{totals.archived}</p></div>
+          <div className="bg-white dark:bg-[#1a1a1a] rounded-xl p-5 border border-gray-200 dark:border-[#2a2a2a]"><p className="text-xs text-gray-600 dark:text-[#aaaaaa] uppercase tracking-wide">Incomplete</p><p className="text-3xl font-extrabold mt-2 text-amber-300">{totals.incomplete}</p></div>
+          <div className="bg-white dark:bg-[#1a1a1a] rounded-xl p-5 border border-gray-200 dark:border-[#2a2a2a]"><p className="text-xs text-gray-600 dark:text-[#aaaaaa] uppercase tracking-wide">Errors</p><p className="text-3xl font-extrabold mt-2 text-red-400">{totals.errors}</p></div>
         </div>
 
-        <section className="bg-[#1a1a1a] rounded-2xl overflow-hidden border border-[#2a2a2a]">
+        <section className="bg-white dark:bg-[#1a1a1a] rounded-2xl overflow-hidden border border-gray-200 dark:border-[#2a2a2a]">
           <table className="w-full min-w-[920px]">
             <thead>
-              <tr className="border-b border-[#2a2a2a] bg-[#222222]/50">
-                <th className="text-left p-4 text-white font-bold text-sm">Office</th>
-                <th className="text-left p-4 text-white font-bold text-sm">College</th>
-                <th className="text-left p-4 text-white font-bold text-sm">Program</th>
-                <th className="text-left p-4 text-white font-bold text-sm">Active</th>
-                <th className="text-left p-4 text-white font-bold text-sm">Archived</th>
-                <th className="text-left p-4 text-white font-bold text-sm">Incomplete</th>
-                <th className="text-left p-4 text-white font-bold text-sm">Errors</th>
-                <th className="text-left p-4 text-white font-bold text-sm">Last Updated</th>
+              <tr className="border-b border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#222222]/50">
+                <th className="text-left p-4 text-gray-900 dark:text-white font-bold text-sm">Office</th>
+                <th className="text-left p-4 text-gray-900 dark:text-white font-bold text-sm">College</th>
+                <th className="text-left p-4 text-gray-900 dark:text-white font-bold text-sm">Program</th>
+                <th className="text-left p-4 text-gray-900 dark:text-white font-bold text-sm">Active</th>
+                <th className="text-left p-4 text-gray-900 dark:text-white font-bold text-sm">Archived</th>
+                <th className="text-left p-4 text-gray-900 dark:text-white font-bold text-sm">Incomplete</th>
+                <th className="text-left p-4 text-gray-900 dark:text-white font-bold text-sm">Errors</th>
+                <th className="text-left p-4 text-gray-900 dark:text-white font-bold text-sm">Last Updated</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="text-center text-[#aaaaaa] py-8">Loading dashboard...</td></tr>
+                <tr><td colSpan={8} className="text-center text-gray-600 dark:text-[#aaaaaa] py-8">Loading dashboard...</td></tr>
               ) : summaryRows.length === 0 ? (
-                <tr><td colSpan={8} className="text-center text-[#aaaaaa] py-8">No upload records found.</td></tr>
+                <tr><td colSpan={8} className="text-center text-gray-600 dark:text-[#aaaaaa] py-8">No upload records found.</td></tr>
               ) : (
                 summaryRows.map((row) => (
-                  <tr key={row.key} className="border-t border-[#2a2a2a]">
-                    <td className="p-4"><span className="inline-flex items-center gap-1 text-xs uppercase tracking-wide text-[#aaaaaa]"><ClipboardList size={12} />{row.office}</span></td>
-                    <td className="p-4 uppercase text-xs text-[#d2d2d2]">{row.college}</td>
-                    <td className="p-4 uppercase text-xs text-[#d2d2d2]">{row.program}</td>
+                  <tr key={row.key} className="border-t border-gray-200 dark:border-[#2a2a2a]">
+                    <td className="p-4"><span className="inline-flex items-center gap-1 text-xs uppercase tracking-wide text-gray-600 dark:text-[#aaaaaa]"><ClipboardList size={12} />{row.office}</span></td>
+                    <td className="p-4 uppercase text-xs text-gray-700 dark:text-[#d2d2d2]">{row.college}</td>
+                    <td className="p-4 uppercase text-xs text-gray-700 dark:text-[#d2d2d2]">{row.program}</td>
                     <td className="p-4"><span className="inline-flex items-center gap-1 text-emerald-300"><CheckCircle2 size={14} />{row.active}</span></td>
                     <td className="p-4"><span className="inline-flex items-center gap-1 text-zinc-300"><Archive size={14} />{row.archived}</span></td>
                     <td className="p-4"><span className="inline-flex items-center gap-1 text-amber-300"><AlertCircle size={14} />{row.incomplete}</span></td>
                     <td className="p-4 text-red-300">{row.errors}</td>
-                    <td className="p-4 text-[#aaaaaa] text-xs">{new Date(row.lastUpdated).toLocaleString()}</td>
+                    <td className="p-4 text-gray-600 dark:text-[#aaaaaa] text-xs">{new Date(row.lastUpdated).toLocaleString()}</td>
                   </tr>
                 ))
               )}

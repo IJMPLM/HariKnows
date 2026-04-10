@@ -200,23 +200,23 @@ export default function EtlDocumentPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f] text-white">
-      <div className="bg-[#1a1a1a] border-b border-[#2a2a2a] px-8 pt-8 pb-0">
-        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-[#aaaaaa] mb-2">
+    <div className="min-h-screen bg-stone-50 text-gray-900 dark:bg-[#0f0f0f] dark:text-white">
+      <div className="bg-white border-b border-gray-200 dark:bg-[#1a1a1a] dark:border-[#2a2a2a] px-8 pt-8 pb-0">
+        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-gray-600 dark:text-[#aaaaaa] mb-2">
           <FileText size={12} />
           REGISTRAR · DOCUMENT MANAGEMENT
         </div>
-          <h1 className="text-3xl lg:text-[2rem] font-extrabold tracking-tight leading-tight text-white mb-1">
-          Unified Delimited Upload &amp; <span className="text-[#e8834a]">Staging</span>
+          <h1 className="text-3xl lg:text-[2rem] font-extrabold tracking-tight leading-tight text-gray-900 dark:text-white mb-1">
+          Unified Delimited Upload &amp; <span className="text-[#6e3102] dark:text-[#e8834a]">Staging</span>
         </h1>
-        <p className="text-sm text-[#aaaaaa] mb-6">
+        <p className="text-sm text-gray-600 dark:text-[#aaaaaa] mb-6">
           Drag and drop multiple CSV files once. The backend auto-categorizes by metadata and stages records for review before save.
         </p>
       </div>
 
       <div className="px-8 py-7 space-y-5">
         <div
-          className={`rounded-xl border-2 border-dashed p-5 transition-all ${isDragOver ? "border-[#e8834a] bg-[#1f1713]" : "border-[#2a2a2a] bg-[#161616]"}`}
+          className={`rounded-xl border-2 border-dashed p-5 transition-all ${isDragOver ? "border-[#6e3102] dark:border-[#e8834a] bg-[#f2e3d8] dark:bg-[#1f1713]" : "border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#161616]"}`}
           onDragOver={(e) => {
             e.preventDefault();
             setIsDragOver(true);
@@ -230,11 +230,11 @@ export default function EtlDocumentPage() {
         >
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-white flex items-center gap-2">
-                <UploadCloud className="w-4 h-4 text-[#e8834a]" />
+              <p className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <UploadCloud className="w-4 h-4 text-[#6e3102] dark:text-[#e8834a]" />
                 Drop CSV files here
               </p>
-              <p className="text-xs text-[#aaaaaa] mt-1">Registrar data files stage as usual. faq/context CSV files import into the registrar FAQ tab.</p>
+              <p className="text-xs text-gray-600 dark:text-[#aaaaaa] mt-1">Registrar data files stage as usual. faq/context CSV files import into the registrar FAQ tab.</p>
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -245,13 +245,13 @@ export default function EtlDocumentPage() {
                 className="hidden"
                 onChange={(e) => handleFilePick(e.target.files)}
               />
-              <label htmlFor="bulk-csv" className="px-4 py-2.5 rounded-xl bg-[#2a2a2a] hover:bg-[#333] text-sm cursor-pointer">
+              <label htmlFor="bulk-csv" className="px-4 py-2.5 rounded-xl bg-gray-200 hover:bg-gray-300 dark:bg-[#2a2a2a] dark:hover:bg-[#333] text-sm cursor-pointer text-gray-900 dark:text-white">
                 Select files
               </label>
               <button
                 onClick={handleParse}
                 disabled={isLoading || files.length === 0}
-                className="px-4 py-2.5 rounded-xl bg-[#e8834a] hover:bg-[#d97639] disabled:opacity-50 text-[#121212] text-sm font-semibold flex items-center gap-2"
+                className="px-4 py-2.5 rounded-xl bg-[#6e3102] hover:bg-[#5a2801] dark:bg-[#e8834a] dark:hover:bg-[#d97639] disabled:opacity-50 text-white dark:text-[#121212] text-sm font-semibold flex items-center gap-2"
               >
                 <Upload size={14} />
                 {isLoading ? "Parsing..." : "Parse to staging"}
@@ -259,35 +259,35 @@ export default function EtlDocumentPage() {
               <button
                 onClick={handleCommit}
                 disabled={!result || isSaving}
-                className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-[#121212] text-sm font-semibold"
+                className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white dark:text-[#121212] text-sm font-semibold"
               >
                 {isSaving ? "Saving..." : "Confirm & Save"}
               </button>
               <button
                 onClick={handleDiscard}
-                className="px-4 py-2.5 rounded-xl bg-[#2a2a2a] hover:bg-[#333] text-sm"
+                className="px-4 py-2.5 rounded-xl bg-gray-200 hover:bg-gray-300 dark:bg-[#2a2a2a] dark:hover:bg-[#333] text-sm text-gray-900 dark:text-white"
               >
                 Discard
               </button>
               <button
                 onClick={handleFlushDatabase}
                 disabled={isFlushing}
-                className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-50 text-sm font-semibold"
+                className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-50 text-sm font-semibold text-white"
               >
                 {isFlushing ? "Flushing..." : "Flush Database"}
               </button>
             </div>
           </div>
-          <p className="text-xs text-[#aaaaaa] mt-3">
+          <p className="text-xs text-gray-600 dark:text-[#aaaaaa] mt-3">
             Selected: {files.length === 0 ? "none" : files.map((f) => f.name).join(", ")}
           </p>
           {files.length > 0 && (
-            <div className="mt-3 border border-[#2a2a2a] rounded-xl p-3 bg-[#111] space-y-2">
-              <p className="text-xs uppercase tracking-wider text-[#aaaaaa]">Upload flags</p>
+            <div className="mt-3 border border-gray-200 dark:border-[#2a2a2a] rounded-xl p-3 bg-gray-50 dark:bg-[#111] space-y-2">
+              <p className="text-xs uppercase tracking-wider text-gray-600 dark:text-[#aaaaaa]">Upload flags</p>
               {files.map((file) => (
                 <label key={file.name} className="flex items-center justify-between gap-3 text-sm">
-                  <span className="text-[#ddd] truncate">{file.name}</span>
-                  <span className="inline-flex items-center gap-2 text-xs text-[#bbbbbb]">
+                  <span className="text-gray-900 dark:text-[#ddd] truncate">{file.name}</span>
+                  <span className="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-[#bbbbbb]">
                     <input
                       type="checkbox"
                       checked={Boolean(incompleteByFile[file.name])}
@@ -366,15 +366,15 @@ export default function EtlDocumentPage() {
                     onClick={() => setActiveTab(tab.key)}
                     className={`px-3 py-2 rounded-xl text-xs font-semibold border ${
                       activeTab === tab.key
-                        ? "bg-[#e8834a] text-[#121212] border-[#e8834a]"
-                        : "bg-[#1a1a1a] border-[#2a2a2a] text-[#d0d0d0]"
+                        ? "bg-[#6e3102] text-white border-[#6e3102] dark:bg-[#e8834a] dark:text-[#121212] dark:border-[#e8834a]"
+                        : "bg-gray-200 border-gray-300 text-gray-700 dark:bg-[#1a1a1a] dark:border-[#2a2a2a] dark:text-[#d0d0d0]"
                     }`}
                   >
                     {tab.label} ({count})
                   </button>
                 );
               })}
-              <span className="ml-auto inline-flex items-center gap-2 text-xs text-[#aaaaaa]">
+              <span className="ml-auto inline-flex items-center gap-2 text-xs text-gray-600 dark:text-[#aaaaaa]">
                 <ListFilter className="w-3.5 h-3.5" />
                 Conflicts: {result.conflicts.length}
               </span>
