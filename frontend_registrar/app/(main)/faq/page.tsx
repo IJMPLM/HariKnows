@@ -139,18 +139,20 @@ export default function FaqContextPage() {
     : "Categorical context entries with a title and longer paragraph-style guidance.";
 
   return (
-    <div className="relative min-h-screen bg-stone-50 dark:bg-[#121212] text-gray-900 dark:text-gray-100 overflow-hidden">
+    <div className="relative min-h-screen text-gray-900 dark:text-gray-100 overflow-hidden">
       <div className="pt-16 lg:pt-0 p-6 lg:p-8 space-y-6">
         <div className="max-w-6xl mx-auto space-y-4">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#6e3102] dark:text-[#d4855a]">Registrar Knowledge Base</p>
-              <h1 className="text-3xl font-extrabold tracking-tight">FAQs and Context</h1>
-            </div>
-            <button onClick={() => void load()} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10">
+          <section className="rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#18181b] p-5 sm:p-6">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#6e3102] dark:text-[#d4855a]">Registrar Knowledge Base</p>
+                <h1 className="text-3xl font-extrabold tracking-tight">FAQs and Context</h1>
+              </div>
+              <button onClick={() => void load()} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10">
               <RefreshCw size={16} /> Refresh
             </button>
           </div>
+          </section>
 
           <div className="rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#18181b] p-2 inline-flex gap-2">
             <button

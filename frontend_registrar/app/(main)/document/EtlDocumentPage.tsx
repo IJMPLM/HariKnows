@@ -200,18 +200,20 @@ export default function EtlDocumentPage() {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 text-gray-900 dark:bg-[#0f0f0f] dark:text-white">
-      <div className="bg-white border-b border-gray-200 dark:bg-[#1a1a1a] dark:border-[#2a2a2a] px-8 pt-8 pb-0">
-        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-gray-600 dark:text-[#aaaaaa] mb-2">
-          <FileText size={12} />
-          REGISTRAR · DOCUMENT MANAGEMENT
-        </div>
+    <div className="min-h-screen text-gray-900 dark:text-white">
+      <div className="px-8 py-7">
+        <section className="rounded-2xl border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] p-5 sm:p-6">
+          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-gray-600 dark:text-[#aaaaaa] mb-2">
+            <FileText size={12} />
+            REGISTRAR · DOCUMENT MANAGEMENT
+          </div>
           <h1 className="text-3xl lg:text-[2rem] font-extrabold tracking-tight leading-tight text-gray-900 dark:text-white mb-1">
-          Unified Delimited Upload &amp; <span className="text-[#6e3102] dark:text-[#e8834a]">Staging</span>
-        </h1>
-        <p className="text-sm text-gray-600 dark:text-[#aaaaaa] mb-6">
-          Drag and drop multiple CSV files once. The backend auto-categorizes by metadata and stages records for review before save.
-        </p>
+            Unified Delimited Upload &amp; <span className="text-[#6e3102] dark:text-[#e8834a]">Staging</span>
+          </h1>
+          <p className="text-sm text-gray-600 dark:text-[#aaaaaa] mb-6">
+            Drag and drop multiple CSV files once. The backend auto-categorizes by metadata and stages records for review before save.
+          </p>
+        </section>
       </div>
 
       <div className="px-8 py-7 space-y-5">

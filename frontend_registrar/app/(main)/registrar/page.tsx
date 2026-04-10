@@ -116,19 +116,21 @@ export default function RegistrarPage() {
   };
 
   return (
-    <div className="relative min-h-screen bg-stone-50 dark:bg-[#121212] text-gray-900 dark:text-gray-100 overflow-hidden">
+    <div className="relative min-h-screen text-gray-900 dark:text-gray-100 overflow-hidden">
       <div className="pt-16 lg:pt-0 px-5 lg:px-8 py-6 space-y-6">
         <div className="max-w-7xl mx-auto space-y-6">
-          <header className="flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <p className="text-xs uppercase tracking-[0.24em] font-bold text-[#6e3102] dark:text-[#d4855a] flex items-center gap-2"><ClipboardList size={13} /> Registrar request workflow</p>
-              <h1 className="text-3xl font-extrabold tracking-tight">Document Requests</h1>
-            </div>
-            <div className="flex items-center gap-3">
+          <section className="rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#18181b] p-5 sm:p-6">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] font-bold text-[#6e3102] dark:text-[#d4855a] flex items-center gap-2"><ClipboardList size={13} /> Registrar request workflow</p>
+                <h1 className="text-3xl font-extrabold tracking-tight">Document Requests</h1>
+              </div>
+              <div className="flex items-center gap-3">
               <button onClick={() => void load()} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#18181b]"><RefreshCw size={16} /> Refresh</button>
               <button onClick={() => setShowCreateModal(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212] font-semibold"><Plus size={16} /> New Request</button>
+              </div>
             </div>
-          </header>
+          </section>
 
           <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[

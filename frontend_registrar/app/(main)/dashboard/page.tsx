@@ -114,20 +114,21 @@ export default function DashboardPage() {
   }, [summaryRows]);
 
   return (
-    <div className="min-h-screen bg-stone-50 text-gray-900 dark:bg-[#0f0f0f] dark:text-white">
-      <div className="bg-white border-b border-gray-200 dark:bg-[#1a1a1a] dark:border-[#2a2a2a] px-8 pt-8 pb-0">
-        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-gray-600 dark:text-[#aaaaaa] mb-2">
-          <ClipboardList size={12} />
-          REGISTRAR · UPLOAD DASHBOARD
-        </div>
-
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div>
-            <h1 className="text-3xl lg:text-[2rem] font-extrabold tracking-tight leading-tight text-gray-900 dark:text-white mb-1">
-              Document Upload <span className="text-[#6e3102] dark:text-[#d4855a]">Dashboard</span>
-            </h1>
-            <p className="text-sm text-gray-600 dark:text-[#aaaaaa] mb-6">Overall status across offices and colleges</p>
+    <div className="min-h-screen text-gray-900 dark:text-white">
+      <div className="px-8 py-7">
+        <section className="rounded-2xl border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] p-5 sm:p-6">
+          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-gray-600 dark:text-[#aaaaaa] mb-2">
+            <ClipboardList size={12} />
+            REGISTRAR · UPLOAD DASHBOARD
           </div>
+
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h1 className="text-3xl lg:text-[2rem] font-extrabold tracking-tight leading-tight text-gray-900 dark:text-white mb-1">
+                Document Upload <span className="text-[#6e3102] dark:text-[#d4855a]">Dashboard</span>
+              </h1>
+              <p className="text-sm text-gray-600 dark:text-[#aaaaaa] mb-6">Overall status across offices and colleges</p>
+            </div>
           <button
             onClick={() => void load()}
             className="mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#6e3102] hover:bg-[#5a2801] dark:bg-[#d4855a] dark:hover:bg-[#e9a67f] text-white dark:text-[#121212] font-semibold"
@@ -136,6 +137,7 @@ export default function DashboardPage() {
             Refresh
           </button>
         </div>
+        </section>
       </div>
 
       <div className="px-8 py-7 space-y-6">
