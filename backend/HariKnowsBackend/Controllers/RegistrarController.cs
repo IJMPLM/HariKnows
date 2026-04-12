@@ -200,6 +200,43 @@ public sealed class RegistrarController(IRegistrarService registrarService) : Co
         return Ok(registrarService.SearchStudents(query, limit));
     }
 
+    [HttpPut("students/{studentNo}/credentials")]
+    public IActionResult UpdateStudentCredentials(string studentNo, [FromBody] UpsertStudentCredentialsRequestDto request)
+    {
+        try
+        {
+            var result = registrarService.UpdateStudentCredentials(request with { StudentNo = studentNo });
+            return result is null ? NotFound(new { error = "Student account not found." }) : Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("students/import-icto")]
+    [RequestSizeLimit(10_000_000)]
+    public IActionResult ImportIctoAccounts([FromForm] IFormFile file, CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length == 0)
+        {
+            return BadRequest(new { error = "No CSV file was uploaded." });
+        }
+
+        try
+        {
+            return Ok(registrarService.ImportIctoAccounts(file, cancellationToken));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpGet("requests")]
     public IActionResult GetRequests([FromQuery] string? studentNo, [FromQuery] string? status, [FromQuery] int limit = 50)
     {

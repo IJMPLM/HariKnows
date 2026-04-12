@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HariKnows User Manual</title>
+  <style>
+    :root {
+      --bg: #f5f3ef;
+      --paper: #fffdf9;
+      --text: #1f2328;
+      --muted: #5d6470;
+      --line: #d7d1c8;
+      --accent: #6e3102;
+      --accent-soft: #f1dfd1;
+      --accent-2: #2a5b7a;
+      --success: #1f7a4d;
+      --warning: #9a6800;
+      --shadow: 0 18px 50px rgba(49, 38, 24, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at top left, rgba(110, 49, 2, 0.08), transparent 24%),
+        radial-gradient(circle at bottom right, rgba(42, 91, 122, 0.08), transparent 26%),
+        var(--bg);
+      color: var(--text);
+      font: 16px/1.65 Georgia, "Times New Roman", serif;
+    }
+
+    .page {
+      max-width: 1080px;
+      margin: 32px auto;
+      padding: 0 20px 36px;
+    }
+
+    .sheet {
+      background: var(--paper);
+      border: 1px solid rgba(110, 49, 2, 0.08);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    header {
+      padding: 36px 40px 24px;
+      background: linear-gradient(135deg, rgba(110, 49, 2, 0.08), rgba(42, 91, 122, 0.06));
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font: 700 12px/1.2 Arial, sans-serif;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    h1, h2, h3 {
+      font-family: Arial, sans-serif;
+      line-height: 1.2;
+      margin: 0 0 12px;
+    }
+
+    h1 {
+      font-size: 2.4rem;
+      letter-spacing: -0.03em;
+    }
+
+    h2 {
+      font-size: 1.4rem;
+      margin-top: 28px;
+      color: #20242a;
+    }
+
+    h3 {
+      font-size: 1rem;
+      margin-top: 18px;
+      color: #2a2e35;
+    }
+
+    p { margin: 0 0 14px; }
+    ul, ol { margin: 0 0 14px 22px; padding: 0; }
+    li { margin: 0 0 8px; }
+
+    .meta {
+      color: var(--muted);
+      max-width: 760px;
+      margin: 0;
+    }
+
+    .content {
+      padding: 28px 40px 40px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 18px;
+      margin: 18px 0 8px;
+    }
+
+    .card {
+      grid-column: span 6;
+      background: linear-gradient(180deg, #fff, #fffaf5);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px 18px 16px;
+    }
+
+    .card.full { grid-column: 1 / -1; }
+
+    .card .label {
+      display: inline-block;
+      font: 700 11px/1 Arial, sans-serif;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent-2);
+      margin-bottom: 10px;
+    }
+
+    .callout {
+      background: #fbf6ef;
+      border-left: 4px solid var(--accent);
+      padding: 14px 16px;
+      border-radius: 12px;
+      color: #3b3a37;
+      margin: 14px 0 18px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 18px;
+      font-size: 0.96rem;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 12px 14px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f4eee7;
+      font-family: Arial, sans-serif;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .figure-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin: 14px 0 8px;
+    }
+
+    figure {
+      margin: 0;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    figcaption {
+      padding: 12px 14px 14px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .footer-note {
+      margin-top: 26px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 860px) {
+      .grid, .figure-grid { grid-template-columns: 1fr; }
+      .card { grid-column: auto; }
+      .page { padding: 0; margin: 0; }
+      .sheet { border-radius: 0; }
+      header, .content { padding-left: 20px; padding-right: 20px; }
+      h1 { font-size: 2rem; }
+    }
+
+    @media print {
+      body { background: #fff; }
+      .page { margin: 0; padding: 0; max-width: none; }
+      .sheet { border: none; box-shadow: none; border-radius: 0; }
+      header { break-after: avoid; }
+      .card, figure, table, .callout { break-inside: avoid; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <article class="sheet">
+      <header>
+        <div class="eyebrow">HariKnows · User Manual</div>
+        <h1>Registrar Helpdesk and Student Account Guide</h1>
+        <p class="meta">
+          This printable manual documents the current helpdesk, dashboard, and registrar account flows in HariKnows.
+          It is designed to be exported to PDF from a browser print dialog or markdown-to-HTML preview.
+        </p>
+      </header>
+
+      <section class="content">
+        <div class="grid">
+          <div class="card">
+            <div class="label">Purpose</div>
+            <p>
+              HariKnows provides registrar guidance, student request tracking, and account management for the Office of the University Registrar.
+              The system separates guest guidance from account-aware student tools and registrar staff actions.
+            </p>
+          </div>
+          <div class="card">
+            <div class="label">Access Model</div>
+            <p>
+              Guests can read public guidance. Signed-in students can view their own account and request data. Registrar staff can update student credentials and manage CSV imports.
+            </p>
+          </div>
+        </div>
+
+        <h2>1. User Roles</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>Guest User</h3>
+            <p>Guests can ask general registrar questions and read published FAQs and policy guidance. They do not have access to account-specific records or request history.</p>
+          </div>
+          <div class="card">
+            <h3>Signed-in Student</h3>
+            <p>Signed-in students can view their profile, monitor their requests, and change their own password. Their responses are tied to the student number in the database.</p>
+          </div>
+          <div class="card full">
+            <h3>Registrar Staff</h3>
+            <p>Registrar staff can search student accounts, overwrite credentials for an existing student number, import ICTO CSV files, and maintain FAQ/context content for the helpdesk.</p>
+          </div>
+        </div>
+
+        <h2>2. Student Workflow</h2>
+        <ol>
+          <li>Open HariKnows in the browser and sign in with the official student email and password.</li>
+          <li>Open the dashboard to view the profile card and request history.</li>
+          <li>Open the account page to change the password if needed.</li>
+          <li>Use the helpdesk chat to ask about documents, graduation, and office routing.</li>
+        </ol>
+
+        <h2>3. Registrar Workflow</h2>
+        <ol>
+          <li>Open the registrar admin interface.</li>
+          <li>Search the student account list by student number, name, email, or program.</li>
+          <li>Select a student and overwrite only the email and password if the student number already exists.</li>
+          <li>Upload an ICTO CSV file to update multiple student accounts at once.</li>
+          <li>Upload FAQ/context CSV files when registrar guidance changes.</li>
+          <li>Review the live account list and tables for validation.</li>
+        </ol>
+
+        <h2>4. Student Account Features</h2>
+        <div class="callout">
+          The current account page is intentionally focused on changing the password for the signed-in student only.
+          Password recovery is not part of the current scope.
+        </div>
+        <ul>
+          <li>The profile page displays the student number, name, email, college, and program stored in the database.</li>
+          <li>The change-password action requires the current password, a new password, and confirmation.</li>
+          <li>The system rejects weak updates and incorrect current passwords.</li>
+        </ul>
+
+        <h2>5. Document Request Tracking</h2>
+        <p>The request lifecycle is <strong>Pending</strong>, <strong>Prepared</strong>, <strong>Claimed</strong>, and <strong>Disposed</strong>. Students can monitor their own request status from the dashboard, but official document release still follows on-site registrar processing.</p>
+
+        <h2>6. CSV Upload Guidance</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Upload Type</th>
+              <th>Required Header Shape</th>
+              <th>Behavior</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>FAQ / Context CSV</td>
+              <td>scopeType, category, title, answer or context-like fields</td>
+              <td>The parser uses the header row as the main reference and imports published helpdesk content.</td>
+            </tr>
+            <tr>
+              <td>ICTO Account CSV</td>
+              <td>student number, email, password</td>
+              <td>The upload updates only existing student records and rejects missing student numbers.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2>7. Illustrative Screens</h2>
+        <p class="note">The images below are lightweight HTML illustrations for documentation layout. They can be replaced with real screenshots later if you want to capture the actual frontend.</p>
+        <div class="figure-grid">
+          <figure>
+            <svg viewBox="0 0 900 560" role="img" aria-label="Helpdesk account page illustration">
+              <rect width="900" height="560" fill="#f7f1ea" />
+              <rect x="32" y="28" width="836" height="504" rx="28" fill="#ffffff" stroke="#dccfbe" />
+              <rect x="32" y="28" width="836" height="84" rx="28" fill="#f1e2d4" />
+              <text x="66" y="73" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#6e3102">Account Settings</text>
+              <circle cx="122" cy="205" r="54" fill="#f3d9c7" />
+              <circle cx="122" cy="191" r="22" fill="#6e3102" opacity="0.22" />
+              <rect x="208" y="166" width="360" height="22" rx="11" fill="#e7dfd6" />
+              <rect x="208" y="201" width="260" height="14" rx="7" fill="#eadfd3" />
+              <rect x="68" y="312" width="764" height="164" rx="22" fill="#faf8f5" stroke="#e5ddd2" />
+              <rect x="92" y="345" width="290" height="16" rx="8" fill="#ddd2c6" />
+              <rect x="92" y="376" width="620" height="44" rx="14" fill="#ffffff" stroke="#ddd2c6" />
+              <rect x="92" y="430" width="182" height="44" rx="14" fill="#6e3102" />
+              <text x="111" y="458" font-family="Arial, sans-serif" font-size="18" fill="#ffffff">Change Password</text>
+            </svg>
+            <figcaption>Helpdesk account page layout with a visible change-password action.</figcaption>
+          </figure>
+          <figure>
+            <svg viewBox="0 0 900 560" role="img" aria-label="Registrar accounts page illustration">
+              <rect width="900" height="560" fill="#f7f1ea" />
+              <rect x="28" y="26" width="844" height="508" rx="28" fill="#ffffff" stroke="#dccfbe" />
+              <rect x="28" y="26" width="844" height="84" rx="28" fill="#efe2d6" />
+              <text x="64" y="73" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#2a5b7a">Student Accounts</text>
+              <rect x="66" y="148" width="284" height="42" rx="14" fill="#ffffff" stroke="#d8cdc1" />
+              <rect x="68" y="220" width="760" height="46" rx="12" fill="#f8f5f0" />
+              <rect x="68" y="276" width="760" height="46" rx="12" fill="#fff" stroke="#eee4d7" />
+              <rect x="68" y="332" width="760" height="46" rx="12" fill="#f8f5f0" />
+              <rect x="68" y="388" width="760" height="46" rx="12" fill="#fff" stroke="#eee4d7" />
+              <rect x="686" y="148" width="142" height="42" rx="14" fill="#6e3102" />
+              <text x="714" y="174" font-family="Arial, sans-serif" font-size="17" fill="#fff">Upload CSV</text>
+            </svg>
+            <figcaption>Registrar student account management page with search, edit, and upload actions.</figcaption>
+          </figure>
+          <figure>
+            <svg viewBox="0 0 900 560" role="img" aria-label="Dashboard request tracking illustration">
+              <rect width="900" height="560" fill="#f7f1ea" />
+              <rect x="30" y="30" width="840" height="500" rx="28" fill="#fff" stroke="#dccfbe" />
+              <text x="62" y="74" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#1f7a4d">Request History</text>
+              <rect x="62" y="126" width="776" height="54" rx="16" fill="#f7fbf8" stroke="#dbeee2" />
+              <circle cx="104" cy="153" r="12" fill="#1f7a4d" />
+              <rect x="130" y="143" width="200" height="12" rx="6" fill="#d6e7db" />
+              <rect x="354" y="143" width="126" height="12" rx="6" fill="#d6e7db" />
+              <rect x="62" y="206" width="776" height="54" rx="16" fill="#fff" stroke="#ebe2d6" />
+              <circle cx="104" cy="233" r="12" fill="#9a6800" />
+              <rect x="130" y="223" width="200" height="12" rx="6" fill="#eadfd3" />
+              <rect x="354" y="223" width="126" height="12" rx="6" fill="#eadfd3" />
+              <rect x="62" y="286" width="776" height="54" rx="16" fill="#f7fbf8" stroke="#dbeee2" />
+              <circle cx="104" cy="313" r="12" fill="#2a5b7a" />
+              <rect x="130" y="303" width="200" height="12" rx="6" fill="#dce6ef" />
+              <rect x="354" y="303" width="126" height="12" rx="6" fill="#dce6ef" />
+            </svg>
+            <figcaption>Dashboard request tracking layout with a visible status history list.</figcaption>
+          </figure>
+        </div>
+
+        <h2>8. Troubleshooting</h2>
+        <ul>
+          <li>If you cannot sign in, verify the email and password on the account.</li>
+          <li>If a password change fails, confirm the current password and new password length.</li>
+          <li>If a document request is missing, confirm that the student number exists in the database.</li>
+          <li>If a CSV row fails, review the header names and required fields.</li>
+          <li>If you are a guest, account-specific information will not be available until you sign in.</li>
+        </ul>
+
+        <div class="footer-note">
+          This manual is intentionally formatted like a compact web page so it can be viewed in a browser or saved as a PDF without additional layout work.
+        </div>
+      </section>
+    </article>
+  </main>
+</body>
+</html>

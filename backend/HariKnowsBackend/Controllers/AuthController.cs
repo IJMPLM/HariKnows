@@ -88,6 +88,41 @@ public sealed class AuthController(IAuthService authService, IConfiguration conf
         return Ok(profile);
     }
 
+    [HttpPost("change-password")]
+    [Authorize]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequestDto request, CancellationToken cancellationToken)
+    {
+        var studentNo = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(studentNo))
+        {
+            return Unauthorized(new { error = "Missing student identity." });
+        }
+
+        var result = await authService.ChangePasswordAsync(studentNo, request.CurrentPassword, request.NewPassword, cancellationToken);
+
+        if (result.NotFound)
+        {
+            return NotFound(new { error = result.Error ?? "Student account not found." });
+        }
+
+        if (result.InvalidCurrentPassword)
+        {
+            return Unauthorized(new { error = result.Error ?? "Current password is incorrect." });
+        }
+
+        if (result.InvalidNewPassword)
+        {
+            return BadRequest(new { error = result.Error ?? "New password is invalid." });
+        }
+
+        if (!result.Success)
+        {
+            return BadRequest(new { error = result.Error ?? "Password update failed." });
+        }
+
+        return Ok(new { success = true });
+    }
+
     private void SetRefreshCookie(string refreshToken, DateTime expiresAtUtc)
     {
         var secureCookie = Request.IsHttps || string.Equals(configuration["Jwt:RequireSecureCookies"], "true", StringComparison.OrdinalIgnoreCase);

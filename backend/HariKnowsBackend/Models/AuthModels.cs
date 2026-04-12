@@ -11,6 +11,8 @@ public sealed class JwtOptions
 
 public sealed record LoginRequestDto(string Email, string Password);
 
+public sealed record ChangePasswordRequestDto(string CurrentPassword, string NewPassword);
+
 public sealed record StudentProfileDto(string StudentNo, string FullName, string CollegeCode, string ProgramCode, string Email);
 
 public sealed record StudentStatusDto(
@@ -33,4 +35,12 @@ public sealed record TokenResponseDto(
     string RefreshToken,
     DateTime RefreshTokenExpiresAtUtc,
     StudentProfileDto User
+);
+
+public sealed record ChangePasswordResult(
+    bool Success,
+    bool NotFound,
+    bool InvalidCurrentPassword,
+    bool InvalidNewPassword,
+    string? Error
 );

@@ -264,7 +264,7 @@ public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegis
 
     public IReadOnlyList<StudentDirectoryEntryDto> SearchStudents(string? query, int limit)
     {
-        var safeLimit = Math.Clamp(limit, 1, 100);
+        var safeLimit = Math.Clamp(limit, 1, 500);
         var normalized = query?.Trim() ?? string.Empty;
 
         var students = dbContext.StudentMasters.AsNoTracking().AsQueryable();
@@ -283,8 +283,25 @@ public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegis
             .ThenBy(s => s.StudentNo)
             .Take(safeLimit)
             .AsEnumerable()
-            .Select(s => new StudentDirectoryEntryDto(s.StudentNo, s.FullName, s.CollegeCode, s.ProgramCode, s.Email))
+            .Select(s => new StudentDirectoryEntryDto(s.StudentNo, s.FullName, s.CollegeCode, s.ProgramCode, s.Email, s.DateCreated, !string.IsNullOrWhiteSpace(s.PasswordHash)))
             .ToList();
+    }
+
+    public StudentDirectoryEntryDto? UpdateStudentCredentials(string studentNo, string email, string passwordHash, DateTime updatedAt)
+    {
+        var normalizedStudentNo = studentNo.Trim();
+        var student = dbContext.StudentMasters.FirstOrDefault(s => s.StudentNo == normalizedStudentNo);
+        if (student is null)
+        {
+            return null;
+        }
+
+        student.Email = email.Trim();
+        student.PasswordHash = passwordHash;
+        student.DateUpdated = updatedAt;
+        dbContext.SaveChanges();
+
+        return new StudentDirectoryEntryDto(student.StudentNo, student.FullName, student.CollegeCode, student.ProgramCode, student.Email, student.DateCreated, !string.IsNullOrWhiteSpace(student.PasswordHash));
     }
 
     public StudentStatusDto? GetStudentStatus(string studentNo)

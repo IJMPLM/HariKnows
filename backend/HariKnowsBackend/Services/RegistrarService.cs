@@ -1,10 +1,12 @@
+using System.Text;
 using HariKnowsBackend.Models;
 using HariKnowsBackend.Repositories;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Data.Sqlite;
 
 namespace HariKnowsBackend.Services;
 
-public sealed class RegistrarService(IRegistrarRepository repository) : IRegistrarService
+public sealed class RegistrarService(IRegistrarRepository repository, IAuthService authService) : IRegistrarService
 {
     private static readonly HashSet<string> TerminalRequestStatuses = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -228,6 +230,109 @@ public sealed class RegistrarService(IRegistrarRepository repository) : IRegistr
         return repository.SearchStudents(query, limit);
     }
 
+    public StudentDirectoryEntryDto? UpdateStudentCredentials(UpsertStudentCredentialsRequestDto request)
+    {
+        if (string.IsNullOrWhiteSpace(request.StudentNo) || string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
+        {
+            throw new ArgumentException("Student number, email, and password are required.");
+        }
+
+        var studentNo = request.StudentNo.Trim();
+        var email = request.Email.Trim().ToLowerInvariant();
+        var passwordHash = authService.HashPassword(request.Password.Trim());
+        var updated = repository.UpdateStudentCredentials(studentNo, email, passwordHash, DateTime.UtcNow);
+
+        if (updated is not null)
+        {
+            repository.WriteActivity($"Student credentials updated: {studentNo}", "Registrar");
+        }
+
+        return updated;
+    }
+
+    public IctoAccountImportResultDto ImportIctoAccounts(IFormFile file, CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length == 0)
+        {
+            throw new ArgumentException("ICTO CSV file is empty.");
+        }
+
+        using var stream = file.OpenReadStream();
+        using var reader = new StreamReader(stream, Encoding.UTF8, true);
+
+        var lines = new List<string>();
+        while (true)
+        {
+            var line = reader.ReadLine();
+            if (line is null)
+            {
+                break;
+            }
+
+            if (!string.IsNullOrWhiteSpace(line))
+            {
+                lines.Add(line);
+            }
+        }
+
+        if (lines.Count < 2)
+        {
+            throw new InvalidOperationException("ICTO CSV must contain a metadata row and a header row.");
+        }
+
+        var delimiter = DetectDelimiter(lines[0]);
+        var headerRow = ParseCsvLine(lines[1], delimiter).Select(NormalizeCsvHeader).ToArray();
+        if (!headerRow.Contains("studentNo", StringComparer.OrdinalIgnoreCase)
+            || !headerRow.Contains("email", StringComparer.OrdinalIgnoreCase)
+            || !headerRow.Contains("password", StringComparer.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("ICTO CSV must include student number, email, and password columns.");
+        }
+
+        var imported = 0;
+        var updated = 0;
+        var skipped = 0;
+        var notFound = 0;
+        var errors = new List<string>();
+
+        for (var lineIndex = 2; lineIndex < lines.Count; lineIndex++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var cells = ParseCsvLine(lines[lineIndex], delimiter);
+            if (IsBlankRow(cells))
+            {
+                skipped++;
+                continue;
+            }
+
+            var payload = MapCsvRow(headerRow, cells);
+            var studentNo = GetValue(payload, "studentNo");
+            var email = GetValue(payload, "email");
+            var password = GetValue(payload, "password");
+
+            if (string.IsNullOrWhiteSpace(studentNo) || string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+            {
+                skipped++;
+                errors.Add($"Row {lineIndex + 1}: studentNo, email, and password are required.");
+                continue;
+            }
+
+            var result = UpdateStudentCredentials(new UpsertStudentCredentialsRequestDto(studentNo, email, password));
+            if (result is null)
+            {
+                notFound++;
+                errors.Add($"Row {lineIndex + 1}: student '{studentNo}' was not found.");
+                continue;
+            }
+
+            imported++;
+            updated++;
+        }
+
+        return new IctoAccountImportResultDto(imported, updated, skipped, notFound, errors);
+    }
+
     public IReadOnlyList<StudentDocumentRequestDto> GetStudentRequests(string? studentNo, string? status, int limit)
     {
         return repository.GetStudentRequests(studentNo, status, limit);
@@ -344,5 +449,107 @@ public sealed class RegistrarService(IRegistrarRepository repository) : IRegistr
         {
             throw new ArgumentException("Scope, category, title, and answer are required.");
         }
+    }
+
+    private static Dictionary<string, string> MapCsvRow(IReadOnlyList<string> headers, IReadOnlyList<string> row)
+    {
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < headers.Count; i++)
+        {
+            var key = headers[i];
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                continue;
+            }
+
+            map[key] = i < row.Count ? row[i].Trim() : string.Empty;
+        }
+
+        return map;
+    }
+
+    private static string NormalizeCsvHeader(string input)
+    {
+        return NormalizeTag(input) switch
+        {
+            "STUDENTNO" or "STUDENTNUMBER" or "STUDENTNO." => "studentNo",
+            "EMAIL" or "EMAILADDRESS" or "PLMEMAIL" => "email",
+            "PASSWORD" or "PASS" or "ICTOPASSWORD" or "STUDENTPASSWORD" => "password",
+            _ => string.Empty
+        };
+    }
+
+    private static char DetectDelimiter(string line)
+    {
+        var comma = line.Count(c => c == ',');
+        var semicolon = line.Count(c => c == ';');
+        var tab = line.Count(c => c == '\t');
+        return tab >= comma && tab >= semicolon ? '\t' : semicolon > comma ? ';' : ',';
+    }
+
+    private static List<string> ParseCsvLine(string line, char delimiter)
+    {
+        var values = new List<string>();
+        var builder = new StringBuilder();
+        var inQuotes = false;
+
+        for (var i = 0; i < line.Length; i++)
+        {
+            var current = line[i];
+
+            if (current == '"')
+            {
+                if (inQuotes && i + 1 < line.Length && line[i + 1] == '"')
+                {
+                    builder.Append('"');
+                    i++;
+                    continue;
+                }
+
+                inQuotes = !inQuotes;
+                continue;
+            }
+
+            if (current == delimiter && !inQuotes)
+            {
+                values.Add(builder.ToString());
+                builder.Clear();
+                continue;
+            }
+
+            builder.Append(current);
+        }
+
+        values.Add(builder.ToString());
+        return values;
+    }
+
+    private static bool IsBlankRow(IReadOnlyList<string> row)
+    {
+        return row.All(cell => string.IsNullOrWhiteSpace(cell));
+    }
+
+    private static string GetValue(IReadOnlyDictionary<string, string> map, string key)
+    {
+        return map.TryGetValue(key, out var value) ? value : string.Empty;
+    }
+
+    private static string NormalizeTag(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var builder = new StringBuilder(value.Length);
+        foreach (var ch in value.Trim().ToUpperInvariant())
+        {
+            if (char.IsLetterOrDigit(ch))
+            {
+                builder.Append(ch);
+            }
+        }
+
+        return builder.ToString();
     }
 }

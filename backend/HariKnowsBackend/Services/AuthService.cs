@@ -81,6 +81,40 @@ public sealed class AuthService(HariKnowsDbContext db, IOptions<JwtOptions> jwtO
         return student is null ? null : ToProfile(student);
     }
 
+    public async Task<ChangePasswordResult> ChangePasswordAsync(string studentNo, string currentPassword, string newPassword, CancellationToken cancellationToken)
+    {
+        var normalizedStudentNo = studentNo.Trim();
+        var normalizedCurrentPassword = currentPassword?.Trim() ?? string.Empty;
+        var normalizedNewPassword = newPassword?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(normalizedStudentNo))
+        {
+            return new ChangePasswordResult(false, true, false, false, "Student account not found.");
+        }
+
+        if (string.IsNullOrWhiteSpace(normalizedCurrentPassword) || string.IsNullOrWhiteSpace(normalizedNewPassword) || normalizedNewPassword.Length < 8)
+        {
+            return new ChangePasswordResult(false, false, false, true, "New password must be at least 8 characters long.");
+        }
+
+        var student = await db.StudentMasters.FirstOrDefaultAsync(s => s.StudentNo == normalizedStudentNo, cancellationToken);
+        if (student is null)
+        {
+            return new ChangePasswordResult(false, true, false, false, "Student account not found.");
+        }
+
+        if (string.IsNullOrWhiteSpace(student.PasswordHash) || !VerifyPassword(normalizedCurrentPassword, student.PasswordHash))
+        {
+            return new ChangePasswordResult(false, false, true, false, "Current password is incorrect.");
+        }
+
+        student.PasswordHash = HashPassword(normalizedNewPassword);
+        student.DateUpdated = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+
+        return new ChangePasswordResult(true, false, false, false, null);
+    }
+
     public string HashPassword(string password)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(password);

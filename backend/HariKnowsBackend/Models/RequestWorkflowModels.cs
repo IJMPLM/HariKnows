@@ -1,6 +1,14 @@
 namespace HariKnowsBackend.Models;
 
-public record StudentDirectoryEntryDto(string StudentNo, string FullName, string CollegeCode, string ProgramCode, string Email);
+public record StudentDirectoryEntryDto(
+    string StudentNo,
+    string FullName,
+    string CollegeCode,
+    string ProgramCode,
+    string Email,
+    DateTime DateCreated,
+    bool HasPassword
+);
 
 public record StudentDocumentRequestDto(
     int Id,
@@ -23,6 +31,10 @@ public record StudentDocumentRequestDto(
 public record CreateStudentDocumentRequestDto(string StudentNo, string DocumentType, int DepartmentId, string Notes);
 
 public record UpdateStudentDocumentStatusDto(string Status, string? HandledBy, string? DisposedReason, string? Notes);
+
+public record UpsertStudentCredentialsRequestDto(string StudentNo, string Email, string Password);
+
+public record IctoAccountImportResultDto(int Imported, int Updated, int Skipped, int NotFound, IReadOnlyList<string> Errors);
 
 public record FaqContextEntryDto(
     int Id,

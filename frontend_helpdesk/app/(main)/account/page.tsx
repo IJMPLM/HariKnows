@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import DesktopSidebar from "../../components/DesktopSidebar";
 import MobileSidebar from "../../components/MobileSidebar";
-import { getCurrentUser, signOut, type StudentProfile } from "../../../lib/auth-client";
+import { changePassword, getCurrentUser, signOut, type StudentProfile } from "../../../lib/auth-client";
 
 export default function AccountPage() {
   const router = useRouter();
@@ -20,6 +20,12 @@ export default function AccountPage() {
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [showLogOutModal, setShowLogOutModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState("");
 
   useEffect(() => {
     const init = async () => {
@@ -39,6 +45,41 @@ export default function AccountPage() {
   const handleLogout = async () => {
     await signOut();
     router.replace("/sign-in");
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
+      setPasswordError("All password fields are required.");
+      setPasswordSuccess("");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setPasswordError("New password must be at least 8 characters long.");
+      setPasswordSuccess("");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New password and confirmation do not match.");
+      setPasswordSuccess("");
+      return;
+    }
+
+    try {
+      setChangingPassword(true);
+      setPasswordError("");
+      await changePassword(currentPassword, newPassword);
+      setPasswordSuccess("Password updated successfully.");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error) {
+      setPasswordSuccess("");
+      setPasswordError(error instanceof Error ? error.message : "Failed to change password.");
+    } finally {
+      setChangingPassword(false);
+    }
   };
 
   return (
@@ -179,6 +220,58 @@ export default function AccountPage() {
             {/* Log Out Card */}
             <section className="bg-white dark:bg-[#18181b] border border-gray-200/80 dark:border-white/10 rounded-3xl p-6 lg:p-8 shadow-sm flex flex-col gap-4 animate-fade-in-up" style={{ animationDelay: "200ms" }}>
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">Account Actions</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Current Password</label>
+                  <input
+                    type="password"
+                    value={currentPassword}
+                    onChange={(event) => setCurrentPassword(event.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#1f1f1f] border border-gray-200 dark:border-white/10 text-sm outline-none focus:ring-2 focus:ring-[#6e3102]/30 dark:focus:ring-[#d4855a]/30"
+                    autoComplete="current-password"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">New Password</label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(event) => setNewPassword(event.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#1f1f1f] border border-gray-200 dark:border-white/10 text-sm outline-none focus:ring-2 focus:ring-[#6e3102]/30 dark:focus:ring-[#d4855a]/30"
+                    autoComplete="new-password"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Confirm New Password</label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#1f1f1f] border border-gray-200 dark:border-white/10 text-sm outline-none focus:ring-2 focus:ring-[#6e3102]/30 dark:focus:ring-[#d4855a]/30"
+                    autoComplete="new-password"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <p className="text-sm text-gray-500 dark:text-gray-400">Use this to update the password tied to your current account. Password recovery is not available here.</p>
+                <button
+                  onClick={() => void handleChangePassword()}
+                  disabled={changingPassword}
+                  className="px-6 py-3 rounded-xl bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212] font-bold text-[0.95rem] hover:bg-[#5a2801] dark:hover:bg-[#e09873] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-[#6e3102]/20 dark:shadow-[#d4855a]/10"
+                >
+                  {changingPassword ? "Updating..." : "Change Password"}
+                </button>
+              </div>
+              {passwordError && (
+                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
+                  {passwordError}
+                </div>
+              )}
+              {passwordSuccess && (
+                <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-200">
+                  {passwordSuccess}
+                </div>
+              )}
               <button
                 onClick={() => setShowLogOutModal(true)}
                 className="w-full px-8 py-3 rounded-xl bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212] font-bold text-[0.95rem] hover:bg-[#5a2801] dark:hover:bg-[#e09873] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-md shadow-[#6e3102]/20 dark:shadow-[#d4855a]/10 flex items-center justify-center gap-2"

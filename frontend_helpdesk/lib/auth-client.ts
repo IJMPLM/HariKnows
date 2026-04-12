@@ -11,6 +11,10 @@ export type StudentProfile = {
   email: string;
 };
 
+type ChangePasswordResponse = {
+  success: boolean;
+};
+
 type AuthResponse = {
   accessToken: string;
   expiresAtUtc: string;
@@ -236,6 +240,24 @@ export async function getCurrentUser(): Promise<StudentProfile | null> {
   }
   sessionUserCache = profile;
   return profile;
+}
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  const response = await authFetch(`${API_BASE}/api/auth/change-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw new Error(payload?.error || "Failed to change password");
+  }
+
+  const payload = (await response.json()) as ChangePasswordResponse;
+  if (!payload.success) {
+    throw new Error("Failed to change password");
+  }
 }
 
 export async function initializeSession(): Promise<StudentProfile | null> {

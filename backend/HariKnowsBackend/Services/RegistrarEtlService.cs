@@ -217,7 +217,7 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
         using var stream = file.OpenReadStream();
         using var reader = new StreamReader(stream, Encoding.UTF8, true);
         var content = await reader.ReadToEndAsync();
-        var entries = ParseFaqCsv(content, file.FileName);
+        var entries = ParseFaqCsv(content);
         if (entries.Count == 0)
         {
             throw new InvalidOperationException("No FAQ entries were found in the CSV file.");
@@ -943,6 +943,9 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
         var row0 = metadata.ToArray();
         var col0 = row0.Length > 0 ? NormalizeTag(row0[0]) : string.Empty;
         var col2 = row0.Length > 2 ? NormalizeTag(row0[2]) : string.Empty;
+        var header = allLines.Count > 1
+            ? ParseCsvLine(allLines[1], delimiter).Select(NormalizeTag).Where(x => !string.IsNullOrWhiteSpace(x)).ToHashSet()
+            : new HashSet<string>();
 
         if (col0 is "OUR" or "AO" or "OSD" or "NSTP" or "ICTO")
         {
@@ -959,18 +962,17 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
 
         if (col2 is "MASTERLIST" or "MASTER")
         {
-            var normalizedHeader = allLines.Count > 1
-                ? ParseCsvLine(allLines[1], delimiter).Select(h => NormalizeTag(h)).ToHashSet()
-                : [];
+            if (header.Contains("EMAIL") && header.Contains("PASSWORD"))
+            {
+                return "technology";
+            }
 
-            if (normalizedHeader.Contains("LASTNAME") || normalizedHeader.Contains("FIRSTNAME"))
+            if (header.Contains("LASTNAME") || header.Contains("FIRSTNAME") || header.Contains("NAME"))
             {
                 return "students";
             }
 
-            if (fileName.Contains("- G", StringComparison.OrdinalIgnoreCase)
-                || allLines.Any(l => l.Contains("STUDENT NO", StringComparison.OrdinalIgnoreCase)
-                                     && l.Contains("GRADE", StringComparison.OrdinalIgnoreCase)))
+            if (header.Contains("STUDENTNO") && header.Contains("GRADE"))
             {
                 return "grades";
             }
@@ -1008,8 +1010,6 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
             ? ParseCsvLine(allLines[1], delimiter).Select(NormalizeTag).Where(x => !string.IsNullOrWhiteSpace(x)).ToHashSet()
             : new HashSet<string>();
 
-        var fileTag = NormalizeTag(fileName);
-
         if (header.Contains("STUDENTNO") && header.Contains("GRADE"))
         {
             return "grades";
@@ -1035,11 +1035,10 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
             return "technology";
         }
 
-        if (fileTag.Contains("THESIS")) return "thesis";
-        if (fileTag.Contains("CURRICULUM")) return "curriculums";
-        if (fileTag.Contains("SYLLAB")) return "syllabi";
-        if (fileTag.Contains("GRADE") || fileTag.Contains("-G") || fileTag.EndsWith("GCSV")) return "grades";
-        if (fileTag.Contains("MASTERLIST") || fileTag.Contains("MASTER")) return "students";
+        if (header.Contains("THESIS")) return "thesis";
+        if (header.Contains("CURRICULUM") || header.Contains("CURRICULA")) return "curriculums";
+        if (header.Contains("SYLLABUS") || header.Contains("SYLLABI")) return "syllabi";
+        if (header.Contains("MASTERLIST") || header.Contains("MASTER")) return "students";
 
         return string.Empty;
     }
@@ -1353,7 +1352,7 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
         }
     }
 
-    private static List<CreateFaqContextEntryDto> ParseFaqCsv(string content, string fileName)
+    private static List<CreateFaqContextEntryDto> ParseFaqCsv(string content)
     {
         var entries = new List<CreateFaqContextEntryDto>();
         var lines = content
@@ -1397,7 +1396,7 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
                 ? category
                 : fields.TryGetValue("section", out var section)
                     ? section
-                    : Path.GetFileNameWithoutExtension(fileName).Contains("consolidated", StringComparison.OrdinalIgnoreCase) ? "context" : "general";
+                    : "general";
 
             var title = fields.TryGetValue("title", out var titleValue)
                 ? titleValue

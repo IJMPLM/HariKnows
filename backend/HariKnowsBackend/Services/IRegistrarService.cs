@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using HariKnowsBackend.Models;
 
 namespace HariKnowsBackend.Services;
@@ -27,6 +28,10 @@ public interface IRegistrarService
     DocumentMoveResult MoveDocument(int documentId, MoveDocumentRequest request);
 
     IReadOnlyList<StudentDirectoryEntryDto> SearchStudents(string? query, int limit);
+
+    StudentDirectoryEntryDto? UpdateStudentCredentials(UpsertStudentCredentialsRequestDto request);
+
+    IctoAccountImportResultDto ImportIctoAccounts(IFormFile file, CancellationToken cancellationToken);
 
     IReadOnlyList<StudentDocumentRequestDto> GetStudentRequests(string? studentNo, string? status, int limit);
 

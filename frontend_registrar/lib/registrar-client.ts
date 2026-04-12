@@ -20,6 +20,8 @@ export type StudentDirectoryEntry = {
   collegeCode: string;
   programCode: string;
   email: string;
+  dateCreated: string;
+  hasPassword: boolean;
 };
 
 export type StudentDocumentRequest = {
@@ -143,6 +145,14 @@ export type FaqImportResult = {
   skipped: number;
 };
 
+export type IctoAccountImportResult = {
+  imported: number;
+  updated: number;
+  skipped: number;
+  notFound: number;
+  errors: string[];
+};
+
 let registrarCollegeTabsCache: CollegeTab[] | null = null;
 let registrarCollegeTabsPromise: Promise<CollegeTab[]> | null = null;
 
@@ -253,6 +263,16 @@ export async function searchStudents(query: string, limit = 20): Promise<Student
 
   const response = await fetch(url.toString());
   return (await parseJsonOrThrow(response)) as StudentDirectoryEntry[];
+}
+
+export async function updateStudentCredentials(studentNo: string, payload: { email: string; password: string }): Promise<StudentDirectoryEntry> {
+  const response = await fetch(`${API_BASE}/api/registrar/students/${encodeURIComponent(studentNo)}/credentials`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ studentNo, ...payload }),
+  });
+
+  return (await parseJsonOrThrow(response)) as StudentDirectoryEntry;
 }
 
 export async function getRegistrarRequests(studentNo?: string, status?: string, limit = 50): Promise<StudentDocumentRequest[]> {
@@ -399,6 +419,18 @@ export async function importFaqCsvFile(file: File): Promise<FaqImportResult> {
   });
 
   return (await parseJsonOrThrow(response)) as FaqImportResult;
+}
+
+export async function importIctoAccounts(file: File): Promise<IctoAccountImportResult> {
+  const form = new FormData();
+  form.append("file", file);
+
+  const response = await fetch(`${API_BASE}/api/registrar/students/import-icto`, {
+    method: "POST",
+    body: form,
+  });
+
+  return (await parseJsonOrThrow(response)) as IctoAccountImportResult;
 }
 
 export async function clearRegistrarEtlStaging(batchId: string): Promise<void> {

@@ -10,5 +10,7 @@ public interface IAuthService
 
     Task<StudentProfileDto?> GetProfileAsync(string studentNo, CancellationToken cancellationToken);
 
+    Task<ChangePasswordResult> ChangePasswordAsync(string studentNo, string currentPassword, string newPassword, CancellationToken cancellationToken);
+
     string HashPassword(string password);
 }

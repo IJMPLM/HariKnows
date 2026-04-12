@@ -1,295 +1,275 @@
 "use client";
 
-import { useState, useRef, useMemo, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  Users,
-  Upload,
-  Search,
-  X,
-  Eye,
-  EyeOff,
+  AlertCircle,
+  CheckCircle2,
   CloudUpload,
   FileSpreadsheet,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  SlidersHorizontal,
+  Pencil,
+  Search,
+  Upload,
+  Users,
+  X,
 } from "lucide-react";
+import {
+  importIctoAccounts,
+  searchStudents,
+  updateStudentCredentials,
+  type StudentDirectoryEntry,
+} from "../../../lib/registrar-client";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-type College = "CA" | "CISTM" | "CN";
-
-interface Student {
+type SortKey = "newest" | "oldest" | "name-asc" | "name-desc";
+type AccountForm = {
   studentNo: string;
-  lastName: string;
-  firstName: string;
-  middleName: string;
   email: string;
-  college: College;
-  dateCreated: string;
-}
+  password: string;
+};
 
-// ── Sample data ───────────────────────────────────────────────────────────────
+const PAGE_SIZE = 8;
 
-const SAMPLE_STUDENTS: Student[] = [
-  { studentNo: "2021-10001", lastName: "dela Cruz",  firstName: "Maria",     middleName: "Santos",    email: "maria.delacruz@university.edu",       college: "CA",    dateCreated: "2024-01-15" },
-  { studentNo: "2021-10002", lastName: "Reyes",      firstName: "Juan",      middleName: "Miguel",    email: "juan.reyes@university.edu",            college: "CISTM", dateCreated: "2024-01-16" },
-  { studentNo: "2021-10003", lastName: "Santos",     firstName: "Ana",       middleName: "Gabrielle", email: "ana.santos@university.edu",            college: "CN",    dateCreated: "2024-01-17" },
-  { studentNo: "2022-20001", lastName: "Lim",        firstName: "Patrick",   middleName: "Jose",      email: "patrick.lim@university.edu",           college: "CISTM", dateCreated: "2024-02-01" },
-  { studentNo: "2022-20002", lastName: "Garcia",     firstName: "Sophia",    middleName: "Nicole",    email: "sophia.garcia@university.edu",         college: "CA",    dateCreated: "2024-02-05" },
-  { studentNo: "2022-20003", lastName: "Torres",     firstName: "Rafael",    middleName: "Antonio",   email: "rafael.torres@university.edu",         college: "CN",    dateCreated: "2024-02-10" },
-  { studentNo: "2023-30001", lastName: "Aquino",     firstName: "Isabella",  middleName: "Marie",     email: "isabella.aquino@university.edu",       college: "CA",    dateCreated: "2024-03-01" },
-  { studentNo: "2023-30002", lastName: "Mendoza",    firstName: "Carlos",    middleName: "Andrei",    email: "carlos.mendoza@university.edu",        college: "CISTM", dateCreated: "2024-03-03" },
-  { studentNo: "2023-30003", lastName: "Villanueva", firstName: "Francesca", middleName: "Joy",       email: "francesca.villanueva@university.edu",  college: "CN",    dateCreated: "2024-03-07" },
-  { studentNo: "2024-40001", lastName: "Castillo",   firstName: "Nathan",    middleName: "Kyle",      email: "nathan.castillo@university.edu",       college: "CA",    dateCreated: "2024-06-15" },
-  { studentNo: "2024-40002", lastName: "Fernandez",  firstName: "Camille",   middleName: "Rose",      email: "camille.fernandez@university.edu",     college: "CISTM", dateCreated: "2024-06-16" },
-  { studentNo: "2024-40003", lastName: "Ramos",      firstName: "Lorenzo",   middleName: "David",     email: "lorenzo.ramos@university.edu",         college: "CN",    dateCreated: "2024-06-20" },
-];
-
-const COLLEGES: { value: College | "All"; label: string }[] = [
-  { value: "All",   label: "All"   },
-  { value: "CA",    label: "CA"    },
-  { value: "CISTM", label: "CISTM" },
-  { value: "CN",    label: "CN"    },
-];
-
-const SORT_OPTIONS = [
-  { value: "newest", label: "Newest first" },
-  { value: "oldest", label: "Oldest first" },
-  { value: "a-z",    label: "Name A → Z"   },
-  { value: "z-a",    label: "Name Z → A"   },
-];
-
-const ITEMS_PER_PAGE = 8;
+const EMPTY_FORM: AccountForm = {
+  studentNo: "",
+  email: "",
+  password: "",
+};
 
 function formatDate(value: string) {
-  return new Date(value).toLocaleDateString([], {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "-";
+  }
+
+  return parsed.toLocaleDateString([], {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
 }
 
-function fullName(s: Student) {
-  const middle = s.middleName.trim() ? ` ${s.middleName.trim()}` : "";
-  return `${s.lastName}, ${s.firstName}${middle}`;
+function fullName(student: StudentDirectoryEntry) {
+  return student.fullName || student.studentNo;
 }
 
-// ── Empty form ────────────────────────────────────────────────────────────────
-
-const EMPTY_FORM = {
-  studentNo:  "",
-  lastName:   "",
-  firstName:  "",
-  middleName: "",
-  email:      "",
-  password:   "",
-  college:    "" as College | "",
-};
-
-// ── Component ─────────────────────────────────────────────────────────────────
-
 export default function StudentPage() {
-  const [students] = useState<Student[]>(SAMPLE_STUDENTS);
+  const [students, setStudents] = useState<StudentDirectoryEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeCollege, setActiveCollege] = useState("All");
+  const [sortKey, setSortKey] = useState<SortKey>("newest");
+  const [currentPage, setCurrentPage] = useState(1);
 
-  // table controls
-  const [activeCollege, setActiveCollege] = useState<College | "All">("All");
-  const [searchQuery,   setSearchQuery]   = useState("");
-  const [sortFilter,    setSortFilter]    = useState("newest");
-  const [showSortMenu,  setShowSortMenu]  = useState(false);
-  const [currentPage,   setCurrentPage]   = useState(1);
-  const sortMenuRef = useRef<HTMLDivElement>(null);
-
-  // modals
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState("");
+  const [uploadError, setUploadError] = useState("");
 
-  // upload state
-  const [dragActive,    setDragActive]    = useState(false);
-  const [uploadedFile,  setUploadedFile]  = useState<File | null>(null);
-  const [uploadSuccess, setUploadSuccess] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [form, setForm] = useState<AccountForm>(EMPTY_FORM);
+  const [showPassword, setShowPassword] = useState(false);
+  const [savingAccount, setSavingAccount] = useState(false);
+  const [accountMessage, setAccountMessage] = useState("");
+  const [accountError, setAccountError] = useState("");
 
-  // create form state
-  const [form,          setForm]          = useState(EMPTY_FORM);
-  const [showPassword,  setShowPassword]  = useState(false);
-  const [creating,      setCreating]      = useState(false);
-  const [createSuccess, setCreateSuccess] = useState(false);
+  const loadAccounts = async () => {
+    try {
+      setIsLoading(true);
+      setLoadError("");
+      const rows = await searchStudents("", 500);
+      setStudents(rows);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Failed to load student accounts.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  // close sort menu on outside click
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (sortMenuRef.current && !sortMenuRef.current.contains(e.target as Node))
-        setShowSortMenu(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    void loadAccounts();
   }, []);
 
-  // ── College counts ───────────────────────────────────────────────────────
-
-  const collegeCounts = useMemo(
-    () => ({
-      All:   students.length,
-      CA:    students.filter((s) => s.college === "CA").length,
-      CISTM: students.filter((s) => s.college === "CISTM").length,
-      CN:    students.filter((s) => s.college === "CN").length,
-    }),
-    [students],
-  );
-
-  // ── Filtering / sorting ──────────────────────────────────────────────────
+  const collegeOptions = useMemo(() => {
+    const values = Array.from(new Set(students.map((student) => student.collegeCode).filter(Boolean))).sort();
+    return ["All", ...values];
+  }, [students]);
 
   const filteredStudents = useMemo(() => {
-    let result = [...students];
+    let next = [...students];
 
-    if (activeCollege !== "All")
-      result = result.filter((s) => s.college === activeCollege);
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (s) =>
-          s.studentNo.toLowerCase().includes(q) ||
-          fullName(s).toLowerCase().includes(q) ||
-          s.email.toLowerCase().includes(q),
-      );
+    if (activeCollege !== "All") {
+      next = next.filter((student) => student.collegeCode === activeCollege);
     }
 
-    result.sort((a, b) => {
-      if (sortFilter === "newest")
-        return new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime();
-      if (sortFilter === "oldest")
-        return new Date(a.dateCreated).getTime() - new Date(b.dateCreated).getTime();
-      if (sortFilter === "a-z")
-        return fullName(a).localeCompare(fullName(b));
-      if (sortFilter === "z-a")
-        return fullName(b).localeCompare(fullName(a));
-      return 0;
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
+      next = next.filter((student) => {
+        return (
+          student.studentNo.toLowerCase().includes(query) ||
+          student.fullName.toLowerCase().includes(query) ||
+          student.email.toLowerCase().includes(query) ||
+          student.programCode.toLowerCase().includes(query)
+        );
+      });
+    }
+
+    next.sort((left, right) => {
+      if (sortKey === "newest") {
+        return new Date(right.dateCreated).getTime() - new Date(left.dateCreated).getTime();
+      }
+
+      if (sortKey === "oldest") {
+        return new Date(left.dateCreated).getTime() - new Date(right.dateCreated).getTime();
+      }
+
+      const leftName = fullName(left);
+      const rightName = fullName(right);
+      return sortKey === "name-desc" ? rightName.localeCompare(leftName) : leftName.localeCompare(rightName);
     });
 
-    return result;
-  }, [students, activeCollege, searchQuery, sortFilter]);
+    return next;
+  }, [activeCollege, searchQuery, sortKey, students]);
 
-  const totalPages        = Math.max(1, Math.ceil(filteredStudents.length / ITEMS_PER_PAGE));
-  const paginatedStudents = filteredStudents.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE,
-  );
+  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / PAGE_SIZE));
+  const paginatedStudents = filteredStudents.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  const resetPage = () => setCurrentPage(1);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, activeCollege, sortKey]);
 
-  // ── Upload handlers ──────────────────────────────────────────────────────
-
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(e.type === "dragenter" || e.type === "dragover");
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file?.name.endsWith(".csv")) setUploadedFile(file);
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file?.name.endsWith(".csv")) setUploadedFile(file);
-  };
-
-  const handleUploadConfirm = () => {
-    if (!uploadedFile) return;
-    setUploadSuccess(true);
-    setTimeout(() => {
-      setUploadSuccess(false);
-      setUploadedFile(null);
-      setShowUploadModal(false);
-    }, 1800);
-  };
-
-  const closeUploadModal = () => {
-    setShowUploadModal(false);
-    setUploadedFile(null);
-    setUploadSuccess(false);
-    setDragActive(false);
-  };
-
-  // ── Create account handlers ──────────────────────────────────────────────
-
-  const handleCreate = () => {
-    if (!isFormValid) return;
-    setCreating(true);
-    setTimeout(() => {
-      setCreating(false);
-      setCreateSuccess(true);
-      setTimeout(() => {
-        setCreateSuccess(false);
-        setShowCreateModal(false);
-        setForm(EMPTY_FORM);
-        setShowPassword(false);
-      }, 1500);
-    }, 1000);
+  const openCreateModal = (student?: StudentDirectoryEntry) => {
+    setShowCreateModal(true);
+    setAccountError("");
+    setAccountMessage("");
+    setShowPassword(false);
+    setForm(
+      student
+        ? {
+            studentNo: student.studentNo,
+            email: student.email,
+            password: "",
+          }
+        : EMPTY_FORM,
+    );
   };
 
   const closeCreateModal = () => {
     setShowCreateModal(false);
     setForm(EMPTY_FORM);
     setShowPassword(false);
-    setCreating(false);
-    setCreateSuccess(false);
+    setAccountError("");
+    setAccountMessage("");
   };
 
-  const isFormValid =
-    form.studentNo.trim()  !== "" &&
-    form.lastName.trim()   !== "" &&
-    form.firstName.trim()  !== "" &&
-    form.email.trim()      !== "" &&
-    form.password.trim()   !== "" &&
-    form.college           !== "";
+  const handleSubmitAccount = async () => {
+    if (!form.studentNo.trim() || !form.email.trim() || !form.password.trim()) {
+      setAccountError("Student number, email, and password are required.");
+      setAccountMessage("");
+      return;
+    }
 
-  const currentSortLabel =
-    SORT_OPTIONS.find((o) => o.value === sortFilter)?.label ?? "Sort";
+    try {
+      setSavingAccount(true);
+      setAccountError("");
+      setAccountMessage("");
+      await updateStudentCredentials(form.studentNo.trim(), {
+        email: form.email.trim(),
+        password: form.password,
+      });
+      setAccountMessage(`Credentials updated for ${form.studentNo.trim()}.`);
+      await loadAccounts();
+      setForm((previous) => ({ ...previous, password: "" }));
+    } catch (error) {
+      setAccountError(error instanceof Error ? error.message : "Failed to save student credentials.");
+    } finally {
+      setSavingAccount(false);
+    }
+  };
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  const handleFilePick = (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) {
+      return;
+    }
+
+    const file = fileList[0];
+    if (!file.name.toLowerCase().endsWith(".csv")) {
+      setUploadError("Only CSV files are accepted.");
+      setUploadMessage("");
+      return;
+    }
+
+    setUploadedFile(file);
+    setUploadError("");
+    setUploadMessage("");
+  };
+
+  const handleUpload = async () => {
+    if (!uploadedFile) {
+      setUploadError("Choose an ICTO CSV file first.");
+      return;
+    }
+
+    try {
+      setUploading(true);
+      setUploadError("");
+      setUploadMessage("");
+      const summary = await importIctoAccounts(uploadedFile);
+      setUploadMessage(
+        `Imported ${summary.imported}, updated ${summary.updated}, skipped ${summary.skipped}, not found ${summary.notFound}.`,
+      );
+      if (summary.errors.length > 0) {
+        setUploadMessage((previous) => `${previous} ${summary.errors.slice(0, 3).join(" ")}`);
+      }
+      setUploadedFile(null);
+      await loadAccounts();
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Failed to import ICTO CSV.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const cancelUpload = () => {
+    setShowUploadModal(false);
+    setUploadedFile(null);
+    setUploadError("");
+    setUploadMessage("");
+  };
+
+  const currentRangeStart = filteredStudents.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const currentRangeEnd = Math.min(currentPage * PAGE_SIZE, filteredStudents.length);
 
   return (
     <div className="relative min-h-screen text-gray-900 dark:text-gray-100 overflow-hidden">
-      <div className="pt-16 lg:pt-0 px-5 lg:px-8 py-6 space-y-6">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(110,49,2,0.12),_transparent_35%),radial-gradient(circle_at_bottom_right,_rgba(212,133,90,0.12),_transparent_30%)] pointer-events-none" />
+      <div className="pt-16 lg:pt-0 px-5 lg:px-8 py-6 space-y-6 relative z-10">
         <div className="max-w-7xl mx-auto space-y-6">
-
-          {/* ── Page header ── */}
-          <section
-            className="rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#18181b] p-5 sm:p-6"
-            aria-labelledby="page-heading"
-          >
+          <section className="rounded-3xl border border-gray-200 dark:border-white/10 bg-white/95 dark:bg-[#18181b]/95 backdrop-blur p-5 sm:p-6 shadow-sm" aria-labelledby="page-heading">
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div>
                 <p className="text-xs uppercase tracking-[0.24em] font-bold text-[#6e3102] dark:text-[#d4855a] flex items-center gap-2">
                   <Users size={13} aria-hidden="true" /> Student account management
                 </p>
-                <h1
-                  id="page-heading"
-                  className="text-3xl font-extrabold tracking-tight"
-                >
+                <h1 id="page-heading" className="text-3xl font-extrabold tracking-tight">
                   Student Accounts
                 </h1>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Manage existing student credentials, upload ICTO CSV updates, and review the live account list from the database.
+                </p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <button
                   onClick={() => setShowUploadModal(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#18181b] text-sm font-semibold hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
-                  aria-label="Upload CSV file"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#18181b] text-sm font-semibold hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                  aria-label="Upload ICTO CSV file"
                 >
                   <Upload size={16} aria-hidden="true" /> Upload CSV
                 </button>
                 <button
-                  onClick={() => setShowCreateModal(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212] text-sm font-semibold hover:opacity-90 transition-opacity"
-                  aria-label="Create a new student account"
+                  onClick={() => openCreateModal()}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212] text-sm font-semibold hover:opacity-90 transition-opacity"
+                  aria-label="Create or overwrite student credentials"
                 >
                   Create Account
                 </button>
@@ -297,55 +277,61 @@ export default function StudentPage() {
             </div>
           </section>
 
-          {/* ── Table card ── */}
-          <section
-            className="rounded-3xl bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10 shadow-sm p-5 space-y-4"
-            aria-label="Student accounts table"
-          >
-            {/* Tabs + search + filter — single row */}
+          {(loadError || uploadMessage || uploadError || accountMessage || accountError) && (
+            <div className="space-y-3">
+              {loadError && (
+                <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4" />
+                  {loadError}
+                </div>
+              )}
+              {uploadMessage && (
+                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  {uploadMessage}
+                </div>
+              )}
+              {uploadError && (
+                <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4" />
+                  {uploadError}
+                </div>
+              )}
+              {accountMessage && (
+                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  {accountMessage}
+                </div>
+              )}
+              {accountError && (
+                <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4" />
+                  {accountError}
+                </div>
+              )}
+            </div>
+          )}
+
+          <section className="rounded-3xl bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10 shadow-sm p-5 space-y-4" aria-label="Student accounts table">
             <div className="flex items-center gap-3 flex-wrap border-b border-gray-100 dark:border-white/5 pb-4">
-              {/* College tabs */}
-              <div
-                className="flex items-center gap-1 bg-gray-100 dark:bg-[#101014] rounded-2xl p-1 shrink-0"
-                role="tablist"
-                aria-label="Filter by college"
-              >
-                {COLLEGES.map((col) => (
+              <div className="flex items-center gap-1 bg-gray-100 dark:bg-[#101014] rounded-2xl p-1 shrink-0 overflow-x-auto">
+                {collegeOptions.map((college) => (
                   <button
-                    key={col.value}
-                    role="tab"
-                    aria-selected={activeCollege === col.value}
-                    onClick={() => {
-                      setActiveCollege(col.value as College | "All");
-                      resetPage();
-                    }}
+                    key={college}
+                    onClick={() => setActiveCollege(college)}
                     className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors whitespace-nowrap ${
-                      activeCollege === col.value
+                      activeCollege === college
                         ? "bg-white dark:bg-[#18181b] text-[#6e3102] dark:text-[#d4855a] shadow-sm"
                         : "text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
                     }`}
                   >
-                    {col.label}{" "}
-                    <span
-                      className={
-                        activeCollege === col.value
-                          ? "text-[#6e3102]/60 dark:text-[#d4855a]/60"
-                          : "text-gray-400"
-                      }
-                    >
-                      ({collegeCounts[col.value as keyof typeof collegeCounts]})
-                    </span>
+                    {college}
                   </button>
                 ))}
               </div>
 
-              {/* Search bar */}
-              <div className="relative flex-1 min-w-[180px]">
-                <Search
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                  size={16}
-                  aria-hidden="true"
-                />
+              <div className="relative flex-1 min-w-[220px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} aria-hidden="true" />
                 <label htmlFor="student-search" className="sr-only">
                   Search students
                 </label>
@@ -353,97 +339,77 @@ export default function StudentPage() {
                   id="student-search"
                   type="search"
                   value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    resetPage();
-                  }}
-                  placeholder="Search by name, student no., or email…"
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search by name, student no., email, or program..."
                   className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#101014] text-sm focus:outline-none focus:ring-2 focus:ring-[#6e3102]/40 dark:focus:ring-[#d4855a]/40"
                 />
               </div>
 
-              {/* Filter / sort icon button */}
-              <div className="relative shrink-0" ref={sortMenuRef}>
-                <button
-                  onClick={() => setShowSortMenu((v) => !v)}
-                  aria-haspopup="listbox"
-                  aria-expanded={showSortMenu}
-                  aria-label={`Sort options — ${currentSortLabel}`}
-                  className={`inline-flex items-center justify-center w-10 h-10 rounded-2xl border transition-colors ${
-                    showSortMenu
-                      ? "border-[#6e3102] dark:border-[#d4855a] bg-[#6e3102]/[0.07] dark:bg-[#d4855a]/10 text-[#6e3102] dark:text-[#d4855a]"
-                      : "border-gray-200 dark:border-white/10 bg-white dark:bg-[#101014] text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5"
-                  }`}
+              <div className="shrink-0">
+                <select
+                  value={sortKey}
+                  onChange={(event) => setSortKey(event.target.value as SortKey)}
+                  className="px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#101014] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#6e3102]/40 dark:focus:ring-[#d4855a]/40"
                 >
-                  <SlidersHorizontal size={16} aria-hidden="true" />
-                </button>
-
-                {showSortMenu && (
-                  <div
-                    className="absolute right-0 mt-2 w-44 rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#18181b] shadow-xl z-20 py-1.5 overflow-hidden"
-                    role="listbox"
-                    aria-label="Sort by"
-                  >
-                    {SORT_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.value}
-                        role="option"
-                        aria-selected={sortFilter === opt.value}
-                        onClick={() => {
-                          setSortFilter(opt.value);
-                          setShowSortMenu(false);
-                          resetPage();
-                        }}
-                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-                          sortFilter === opt.value
-                            ? "bg-[#6e3102]/[0.08] dark:bg-[#d4855a]/10 text-[#6e3102] dark:text-[#d4855a] font-semibold"
-                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5"
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="name-asc">Name A - Z</option>
+                  <option value="name-desc">Name Z - A</option>
+                </select>
               </div>
             </div>
 
-            {/* Table */}
             <div className="overflow-x-auto" role="region" aria-label="Student accounts data">
-              <table className="w-full min-w-[640px]">
+              <table className="w-full min-w-[760px]">
                 <thead>
                   <tr className="text-left text-xs uppercase tracking-[0.2em] text-gray-500 border-b border-gray-200 dark:border-white/10">
                     <th scope="col" className="py-3 pr-4 font-semibold">Student No.</th>
                     <th scope="col" className="py-3 pr-4 font-semibold">Name</th>
                     <th scope="col" className="py-3 pr-4 font-semibold">Email</th>
-                    <th scope="col" className="py-3 pr-4 font-semibold">Date Created</th>
+                    <th scope="col" className="py-3 pr-4 font-semibold">Program</th>
+                    <th scope="col" className="py-3 pr-4 font-semibold">Created</th>
+                    <th scope="col" className="py-3 pr-4 font-semibold">Password</th>
+                    <th scope="col" className="py-3 pr-4 font-semibold">Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedStudents.length === 0 ? (
+                  {isLoading ? (
                     <tr>
-                      <td colSpan={4} className="py-16 text-center text-gray-400 text-sm">
+                      <td colSpan={7} className="py-16 text-center text-gray-400 text-sm">
+                        Loading student accounts...
+                      </td>
+                    </tr>
+                  ) : paginatedStudents.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-16 text-center text-gray-400 text-sm">
                         No students found.
                       </td>
                     </tr>
                   ) : (
                     paginatedStudents.map((student) => (
-                      <tr
-                        key={student.studentNo}
-                        className="border-b border-gray-100 dark:border-white/5 hover:bg-gray-50/60 dark:hover:bg-white/[0.02] transition-colors align-middle"
-                      >
+                      <tr key={student.studentNo} className="border-b border-gray-100 dark:border-white/5 hover:bg-gray-50/60 dark:hover:bg-white/[0.02] transition-colors align-middle">
                         <td className="py-4 pr-4 font-mono text-sm font-medium text-[#6e3102] dark:text-[#d4855a]">
                           {student.studentNo}
                         </td>
                         <td className="py-4 pr-4">
                           <div className="font-semibold text-sm">{fullName(student)}</div>
-                          <div className="text-xs text-gray-400 mt-0.5">{student.college}</div>
+                          <div className="text-xs text-gray-400 mt-0.5">{student.collegeCode}</div>
                         </td>
-                        <td className="py-4 pr-4 text-sm text-gray-600 dark:text-gray-400">
-                          {student.email}
+                        <td className="py-4 pr-4 text-sm text-gray-600 dark:text-gray-400">{student.email}</td>
+                        <td className="py-4 pr-4 text-sm text-gray-600 dark:text-gray-400">{student.programCode}</td>
+                        <td className="py-4 pr-4 text-sm text-gray-500 whitespace-nowrap">{formatDate(student.dateCreated)}</td>
+                        <td className="py-4 pr-4 text-sm">
+                          <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${student.hasPassword ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-amber-500/10 text-amber-700 dark:text-amber-300"}`}>
+                            {student.hasPassword ? "Configured" : "Missing"}
+                          </span>
                         </td>
-                        <td className="py-4 pr-4 text-sm text-gray-500 whitespace-nowrap">
-                          {formatDate(student.dateCreated)}
+                        <td className="py-4 pr-4 text-sm">
+                          <button
+                            onClick={() => openCreateModal(student)}
+                            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                          >
+                            <Pencil size={14} aria-hidden="true" /> Edit
+                          </button>
                         </td>
                       </tr>
                     ))
@@ -452,444 +418,208 @@ export default function StudentPage() {
               </table>
             </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div
-                className="flex items-center justify-between gap-4 pt-2 flex-wrap"
-                aria-label="Pagination"
-              >
+            {!isLoading && totalPages > 1 && (
+              <div className="flex items-center justify-between gap-4 pt-2 flex-wrap" aria-label="Pagination">
                 <p className="text-xs text-gray-500">
-                  Showing{" "}
-                  <span className="font-semibold text-gray-800 dark:text-gray-200">
-                    {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
-                    {Math.min(currentPage * ITEMS_PER_PAGE, filteredStudents.length)}
-                  </span>{" "}
-                  of{" "}
-                  <span className="font-semibold text-gray-800 dark:text-gray-200">
-                    {filteredStudents.length}
-                  </span>{" "}
-                  students
+                  Showing <span className="font-semibold text-gray-800 dark:text-gray-200">{currentRangeStart}-{currentRangeEnd}</span> of <span className="font-semibold text-gray-800 dark:text-gray-200">{filteredStudents.length}</span> students
                 </p>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                     disabled={currentPage === 1}
-                    aria-label="Previous page"
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-white/10 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
                   >
-                    <ChevronLeft size={15} aria-hidden="true" /> Prev
+                    Prev
                   </button>
-
-                  {Array.from({ length: totalPages }, (_, i) => i + 1)
-                    .filter(
-                      (p) =>
-                        p === 1 ||
-                        p === totalPages ||
-                        Math.abs(p - currentPage) <= 1,
-                    )
-                    .reduce<(number | "…")[]>((acc, p, idx, arr) => {
-                      if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1)
-                        acc.push("…");
-                      acc.push(p);
-                      return acc;
-                    }, [])
-                    .map((item, idx) =>
-                      item === "…" ? (
-                        <span
-                          key={`ellipsis-${idx}`}
-                          className="px-1 text-gray-400 text-sm"
-                        >
-                          …
-                        </span>
-                      ) : (
-                        <button
-                          key={item}
-                          onClick={() => setCurrentPage(item as number)}
-                          aria-label={`Page ${item}`}
-                          aria-current={currentPage === item ? "page" : undefined}
-                          className={`w-9 h-9 rounded-xl text-sm font-semibold transition-colors ${
-                            currentPage === item
-                              ? "bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212]"
-                              : "border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5"
-                          }`}
-                        >
-                          {item}
-                        </button>
-                      ),
-                    )}
-
+                  <span className="px-2 text-sm text-gray-500">Page {currentPage} of {totalPages}</span>
                   <button
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
                     disabled={currentPage === totalPages}
-                    aria-label="Next page"
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-white/10 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
                   >
-                    Next <ChevronRight size={15} aria-hidden="true" />
+                    Next
                   </button>
                 </div>
               </div>
             )}
           </section>
-
         </div>
       </div>
 
-      {/* ════════════════════ Upload CSV Modal ════════════════════ */}
       {showUploadModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="upload-modal-title"
-        >
-          <div
-            className="absolute inset-0 bg-black/45"
-            onClick={closeUploadModal}
-            aria-hidden="true"
-          />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="upload-modal-title">
+          <div className="absolute inset-0 bg-black/45" onClick={cancelUpload} aria-hidden="true" />
           <div className="relative w-full max-w-lg rounded-3xl bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10 shadow-2xl p-6 space-y-5">
-
-            {/* Header */}
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-gray-500 font-semibold">
-                  Bulk import
-                </p>
-                <h2 id="upload-modal-title" className="text-xl font-extrabold">
-                  Upload Student CSV
-                </h2>
+                <p className="text-xs uppercase tracking-[0.2em] text-gray-500 font-semibold">Bulk import</p>
+                <h2 id="upload-modal-title" className="text-xl font-extrabold">Upload ICTO CSV</h2>
               </div>
-              <button
-                onClick={closeUploadModal}
-                className="p-2 rounded-xl bg-gray-100 dark:bg-[#242428] hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
-                aria-label="Close upload modal"
-              >
+              <button onClick={cancelUpload} className="p-2 rounded-xl bg-gray-100 dark:bg-[#242428] hover:bg-gray-200 dark:hover:bg-white/10 transition-colors" aria-label="Close upload modal">
                 <X size={16} aria-hidden="true" />
               </button>
             </div>
 
-            {/* Drag-and-drop zone */}
             <div
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault();
+                handleFilePick(event.dataTransfer.files);
+              }}
+              onClick={() => document.getElementById("icto-file")?.click()}
               role="button"
               tabIndex={0}
-              aria-label="Drag and drop a CSV file or click to browse"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click();
-              }}
-              className={`relative flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-10 cursor-pointer transition-colors ${
-                dragActive
-                  ? "border-[#6e3102] dark:border-[#d4855a] bg-[#6e3102]/5 dark:bg-[#d4855a]/10"
-                  : uploadedFile
-                  ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-900/10"
-                  : "border-gray-300 dark:border-white/20 hover:border-[#6e3102]/50 dark:hover:border-[#d4855a]/50 bg-gray-50 dark:bg-[#101014]"
-              }`}
+              aria-label="Drag and drop an ICTO CSV file or click to browse"
+              className="relative flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-10 cursor-pointer transition-colors border-gray-300 dark:border-white/20 hover:border-[#6e3102]/50 dark:hover:border-[#d4855a]/50 bg-gray-50 dark:bg-[#101014]"
             >
               <input
-                ref={fileInputRef}
+                id="icto-file"
                 type="file"
                 accept=".csv"
-                onChange={handleFileChange}
+                onChange={(event) => handleFilePick(event.target.files)}
                 className="sr-only"
-                aria-hidden="true"
-                tabIndex={-1}
               />
               {uploadedFile ? (
                 <>
                   <FileSpreadsheet size={36} className="text-emerald-500" aria-hidden="true" />
                   <div className="text-center">
-                    <p className="font-semibold text-emerald-700 dark:text-emerald-400">
-                      {uploadedFile.name}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {(uploadedFile.size / 1024).toFixed(1)} KB — click to replace
-                    </p>
+                    <p className="font-semibold text-emerald-700 dark:text-emerald-400">{uploadedFile.name}</p>
+                    <p className="text-xs text-gray-500 mt-1">{(uploadedFile.size / 1024).toFixed(1)} KB</p>
                   </div>
                 </>
               ) : (
                 <>
-                  <CloudUpload
-                    size={36}
-                    className={`transition-colors ${
-                      dragActive ? "text-[#6e3102] dark:text-[#d4855a]" : "text-gray-400"
-                    }`}
-                    aria-hidden="true"
-                  />
+                  <CloudUpload size={36} className="text-gray-400" aria-hidden="true" />
                   <div className="text-center">
-                    <p className="font-semibold text-sm">
-                      {dragActive ? "Drop your file here" : "Drag & drop your CSV file"}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      or{" "}
-                      <span className="text-[#6e3102] dark:text-[#d4855a] font-semibold underline underline-offset-2">
-                        browse to upload
-                      </span>
-                    </p>
+                    <p className="font-semibold text-sm">Drop the ICTO CSV here</p>
+                    <p className="text-xs text-gray-400 mt-1">Headers should include student number, email, and password.</p>
                   </div>
                 </>
               )}
             </div>
 
-            <p className="text-xs text-gray-400 text-center">
-              Only <span className="font-semibold">.csv</span> files are accepted. Expected
-              columns:{" "}
-              <span className="font-semibold">
-                student_no, last_name, first_name, middle_name, email, college, password
-              </span>.
-            </p>
+            {uploadError && (
+              <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
+                {uploadError}
+              </div>
+            )}
 
-            {/* Actions */}
+            {uploadMessage && (
+              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-200 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4" />
+                {uploadMessage}
+              </div>
+            )}
+
             <div className="flex items-center justify-end gap-3">
-              <button
-                onClick={closeUploadModal}
-                className="px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-white/10 text-sm font-medium hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
-              >
+              <button onClick={cancelUpload} className="px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-white/10 text-sm font-medium hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
                 Cancel
               </button>
               <button
-                disabled={!uploadedFile || uploadSuccess}
-                onClick={handleUploadConfirm}
+                disabled={!uploadedFile || uploading}
+                onClick={() => void handleUpload()}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212] text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
-                aria-live="polite"
               >
-                {uploadSuccess ? (
-                  <>
-                    <CheckCircle2 size={15} aria-hidden="true" /> Uploaded!
-                  </>
-                ) : (
-                  "Upload"
-                )}
+                {uploading ? "Importing..." : "Upload"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ════════════════════ Create Account Modal ════════════════════ */}
       {showCreateModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="create-modal-title"
-        >
-          <div
-            className="absolute inset-0 bg-black/45"
-            onClick={closeCreateModal}
-            aria-hidden="true"
-          />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="create-modal-title">
+          <div className="absolute inset-0 bg-black/45" onClick={closeCreateModal} aria-hidden="true" />
           <div className="relative w-full max-w-lg rounded-3xl bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10 shadow-2xl p-6 space-y-5">
-
-            {/* Header */}
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-gray-500 font-semibold">
-                  Manual entry
-                </p>
-                <h2 id="create-modal-title" className="text-xl font-extrabold">
-                  Create Student Account
-                </h2>
+                <p className="text-xs uppercase tracking-[0.2em] text-gray-500 font-semibold">Manual entry</p>
+                <h2 id="create-modal-title" className="text-xl font-extrabold">Create or Overwrite Account</h2>
               </div>
-              <button
-                onClick={closeCreateModal}
-                className="p-2 rounded-xl bg-gray-100 dark:bg-[#242428] hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
-                aria-label="Close create account modal"
-              >
+              <button onClick={closeCreateModal} className="p-2 rounded-xl bg-gray-100 dark:bg-[#242428] hover:bg-gray-200 dark:hover:bg-white/10 transition-colors" aria-label="Close create account modal">
                 <X size={16} aria-hidden="true" />
               </button>
             </div>
 
-            {/* Form fields */}
             <div className="space-y-3">
-
-              {/* Student Number */}
               <div>
-                <label
-                  htmlFor="student-no"
-                  className="block text-xs uppercase tracking-[0.18em] font-bold text-gray-500 mb-1.5"
-                >
-                  Student Number
-                </label>
+                <label htmlFor="student-no" className="block text-xs uppercase tracking-[0.18em] font-bold text-gray-500 mb-1.5">Student Number</label>
                 <input
                   id="student-no"
                   type="text"
                   value={form.studentNo}
-                  onChange={(e) => setForm((f) => ({ ...f, studentNo: e.target.value }))}
+                  onChange={(event) => setForm((previous) => ({ ...previous, studentNo: event.target.value }))}
                   placeholder="e.g. 2024-10001"
                   className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#101014] text-sm focus:outline-none focus:ring-2 focus:ring-[#6e3102]/40 dark:focus:ring-[#d4855a]/40"
                   autoComplete="off"
                 />
               </div>
 
-              {/* Last Name + First Name */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label
-                    htmlFor="student-lastname"
-                    className="block text-xs uppercase tracking-[0.18em] font-bold text-gray-500 mb-1.5"
-                  >
-                    Last Name
-                  </label>
-                  <input
-                    id="student-lastname"
-                    type="text"
-                    value={form.lastName}
-                    onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))}
-                    placeholder="e.g. dela Cruz"
-                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#101014] text-sm focus:outline-none focus:ring-2 focus:ring-[#6e3102]/40 dark:focus:ring-[#d4855a]/40"
-                    autoComplete="family-name"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="student-firstname"
-                    className="block text-xs uppercase tracking-[0.18em] font-bold text-gray-500 mb-1.5"
-                  >
-                    First Name
-                  </label>
-                  <input
-                    id="student-firstname"
-                    type="text"
-                    value={form.firstName}
-                    onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
-                    placeholder="e.g. Maria"
-                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#101014] text-sm focus:outline-none focus:ring-2 focus:ring-[#6e3102]/40 dark:focus:ring-[#d4855a]/40"
-                    autoComplete="given-name"
-                  />
-                </div>
-              </div>
-
-              {/* Middle Name + College */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label
-                    htmlFor="student-middlename"
-                    className="block text-xs uppercase tracking-[0.18em] font-bold text-gray-500 mb-1.5"
-                  >
-                    Middle Name{" "}
-                    <span className="normal-case tracking-normal font-medium text-gray-400">
-                      (optional)
-                    </span>
-                  </label>
-                  <input
-                    id="student-middlename"
-                    type="text"
-                    value={form.middleName}
-                    onChange={(e) => setForm((f) => ({ ...f, middleName: e.target.value }))}
-                    placeholder="e.g. Santos"
-                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#101014] text-sm focus:outline-none focus:ring-2 focus:ring-[#6e3102]/40 dark:focus:ring-[#d4855a]/40"
-                    autoComplete="additional-name"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="student-college"
-                    className="block text-xs uppercase tracking-[0.18em] font-bold text-gray-500 mb-1.5"
-                  >
-                    College
-                  </label>
-                  <select
-                    id="student-college"
-                    value={form.college}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, college: e.target.value as College | "" }))
-                    }
-                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#101014] text-sm focus:outline-none focus:ring-2 focus:ring-[#6e3102]/40 dark:focus:ring-[#d4855a]/40"
-                  >
-                    <option value="" disabled>Select college</option>
-                    <option value="CA">CA</option>
-                    <option value="CISTM">CISTM</option>
-                    <option value="CN">CN</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Email Address */}
               <div>
-                <label
-                  htmlFor="student-email"
-                  className="block text-xs uppercase tracking-[0.18em] font-bold text-gray-500 mb-1.5"
-                >
-                  Email Address
-                </label>
+                <label htmlFor="student-email" className="block text-xs uppercase tracking-[0.18em] font-bold text-gray-500 mb-1.5">Email Address</label>
                 <input
                   id="student-email"
                   type="email"
                   value={form.email}
-                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                  placeholder="student@university.edu"
+                  onChange={(event) => setForm((previous) => ({ ...previous, email: event.target.value }))}
+                  placeholder="student@hari.knows"
                   className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#101014] text-sm focus:outline-none focus:ring-2 focus:ring-[#6e3102]/40 dark:focus:ring-[#d4855a]/40"
                   autoComplete="email"
                 />
               </div>
 
-              {/* Password */}
               <div>
-                <label
-                  htmlFor="student-password"
-                  className="block text-xs uppercase tracking-[0.18em] font-bold text-gray-500 mb-1.5"
-                >
-                  Password
-                </label>
+                <label htmlFor="student-password" className="block text-xs uppercase tracking-[0.18em] font-bold text-gray-500 mb-1.5">Password</label>
                 <div className="relative">
                   <input
                     id="student-password"
                     type={showPassword ? "text" : "password"}
                     value={form.password}
-                    onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                    onChange={(event) => setForm((previous) => ({ ...previous, password: event.target.value }))}
                     placeholder="Set a temporary password"
                     className="w-full px-4 py-3 pr-12 rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#101014] text-sm focus:outline-none focus:ring-2 focus:ring-[#6e3102]/40 dark:focus:ring-[#d4855a]/40"
                     autoComplete="new-password"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    onClick={() => setShowPassword((value) => !value)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors text-sm font-semibold"
                   >
-                    {showPassword ? (
-                      <EyeOff size={17} aria-hidden="true" />
-                    ) : (
-                      <Eye size={17} aria-hidden="true" />
-                    )}
+                    {showPassword ? "Hide" : "Show"}
                   </button>
                 </div>
               </div>
+
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                This updates the email and password for an existing student number. It does not create a new student masterlist entry.
+              </p>
             </div>
 
-            {/* Footer */}
+            {accountError && (
+              <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
+                {accountError}
+              </div>
+            )}
+
+            {accountMessage && (
+              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-200 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4" />
+                {accountMessage}
+              </div>
+            )}
+
             <div className="flex items-center justify-end gap-3 pt-1">
-              <button
-                onClick={closeCreateModal}
-                className="px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-white/10 text-sm font-medium hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
-              >
+              <button onClick={closeCreateModal} className="px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-white/10 text-sm font-medium hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
                 Cancel
               </button>
               <button
-                disabled={!isFormValid || creating || createSuccess}
-                onClick={handleCreate}
+                disabled={savingAccount}
+                onClick={() => void handleSubmitAccount()}
                 className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212] text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity whitespace-nowrap"
-                aria-live="polite"
               >
-                {createSuccess ? (
-                  <>
-                    <CheckCircle2 size={15} aria-hidden="true" /> Account Created!
-                  </>
-                ) : creating ? (
-                  <>
-                    <span
-                      className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"
-                      aria-hidden="true"
-                    />
-                    Creating…
-                  </>
-                ) : (
-                  "Confirm"
-                )}
+                {savingAccount ? "Saving..." : "Confirm"}
               </button>
             </div>
           </div>
