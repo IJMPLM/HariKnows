@@ -58,10 +58,21 @@ public sealed class AuthController(IAuthService authService, IConfiguration conf
     [AllowAnonymous]
     public IActionResult Logout()
     {
+        var requireSecureCookies = string.Equals(configuration["Jwt:RequireSecureCookies"], "true", StringComparison.OrdinalIgnoreCase);
+
+        // Delete with both secure variants to avoid stale cookies when environment flags change.
         Response.Cookies.Delete("hk_refresh", new CookieOptions
         {
             HttpOnly = true,
-            Secure = Request.IsHttps,
+            Secure = Request.IsHttps || requireSecureCookies,
+            SameSite = SameSiteMode.Lax,
+            Path = "/"
+        });
+
+        Response.Cookies.Delete("hk_refresh", new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = false,
             SameSite = SameSiteMode.Lax,
             Path = "/"
         });

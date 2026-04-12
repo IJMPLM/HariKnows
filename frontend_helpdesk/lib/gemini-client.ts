@@ -128,3 +128,20 @@ export async function getConversationSessions(maxAgeInDays: number = 30): Promis
   const data = (await response.json()) as { sessions: ConversationSession[] };
   return data.sessions;
 }
+
+/**
+ * Delete a conversation session for the signed-in user
+ */
+export async function deleteConversation(conversationId: string): Promise<void> {
+  const url = new URL(`${API_BASE}/api/chat/conversation`);
+  url.searchParams.set("conversationId", conversationId);
+
+  const response = await authFetch(url.toString(), {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.error || "Failed to delete conversation");
+  }
+}

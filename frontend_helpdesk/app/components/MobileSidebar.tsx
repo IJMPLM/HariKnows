@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { Sun, Moon, User, MessageCircle, BarChart2, HelpCircle, Menu, X, LogIn, LogOut } from "lucide-react";
-import { getSignedInSnapshot, hasLocalSession, initializeSession, setSignedInSnapshot } from "../../lib/auth-client";
+import { getSignedInSnapshot, hasLocalSession, initializeSession, setSignedInSnapshot, signOut } from "../../lib/auth-client";
 
 const signedInLinks = [
   { href: "/haribot",      label: "Talk with Hari",       icon: <MessageCircle size={16} /> },
@@ -58,19 +58,28 @@ export default function MobileSidebar() {
       setSignedInSnapshot(signedIn);
       setIsSignedIn(signedIn);
     };
+
+    const onAuthChanged = () => {
+      const signedIn = hasLocalSession();
+      setSignedInSnapshot(signedIn);
+      setIsSignedIn(signedIn);
+    };
+
     window.addEventListener("storage", onStorage);
+    window.addEventListener("hk-auth-changed", onAuthChanged);
     return () => {
       cancelled = true;
       window.removeEventListener("storage", onStorage);
+      window.removeEventListener("hk-auth-changed", onAuthChanged);
     };
   }, []);
 
   const handleLogout = async () => {
+    await signOut();
     setSignedInSnapshot(false);
-    window.dispatchEvent(new Event("storage")); 
     setShowLogOutModal(false);
     setIsOpen(false); // Close the mobile sidebar
-    router.push("/sign-in");
+    router.replace("/sign-in");
   };
 
   const allLinks = isSignedIn ? signedInLinks : guestLinks;

@@ -146,6 +146,32 @@ public sealed class ChatController(IRagAssistantService ragAssistantService, ICh
         }
     }
 
+    [HttpDelete("conversation")]
+    [Authorize]
+    public async Task<IActionResult> DeleteConversation([FromQuery] string? conversationId)
+    {
+        if (string.IsNullOrWhiteSpace(conversationId))
+        {
+            return BadRequest(new { error = "conversationId is required." });
+        }
+
+        var studentNo = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(studentNo) || !IsStudentConversation(studentNo, conversationId))
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            await chatsRepository.DeleteConversationAsync(conversationId);
+            return Ok(new { success = true, message = "Conversation deleted." });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
     private static string? BuildConversationId(string? studentNo, string? requestedConversationId, bool isGuest)
     {
         if (string.IsNullOrWhiteSpace(requestedConversationId))

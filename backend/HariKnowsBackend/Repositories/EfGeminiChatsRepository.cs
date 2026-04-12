@@ -50,6 +50,21 @@ public sealed class EfGeminiChatsRepository(HariKnowsDbContext dbContext) : ICha
         await dbContext.SaveChangesAsync();
     }
 
+    public async Task DeleteConversationAsync(string conversationId)
+    {
+        var messages = await dbContext.GeminiChats
+            .Where(c => c.ConversationId == conversationId)
+            .ToListAsync();
+
+        if (messages.Count == 0)
+        {
+            return;
+        }
+
+        dbContext.GeminiChats.RemoveRange(messages);
+        await dbContext.SaveChangesAsync();
+    }
+
     public async Task<IReadOnlyList<ConversationSessionDto>> GetConversationSessionsAsync(string studentNo, int maxAgeInDays = 30)
     {
         var cutoffDate = DateTime.UtcNow.AddDays(-maxAgeInDays);

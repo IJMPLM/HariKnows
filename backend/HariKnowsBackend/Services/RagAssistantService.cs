@@ -39,6 +39,15 @@ public sealed class RagAssistantService(
         var isGuest = string.IsNullOrWhiteSpace(studentNo);
         var student = isGuest ? null : await authService.GetProfileAsync(studentNo!, cancellationToken);
         var studentStatus = isGuest ? null : registrarRepository.GetStudentStatus(studentNo!);
+        var gradeSnapshot = isGuest ? new StudentGradeSnapshotDto(0, 0, null) : registrarRepository.GetStudentGradeSnapshot(studentNo!);
+        var curriculumCount = isGuest || student is null ? 0 : registrarRepository.GetCurriculumCourseCount(student.CollegeCode, student.ProgramCode);
+        var curriculumPreview = isGuest || student is null
+            ? Array.Empty<CurriculumCourseSnapshotDto>()
+            : registrarRepository.GetCurriculumCourses(student.CollegeCode, student.ProgramCode, 18);
+        var syllabusCount = isGuest || student is null ? 0 : registrarRepository.GetSyllabusEntryCount(student.CollegeCode, student.ProgramCode);
+        var syllabusPreview = isGuest || student is null
+            ? Array.Empty<SyllabusEntrySnapshotDto>()
+            : registrarRepository.GetSyllabusEntries(student.CollegeCode, student.ProgramCode, 18);
         var recentRequests = isGuest
             ? Array.Empty<StudentDocumentRequestDto>()
             : registrarRepository.GetStudentRequests(studentNo, null, 10);
@@ -76,6 +85,192 @@ public sealed class RagAssistantService(
             );
         }
 
+        if (IsGradeDataAvailabilityQuestion(message))
+        {
+            if (isGuest)
+            {
+                return new RagResponseDto(
+                    "In guest mode, I cannot access student-specific grade records. Sign in with your student account so I can verify whether your grade records are on file.",
+                    "gemini",
+                    "helpdesk",
+                    0.92,
+                    citations,
+                    null,
+                    null
+                );
+            }
+
+            if (gradeSnapshot.TotalGradeRecords > 0)
+            {
+                var updatedText = gradeSnapshot.LastUpdatedUtc is DateTime lastUpdated
+                    ? $" Last grade-record update: {lastUpdated:yyyy-MM-dd HH:mm} UTC."
+                    : string.Empty;
+
+                return new RagResponseDto(
+                    $"Yes. I can see your grade records in HariKnows ({gradeSnapshot.TotalGradeRecords} records across {gradeSnapshot.DistinctCourses} courses). I can use these records for eligibility and registrar guidance.{updatedText} I will not reveal private per-subject grade details unless policy explicitly allows it.",
+                    "gemini",
+                    "helpdesk",
+                    0.96,
+                    citations,
+                    null,
+                    null
+                );
+            }
+
+            return new RagResponseDto(
+                "I checked your signed-in record, but I currently do not see grade records linked to your student number in HariKnows. This usually means grades have not been imported yet or were not matched during ETL.",
+                "gemini",
+                "helpdesk",
+                0.9,
+                citations,
+                null,
+                null
+            );
+        }
+
+        if (IsGradeDisclosureQuestion(message))
+        {
+            if (isGuest)
+            {
+                return new RagResponseDto(
+                    "In guest mode, I cannot access student-specific grade records. Sign in with your student account so I can verify your grade-record availability.",
+                    "gemini",
+                    "helpdesk",
+                    0.92,
+                    citations,
+                    null,
+                    null
+                );
+            }
+
+            if (gradeSnapshot.TotalGradeRecords <= 0)
+            {
+                return new RagResponseDto(
+                    "I checked your signed-in account and do not currently see grade records linked to your student number in HariKnows. This usually means grades were not imported yet or were not matched during ETL.",
+                    "gemini",
+                    "helpdesk",
+                    0.9,
+                    citations,
+                    null,
+                    null
+                );
+            }
+
+            var updatedText = gradeSnapshot.LastUpdatedUtc is DateTime lastUpdated
+                ? $" Most recent grade-record update: {lastUpdated:yyyy-MM-dd HH:mm} UTC."
+                : string.Empty;
+
+            return new RagResponseDto(
+                $"I can confirm that your signed-in account has grade records on file ({gradeSnapshot.TotalGradeRecords} records across {gradeSnapshot.DistinctCourses} courses).{updatedText} For privacy and policy compliance, I do not display exact grade values in chat. These records are used internally to validate eligibility for registrar document requests and related services.",
+                "gemini",
+                "helpdesk",
+                0.96,
+                citations,
+                null,
+                null
+            );
+        }
+
+        if (IsCurriculumQuestion(message))
+        {
+            if (isGuest)
+            {
+                return new RagResponseDto(
+                    "In guest mode, I cannot verify your program-specific curriculum. Sign in so I can check the curriculum records linked to your account.",
+                    "gemini",
+                    "helpdesk",
+                    0.92,
+                    citations,
+                    null,
+                    null
+                );
+            }
+
+            if (curriculumCount == 0)
+            {
+                return new RagResponseDto(
+                    $"I checked your signed-in program ({student?.ProgramCode}), but I do not see curriculum entries loaded yet for {student?.CollegeCode}/{student?.ProgramCode} in HariKnows.",
+                    "gemini",
+                    "helpdesk",
+                    0.9,
+                    citations,
+                    null,
+                    null
+                );
+            }
+
+            var lines = curriculumPreview
+                .Take(12)
+                .Select(c => $"- Year {c.Level}, Term {c.Term}: {c.Code} ({c.Units:0.##}u) - {c.Title}")
+                .ToList();
+
+            var reply = new StringBuilder();
+            reply.AppendLine($"Yes, I can access your program curriculum in HariKnows for {student?.ProgramCode} ({student?.CollegeCode}).");
+            reply.AppendLine($"Total curriculum entries on file: {curriculumCount}.");
+            reply.AppendLine("Curriculum preview:");
+            foreach (var line in lines)
+            {
+                reply.AppendLine(line);
+            }
+
+            if (curriculumCount > lines.Count)
+            {
+                reply.AppendLine($"- ...and {curriculumCount - lines.Count} more entries.");
+            }
+
+            return new RagResponseDto(reply.ToString().Trim(), "gemini", "helpdesk", 0.95, citations, null, null);
+        }
+
+        if (IsSyllabusQuestion(message))
+        {
+            if (isGuest)
+            {
+                return new RagResponseDto(
+                    "In guest mode, I cannot verify your program-specific syllabus entries. Sign in so I can check syllabus records linked to your account.",
+                    "gemini",
+                    "helpdesk",
+                    0.92,
+                    citations,
+                    null,
+                    null
+                );
+            }
+
+            if (syllabusCount == 0)
+            {
+                return new RagResponseDto(
+                    $"I checked your signed-in program ({student?.ProgramCode}), but I do not see syllabus entries loaded yet for {student?.CollegeCode}/{student?.ProgramCode} in HariKnows.",
+                    "gemini",
+                    "helpdesk",
+                    0.9,
+                    citations,
+                    null,
+                    null
+                );
+            }
+
+            var lines = syllabusPreview
+                .Take(12)
+                .Select(s => $"- {s.Code}: {s.Title}")
+                .ToList();
+
+            var reply = new StringBuilder();
+            reply.AppendLine($"Yes, I can access syllabus entries in HariKnows for {student?.ProgramCode} ({student?.CollegeCode}).");
+            reply.AppendLine($"Total syllabus entries on file: {syllabusCount}.");
+            reply.AppendLine("Syllabus preview:");
+            foreach (var line in lines)
+            {
+                reply.AppendLine(line);
+            }
+
+            if (syllabusCount > lines.Count)
+            {
+                reply.AppendLine($"- ...and {syllabusCount - lines.Count} more entries.");
+            }
+
+            return new RagResponseDto(reply.ToString().Trim(), "gemini", "helpdesk", 0.95, citations, null, null);
+        }
+
         if (string.Equals(routing, "redirect", StringComparison.OrdinalIgnoreCase) && faqMatches.Count == 0)
         {
             var redirectReplyTemplate = isGuest
@@ -96,7 +291,7 @@ public sealed class RagAssistantService(
             );
         }
 
-        var context = BuildContext(student, studentStatus, recentRequests, faqMatches, contextEntries, conversationHistory, message, isGuest);
+        var context = BuildContext(student, studentStatus, gradeSnapshot, curriculumCount, syllabusCount, recentRequests, faqMatches, contextEntries, conversationHistory, message, isGuest);
         var geminiReply = await geminiService.GetChatResponseAsync(context, conversationHistory);
         var resolvedRouting = routing == "faq" ? "faq+gemini" : routing;
         var confidence = EstimateConfidence(resolvedRouting, faqMatches.Count, recentRequests.Count);
@@ -137,6 +332,41 @@ public sealed class RagAssistantService(
             || lowered.Contains("my account");
     }
 
+    private static bool IsGradeDataAvailabilityQuestion(string message)
+    {
+        var lowered = message.ToLowerInvariant();
+        return (lowered.Contains("record") || lowered.Contains("records") || lowered.Contains("have") || lowered.Contains("access"))
+               && lowered.Contains("grade");
+    }
+
+    private static bool IsCurriculumQuestion(string message)
+    {
+        var lowered = message.ToLowerInvariant();
+        return lowered.Contains("curriculum")
+               || lowered.Contains("prospectus")
+               || lowered.Contains("program checklist")
+               || lowered.Contains("curriculum checklist");
+    }
+
+    private static bool IsSyllabusQuestion(string message)
+    {
+        var lowered = message.ToLowerInvariant();
+        return lowered.Contains("syllabus") || lowered.Contains("course description");
+    }
+
+    private static bool IsGradeDisclosureQuestion(string message)
+    {
+        var lowered = message.ToLowerInvariant();
+        var asksForGradeDetails = lowered.Contains("what are my grades")
+            || lowered.Contains("show my grades")
+            || lowered.Contains("my grades")
+            || lowered.Contains("exact grade")
+            || lowered.Contains("grade breakdown")
+            || lowered.Contains("most recent term");
+
+        return asksForGradeDetails && lowered.Contains("grade");
+    }
+
     private static bool IsClearlyOutOfScope(string lowered)
     {
         return lowered.Contains("weather")
@@ -149,7 +379,7 @@ public sealed class RagAssistantService(
             || lowered.Contains("celebrity");
     }
 
-    private string BuildContext(StudentProfileDto? student, StudentStatusDto? studentStatus, IReadOnlyList<StudentDocumentRequestDto> recentRequests, IReadOnlyList<FaqContextEntryDto> faqMatches, IReadOnlyList<FaqContextEntryDto> contextEntries, IReadOnlyList<ChatResponseDto> recentConversation, string message, bool isGuest)
+    private string BuildContext(StudentProfileDto? student, StudentStatusDto? studentStatus, StudentGradeSnapshotDto gradeSnapshot, int curriculumCount, int syllabusCount, IReadOnlyList<StudentDocumentRequestDto> recentRequests, IReadOnlyList<FaqContextEntryDto> faqMatches, IReadOnlyList<FaqContextEntryDto> contextEntries, IReadOnlyList<ChatResponseDto> recentConversation, string message, bool isGuest)
     {
         var builder = new StringBuilder();
         var guidanceHeader = ResolveTemplate(contextEntries, ContextGuidanceHeaderTitle, "Registrar knowledge base guidance:");
@@ -210,6 +440,24 @@ public sealed class RagAssistantService(
             builder.AppendLine($"- Form 137 Status: {studentStatus.Form137Status}");
         }
 
+        if (!isGuest)
+        {
+            var gradeUpdatedText = gradeSnapshot.LastUpdatedUtc is DateTime updatedAt
+                ? updatedAt.ToString("yyyy-MM-dd HH:mm") + " UTC"
+                : "N/A";
+            builder.AppendLine("Grade Records Snapshot:");
+            builder.AppendLine($"- Total grade records: {gradeSnapshot.TotalGradeRecords}");
+            builder.AppendLine($"- Distinct courses with recorded grades: {gradeSnapshot.DistinctCourses}");
+            builder.AppendLine($"- Last grade update: {gradeUpdatedText}");
+            builder.AppendLine("- If grade record count is above zero, do not claim that grade records are unavailable.");
+            builder.AppendLine("- Never reveal exact numeric grades in chat; use grade records only for eligibility/requirement validation guidance.");
+
+            builder.AppendLine("Academic Catalog Snapshot:");
+            builder.AppendLine($"- Curriculum entries for signed-in program: {curriculumCount}");
+            builder.AppendLine($"- Syllabus entries for signed-in program: {syllabusCount}");
+            builder.AppendLine("- If curriculum/syllabus counts are above zero, do not claim there is no access to curriculum or syllabus data.");
+        }
+
         if (recentRequests.Count > 0)
         {
             builder.AppendLine("Recent requests:");
@@ -262,6 +510,7 @@ public sealed class RagAssistantService(
     {
         return category.ToLowerInvariant() switch
         {
+            "critical" => -1,
             "assistant" => 0,
             "overview" => 0,
             "scope" => 1,

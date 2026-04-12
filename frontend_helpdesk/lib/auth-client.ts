@@ -23,7 +23,15 @@ type AuthResponse = {
 
 let sessionUserCache: StudentProfile | null | undefined = undefined;
 let signedInSnapshot: boolean | null = null;
-let sessionExpiryTimer: ReturnType<typeof setTimeout> | null = null;
+let sessionExpiryTimer: number | null = null;
+
+function notifyAuthChanged() {
+  if (!canUseStorage()) {
+    return;
+  }
+
+  window.dispatchEvent(new Event("hk-auth-changed"));
+}
 
 function canUseStorage() {
   return typeof window !== "undefined";
@@ -71,6 +79,7 @@ function storeSession(data: AuthResponse) {
   sessionUserCache = data.user;
   signedInSnapshot = true;
   scheduleSessionExpiry(data.expiresAtUtc);
+  notifyAuthChanged();
 }
 
 export function clearSession() {
@@ -84,6 +93,7 @@ export function clearSession() {
   window.localStorage.removeItem(EXPIRES_AT_KEY);
   sessionUserCache = null;
   signedInSnapshot = false;
+  notifyAuthChanged();
 }
 
 export function getSignedInSnapshot(): boolean | null {
@@ -123,6 +133,11 @@ export function getAccessToken(): string | null {
 }
 
 export function getStoredUser(): StudentProfile | null {
+  const token = getAccessToken();
+  if (!token) {
+    return null;
+  }
+
   if (sessionUserCache !== undefined) {
     return sessionUserCache;
   }
@@ -140,6 +155,7 @@ export function getStoredUser(): StudentProfile | null {
     sessionUserCache = JSON.parse(raw) as StudentProfile;
     return sessionUserCache;
   } catch {
+    clearSession();
     return null;
   }
 }

@@ -10,6 +10,27 @@ public record StudentDirectoryEntryDto(
     bool HasPassword
 );
 
+public record StudentGradeSnapshotDto(
+    int TotalGradeRecords,
+    int DistinctCourses,
+    DateTime? LastUpdatedUtc
+);
+
+public record CurriculumCourseSnapshotDto(
+    int Level,
+    int Term,
+    decimal Units,
+    string Code,
+    string Title,
+    DateTime DateUpdated
+);
+
+public record SyllabusEntrySnapshotDto(
+    string Code,
+    string Title,
+    DateTime DateUpdated
+);
+
 public record StudentDocumentRequestDto(
     int Id,
     string RequestCode,

@@ -985,6 +985,11 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
             return "curriculums";
         }
 
+        if (col2 is "GRADES" or "GRADE")
+        {
+            return "grades";
+        }
+
         if (col2 is "SYLLABUS" or "SYLLABI")
         {
             return "syllabi";
@@ -1013,6 +1018,22 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
         if (header.Contains("STUDENTNO") && header.Contains("GRADE"))
         {
             return "grades";
+        }
+
+        var normalizedFileName = NormalizeTag(Path.GetFileNameWithoutExtension(fileName));
+        if (normalizedFileName.EndsWith("G", StringComparison.Ordinal))
+        {
+            return "grades";
+        }
+
+        if (normalizedFileName.EndsWith("C", StringComparison.Ordinal))
+        {
+            return "curriculums";
+        }
+
+        if (normalizedFileName.EndsWith("S", StringComparison.Ordinal))
+        {
+            return "syllabi";
         }
 
         if (header.Contains("FIRSTNAME") || header.Contains("LASTNAME"))
@@ -1153,13 +1174,15 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
             var first = cells.Count > 0 ? cells[0] : string.Empty;
             var second = cells.Count > 1 ? cells[1] : string.Empty;
             var third = cells.Count > 2 ? cells[2] : string.Empty;
+            var compactFirst = first.Replace(" ", string.Empty, StringComparison.Ordinal).ToUpperInvariant();
             if (!string.IsNullOrWhiteSpace(first)
                 && string.IsNullOrWhiteSpace(second)
                 && string.IsNullOrWhiteSpace(third)
-                && !first.Contains(' ')
-                && first.Any(char.IsDigit))
+                && compactFirst.Any(char.IsLetter)
+                && compactFirst.Any(char.IsDigit)
+                && compactFirst.All(char.IsLetterOrDigit))
             {
-                currentCourseCode = first;
+                currentCourseCode = compactFirst;
                 continue;
             }
 

@@ -10,5 +10,7 @@ public interface IChatsRepository
 
     Task ClearHistoryAsync(string conversationId);
 
+    Task DeleteConversationAsync(string conversationId);
+
     Task<IReadOnlyList<ConversationSessionDto>> GetConversationSessionsAsync(string studentNo, int maxAgeInDays = 30);
 }

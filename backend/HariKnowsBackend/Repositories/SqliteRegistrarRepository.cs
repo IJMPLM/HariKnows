@@ -239,6 +239,31 @@ public sealed class SqliteRegistrarRepository(string connectionString) : IRegist
         return null;
     }
 
+    public StudentGradeSnapshotDto GetStudentGradeSnapshot(string studentNo)
+    {
+        return new StudentGradeSnapshotDto(0, 0, null);
+    }
+
+    public int GetCurriculumCourseCount(string collegeCode, string programCode)
+    {
+        return 0;
+    }
+
+    public IReadOnlyList<CurriculumCourseSnapshotDto> GetCurriculumCourses(string collegeCode, string programCode, int limit)
+    {
+        return [];
+    }
+
+    public int GetSyllabusEntryCount(string collegeCode, string programCode)
+    {
+        return 0;
+    }
+
+    public IReadOnlyList<SyllabusEntrySnapshotDto> GetSyllabusEntries(string collegeCode, string programCode, int limit)
+    {
+        return [];
+    }
+
     public IReadOnlyList<StudentDocumentRequestDto> GetStudentRequests(string? studentNo, string? status, int limit)
     {
         return [];

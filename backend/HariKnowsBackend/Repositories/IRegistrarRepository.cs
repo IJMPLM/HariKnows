@@ -46,6 +46,16 @@ public interface IRegistrarRepository
 
     StudentStatusDto? GetStudentStatus(string studentNo);
 
+    StudentGradeSnapshotDto GetStudentGradeSnapshot(string studentNo);
+
+    int GetCurriculumCourseCount(string collegeCode, string programCode);
+
+    IReadOnlyList<CurriculumCourseSnapshotDto> GetCurriculumCourses(string collegeCode, string programCode, int limit);
+
+    int GetSyllabusEntryCount(string collegeCode, string programCode);
+
+    IReadOnlyList<SyllabusEntrySnapshotDto> GetSyllabusEntries(string collegeCode, string programCode, int limit);
+
     IReadOnlyList<StudentDocumentRequestDto> GetStudentRequests(string? studentNo, string? status, int limit);
 
     StudentDocumentRequestDto? GetStudentRequest(int requestId);

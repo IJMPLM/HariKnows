@@ -327,6 +327,80 @@ public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegis
         );
     }
 
+    public StudentGradeSnapshotDto GetStudentGradeSnapshot(string studentNo)
+    {
+        var normalizedStudentNo = studentNo.Trim();
+        var gradeQuery = dbContext.GradeRecords
+            .AsNoTracking()
+            .Where(g => g.StudentNo == normalizedStudentNo);
+
+        var totalGradeRecords = gradeQuery.Count();
+        if (totalGradeRecords == 0)
+        {
+            return new StudentGradeSnapshotDto(0, 0, null);
+        }
+
+        var distinctCourses = gradeQuery
+            .Select(g => g.CourseCode)
+            .Distinct()
+            .Count();
+        var lastUpdatedUtc = gradeQuery.Max(g => (DateTime?)g.DateUpdated);
+
+        return new StudentGradeSnapshotDto(totalGradeRecords, distinctCourses, lastUpdatedUtc);
+    }
+
+    public int GetCurriculumCourseCount(string collegeCode, string programCode)
+    {
+        var normalizedCollegeCode = collegeCode.Trim().ToUpperInvariant();
+        var normalizedProgramCode = programCode.Trim().ToUpperInvariant();
+
+        return dbContext.CurriculumCourses
+            .AsNoTracking()
+            .Count(c => c.CollegeCode == normalizedCollegeCode && c.ProgramCode == normalizedProgramCode);
+    }
+
+    public IReadOnlyList<CurriculumCourseSnapshotDto> GetCurriculumCourses(string collegeCode, string programCode, int limit)
+    {
+        var safeLimit = Math.Clamp(limit, 1, 200);
+        var normalizedCollegeCode = collegeCode.Trim().ToUpperInvariant();
+        var normalizedProgramCode = programCode.Trim().ToUpperInvariant();
+
+        return dbContext.CurriculumCourses
+            .AsNoTracking()
+            .Where(c => c.CollegeCode == normalizedCollegeCode && c.ProgramCode == normalizedProgramCode)
+            .OrderBy(c => c.Level)
+            .ThenBy(c => c.Term)
+            .ThenBy(c => c.Code)
+            .Take(safeLimit)
+            .Select(c => new CurriculumCourseSnapshotDto(c.Level, c.Term, c.Units, c.Code, c.Title, c.DateUpdated))
+            .ToList();
+    }
+
+    public int GetSyllabusEntryCount(string collegeCode, string programCode)
+    {
+        var normalizedCollegeCode = collegeCode.Trim().ToUpperInvariant();
+        var normalizedProgramCode = programCode.Trim().ToUpperInvariant();
+
+        return dbContext.SyllabusEntries
+            .AsNoTracking()
+            .Count(s => s.CollegeCode == normalizedCollegeCode && s.ProgramCode == normalizedProgramCode);
+    }
+
+    public IReadOnlyList<SyllabusEntrySnapshotDto> GetSyllabusEntries(string collegeCode, string programCode, int limit)
+    {
+        var safeLimit = Math.Clamp(limit, 1, 200);
+        var normalizedCollegeCode = collegeCode.Trim().ToUpperInvariant();
+        var normalizedProgramCode = programCode.Trim().ToUpperInvariant();
+
+        return dbContext.SyllabusEntries
+            .AsNoTracking()
+            .Where(s => s.CollegeCode == normalizedCollegeCode && s.ProgramCode == normalizedProgramCode)
+            .OrderBy(s => s.Code)
+            .Take(safeLimit)
+            .Select(s => new SyllabusEntrySnapshotDto(s.Code, s.Title, s.DateUpdated))
+            .ToList();
+    }
+
     public IReadOnlyList<StudentDocumentRequestDto> GetStudentRequests(string? studentNo, string? status, int limit)
     {
         var safeLimit = Math.Clamp(limit, 1, 200);

@@ -6,13 +6,14 @@ import { BotMessageSquare, Clock, Trash2 } from "lucide-react";
 import DesktopSidebar from "../../components/DesktopSidebar";
 import MobileSidebar from "../../components/MobileSidebar";
 import { getCurrentUser } from "../../../lib/auth-client";
-import { getConversationSessions, type ConversationSession } from "../../../lib/gemini-client";
+import { deleteConversation, getConversationSessions, type ConversationSession } from "../../../lib/gemini-client";
 
 export default function ChatsPage() {
   const router = useRouter();
   const [sessions, setSessions] = useState<ConversationSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [deleteBusy, setDeleteBusy] = useState(false);
   
   // Modal State
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -51,15 +52,23 @@ export default function ChatsPage() {
     setShowDeleteModal(true);
   };
 
-  const confirmDelete = () => {
-    if (chatToDelete) {
-      // Remove the session purely from frontend state
-      setSessions((prevSessions) => 
-        prevSessions.filter((session) => session.conversationId !== chatToDelete)
-      );
+  const confirmDelete = async () => {
+    if (!chatToDelete || deleteBusy) {
+      return;
     }
-    setShowDeleteModal(false);
-    setChatToDelete(null);
+
+    try {
+      setDeleteBusy(true);
+      setError("");
+      await deleteConversation(chatToDelete);
+      setSessions((prevSessions) => prevSessions.filter((session) => session.conversationId !== chatToDelete));
+      setShowDeleteModal(false);
+      setChatToDelete(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete conversation");
+    } finally {
+      setDeleteBusy(false);
+    }
   };
 
   const cancelDelete = () => {
@@ -184,10 +193,11 @@ export default function ChatsPage() {
                 Cancel
               </button>
               <button
-                onClick={confirmDelete}
+                onClick={() => void confirmDelete()}
+                disabled={deleteBusy}
                 className="flex-1 px-4 py-3 rounded-xl bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212] font-bold text-[0.95rem] hover:bg-[#5a2801] dark:hover:bg-[#e09873] active:scale-[0.98] transition-all shadow-md shadow-[#6e3102]/20 dark:shadow-[#d4855a]/10"
               >
-                Delete
+                {deleteBusy ? "Deleting..." : "Delete"}
               </button>
             </div>
           </div>
