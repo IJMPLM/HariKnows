@@ -260,16 +260,8 @@ export default function FaqContextPage() {
                 rows={6}
                 className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 resize-y min-h-[140px]"
               />
-              <select
-                value={form.scopeType}
-                onChange={(event) => setForm({ ...form, scopeType: normalizeScope(event.target.value) })}
-                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10"
-              >
-                <option value="general">general (visible to all users)</option>
-                <option value="non-guest">non-guest (signed-in users only)</option>
-              </select>
               <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={form.isGuestVisible} onChange={(event) => setForm({ ...form, isGuestVisible: event.target.checked })} />
+                <input type="checkbox" checked={form.isGuestVisible} onChange={(event) => setForm({ ...form, isGuestVisible: event.target.checked, scopeType: event.target.checked ? "general" : "non-guest" })} />
                 Visible to guest users
               </label>
 

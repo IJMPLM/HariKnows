@@ -226,19 +226,21 @@ export default function RegistrarPage() {
               <input value={studentSearch} onChange={(event) => setStudentSearch(event.target.value)} placeholder="Search student by no/name..." className="w-full pl-10 pr-4 py-3 rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#101014]" />
             </div>
 
-            <div className="max-h-44 overflow-y-auto space-y-2 rounded-2xl border border-gray-200 dark:border-white/10 p-2">
-              {studentResults.map((student) => (
-                <button key={student.studentNo} onClick={() => setRequestForm((current) => ({ ...current, studentNo: student.studentNo }))} className={`w-full text-left p-3 rounded-2xl border ${requestForm.studentNo === student.studentNo ? "border-[#6e3102] dark:border-[#d4855a] bg-[#6e3102]/5 dark:bg-[#d4855a]/10" : "border-gray-200 dark:border-white/10"}`}>
-                  <div className="font-semibold">{student.fullName}</div>
-                  <div className="text-xs text-gray-500">{student.studentNo} · {student.collegeCode} / {student.programCode}</div>
-                </button>
-              ))}
-            </div>
+            {studentResults.length > 0 && (
+              <div className="max-h-44 overflow-y-auto space-y-2 rounded-2xl border border-gray-200 dark:border-white/10 p-2">
+                {studentResults.map((student) => (
+                  <button key={student.studentNo} onClick={() => setRequestForm((current) => ({ ...current, studentNo: student.studentNo }))} className={`w-full text-left p-3 rounded-2xl border ${requestForm.studentNo === student.studentNo ? "border-[#6e3102] dark:border-[#d4855a] bg-[#6e3102]/5 dark:bg-[#d4855a]/10" : "border-gray-200 dark:border-white/10"}`}>
+                    <div className="font-semibold">{student.fullName}</div>
+                    <div className="text-xs text-gray-500">{student.studentNo} · {student.collegeCode} / {student.programCode}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+            {studentResults.length === 0 && studentSearch.trim() && (
+              <div className="h-px bg-gray-200 dark:bg-white/10"></div>
+            )}
 
-            <div className="grid sm:grid-cols-2 gap-3">
-              <select value={requestForm.departmentId} onChange={(event) => setRequestForm((current) => ({ ...current, departmentId: Number(event.target.value) }))} className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#101014]">
-                {departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
-              </select>
+            <div className="grid sm:grid-cols-1 gap-3">
               <select value={requestForm.documentType} onChange={(event) => setRequestForm((current) => ({ ...current, documentType: event.target.value }))} className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#101014]">
                 <option value="">Select document type</option>
                 {DOCUMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
