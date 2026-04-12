@@ -14,6 +14,7 @@ const baseNavItems = [
   { label: "OSD", icon: BookOpen, href: "/osds" },
   { label: "FAQs & Context", icon: MessageSquareQuote, href: "/faq" },
   { label: "Documents", icon: FileText, href: "/document" },
+  { label: "Accounts", icon: FileText, href: "/create" },
 ];
 
 export default function DesktopSidebar() {
