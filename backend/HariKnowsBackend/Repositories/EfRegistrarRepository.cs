@@ -517,12 +517,19 @@ public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegis
 
         if (!string.IsNullOrWhiteSpace(collegeCode))
         {
-            query = query.Where(e => e.CollegeCode == collegeCode.Trim());
+            var normalizedCollegeCode = collegeCode.Trim().ToUpperInvariant();
+            query = query.Where(e =>
+                string.IsNullOrWhiteSpace(e.CollegeCode)
+                || e.CollegeCode.ToUpper() == normalizedCollegeCode
+                || e.ScopeType.ToUpper() == normalizedCollegeCode);
         }
 
         if (!string.IsNullOrWhiteSpace(programCode))
         {
-            query = query.Where(e => e.ProgramCode == programCode.Trim());
+            var normalizedProgramCode = programCode.Trim().ToUpperInvariant();
+            query = query.Where(e =>
+                string.IsNullOrWhiteSpace(e.ProgramCode)
+                || e.ProgramCode.ToUpper() == normalizedProgramCode);
         }
 
         return query
@@ -594,7 +601,7 @@ public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegis
         return true;
     }
 
-    public IReadOnlyList<FaqContextEntryDto> SearchFaqEntries(string query, string? scopeType, string? collegeCode, string? programCode, int limit)
+    public IReadOnlyList<FaqContextEntryDto> SearchFaqEntries(string query, string? scopeType, string? collegeCode, string? programCode, bool includeUnpublished, int limit)
     {
         var safeLimit = Math.Clamp(limit, 1, 50);
         var normalized = query.Trim();
@@ -603,7 +610,7 @@ public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegis
             return [];
         }
 
-        var entries = GetFaqEntries(scopeType, collegeCode, programCode, false, safeLimit * 2)
+        var entries = GetFaqEntries(scopeType, collegeCode, programCode, includeUnpublished, safeLimit * 2)
             .Where(entry =>
                 entry.Title.Contains(normalized, StringComparison.OrdinalIgnoreCase) ||
                 entry.Answer.Contains(normalized, StringComparison.OrdinalIgnoreCase) ||

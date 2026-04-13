@@ -27,6 +27,14 @@ export default function FAQsPage() {
 
       const data = await loadFaqEntries(user?.collegeCode, user?.programCode, !isSignedIn);
       setEntries(data);
+      const requestedFaqId = typeof window === "undefined"
+        ? NaN
+        : Number(new URLSearchParams(window.location.search).get("faqId"));
+      if (Number.isInteger(requestedFaqId) && requestedFaqId > 0 && data.some((entry) => entry.id === requestedFaqId)) {
+        setOpenId(requestedFaqId);
+        return;
+      }
+
       if (data.length > 0) {
         setOpenId(data[0].id);
       }

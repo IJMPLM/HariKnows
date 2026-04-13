@@ -8,7 +8,6 @@ type Section = "faq" | "context";
 
 type FaqFormState = {
   scopeType: string;
-  collegeCode: string;
   programCode: string;
   category: string;
   title: string;
@@ -18,7 +17,6 @@ type FaqFormState = {
 
 const createEmptyForm = (section: Section): FaqFormState => ({
   scopeType: "general",
-  collegeCode: "",
   programCode: "",
   category: section === "faq" ? "faq" : "context",
   title: "",
@@ -33,6 +31,15 @@ function normalizeScope(scopeType: string) {
   if (normalized === "global") return "general";
   if (normalized === "nonguest" || normalized === "non_guest") return "non-guest";
   return normalized || "general";
+}
+
+function deriveCollegeCodeFromScope(scopeType: string) {
+  const normalized = normalizeScope(scopeType);
+  if (normalized === "general" || normalized === "non-guest") {
+    return "";
+  }
+
+  return normalized.toUpperCase();
 }
 
 export default function FaqContextPage() {
@@ -84,7 +91,6 @@ export default function FaqContextPage() {
     setActiveSection(isFaqEntry(entry) ? "faq" : "context");
     setForm({
       scopeType: normalizeScope(entry.scopeType),
-      collegeCode: entry.collegeCode,
       programCode: entry.programCode,
       category: entry.category,
       title: entry.title,
@@ -105,7 +111,7 @@ export default function FaqContextPage() {
 
     const payload = {
       scopeType: normalizeScope(form.scopeType),
-      collegeCode: form.collegeCode.trim(),
+      collegeCode: deriveCollegeCodeFromScope(form.scopeType),
       programCode: form.programCode.trim(),
       category: activeSection === "faq" ? "faq" : form.category.trim() || "context",
       title: form.title.trim(),
@@ -246,6 +252,20 @@ export default function FaqContextPage() {
               ) : (
                 <input value="faq" disabled className="w-full px-4 py-3 rounded-xl bg-gray-100 dark:bg-[#101014] border border-gray-200 dark:border-white/10 text-gray-500" />
               )}
+
+              <input
+                value={form.scopeType}
+                onChange={(event) => setForm({ ...form, scopeType: event.target.value })}
+                placeholder="scopeType (general, non-guest, CA, etc.)"
+                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10"
+              />
+
+              <input
+                value={form.programCode}
+                onChange={(event) => setForm({ ...form, programCode: event.target.value })}
+                placeholder="programCode (optional)"
+                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10"
+              />
 
               <input
                 value={form.title}

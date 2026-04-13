@@ -377,6 +377,53 @@ using (var scope = app.Services.CreateScope())
         CREATE INDEX IF NOT EXISTS ""IX_FaqContextEntries_IsPublished""
         ON ""FaqContextEntries"" (""IsPublished"");
     ");
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS ""UncertainQuestions"" (
+            ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_UncertainQuestions"" PRIMARY KEY AUTOINCREMENT,
+            ""ConversationId"" TEXT NOT NULL DEFAULT '',
+            ""StudentNo"" TEXT NOT NULL DEFAULT '',
+            ""CollegeCode"" TEXT NOT NULL DEFAULT '',
+            ""ProgramCode"" TEXT NOT NULL DEFAULT '',
+            ""QuestionText"" TEXT NOT NULL,
+            ""NormalizedQuestion"" TEXT NOT NULL,
+            ""Routing"" TEXT NOT NULL DEFAULT '',
+            ""Confidence"" REAL NOT NULL,
+            ""Status"" TEXT NOT NULL,
+            ""ResolutionCategory"" TEXT NOT NULL DEFAULT '',
+            ""ResolutionEntryId"" INTEGER NULL,
+            ""ResolutionAnswer"" TEXT NOT NULL DEFAULT '',
+            ""CreatedAt"" TEXT NOT NULL,
+            ""UpdatedAt"" TEXT NOT NULL,
+            ""ResolvedAt"" TEXT NULL
+        );
+    ");
+    await EnsureSqliteColumnAsync(db, "UncertainQuestions", "ConversationId", "TEXT NOT NULL DEFAULT ''");
+    await EnsureSqliteColumnAsync(db, "UncertainQuestions", "StudentNo", "TEXT NOT NULL DEFAULT ''");
+    await EnsureSqliteColumnAsync(db, "UncertainQuestions", "CollegeCode", "TEXT NOT NULL DEFAULT ''");
+    await EnsureSqliteColumnAsync(db, "UncertainQuestions", "ProgramCode", "TEXT NOT NULL DEFAULT ''");
+    await EnsureSqliteColumnAsync(db, "UncertainQuestions", "QuestionText", "TEXT NOT NULL DEFAULT ''");
+    await EnsureSqliteColumnAsync(db, "UncertainQuestions", "NormalizedQuestion", "TEXT NOT NULL DEFAULT ''");
+    await EnsureSqliteColumnAsync(db, "UncertainQuestions", "Routing", "TEXT NOT NULL DEFAULT ''");
+    await EnsureSqliteColumnAsync(db, "UncertainQuestions", "Confidence", "REAL NOT NULL DEFAULT 0");
+    await EnsureSqliteColumnAsync(db, "UncertainQuestions", "Status", "TEXT NOT NULL DEFAULT 'open'");
+    await EnsureSqliteColumnAsync(db, "UncertainQuestions", "ResolutionCategory", "TEXT NOT NULL DEFAULT ''");
+    await EnsureSqliteColumnAsync(db, "UncertainQuestions", "ResolutionEntryId", "INTEGER NULL");
+    await EnsureSqliteColumnAsync(db, "UncertainQuestions", "ResolutionAnswer", "TEXT NOT NULL DEFAULT ''");
+    await EnsureSqliteColumnAsync(db, "UncertainQuestions", "CreatedAt", "TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.0000000Z'");
+    await EnsureSqliteColumnAsync(db, "UncertainQuestions", "UpdatedAt", "TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.0000000Z'");
+    await EnsureSqliteColumnAsync(db, "UncertainQuestions", "ResolvedAt", "TEXT NULL");
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE INDEX IF NOT EXISTS ""IX_UncertainQuestions_Status_CreatedAt""
+        ON ""UncertainQuestions"" (""Status"", ""CreatedAt"");
+    ");
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE INDEX IF NOT EXISTS ""IX_UncertainQuestions_NormalizedQuestion_Status_CreatedAt""
+        ON ""UncertainQuestions"" (""NormalizedQuestion"", ""Status"", ""CreatedAt"");
+    ");
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE INDEX IF NOT EXISTS ""IX_UncertainQuestions_ConversationId_CreatedAt""
+        ON ""UncertainQuestions"" (""ConversationId"", ""CreatedAt"");
+    ");
     
     // Seed data if needed
     if (!db.Departments.Any() || !db.Colleges.Any() || !db.AcademicPrograms.Any())

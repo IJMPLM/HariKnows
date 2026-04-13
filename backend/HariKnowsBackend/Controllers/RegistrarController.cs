@@ -328,6 +328,35 @@ public sealed class RegistrarController(IRegistrarService registrarService) : Co
             : NotFound(new { error = "FAQ/context entry not found." });
     }
 
+    [HttpGet("questions")]
+    public IActionResult GetUncertainQuestions([FromQuery] string? status, [FromQuery] int limit = 100)
+    {
+        return Ok(registrarService.GetUncertainQuestions(status, limit));
+    }
+
+    [HttpGet("questions/{questionId:int}")]
+    public IActionResult GetUncertainQuestion(int questionId)
+    {
+        var question = registrarService.GetUncertainQuestion(questionId);
+        return question is null ? NotFound(new { error = "Question entry not found." }) : Ok(question);
+    }
+
+    [HttpPost("questions/{questionId:int}/resolve")]
+    public IActionResult ResolveUncertainQuestion(int questionId, [FromBody] ResolveUncertainQuestionRequestDto request)
+    {
+        try
+        {
+            var result = registrarService.ResolveUncertainQuestion(questionId, request);
+            return result is null
+                ? NotFound(new { error = "Question entry not found." })
+                : Ok(new { question = result.Value.Question, createdEntry = result.Value.CreatedEntry });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpPost("faq/seed-mockup")]
     public IActionResult SeedMockupFaqData()
     {

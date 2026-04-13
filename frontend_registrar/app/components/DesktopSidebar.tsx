@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Moon, Sun, LayoutGrid, Building2, BookOpen, ClipboardList, FileText, MessageSquareQuote, ChevronDown, ChevronRight } from "lucide-react";
+import { Moon, Sun, LayoutGrid, Building2, BookOpen, ClipboardList, FileText, MessageSquareQuote, HelpCircle, ChevronDown, ChevronRight } from "lucide-react";
 import { useTheme } from "next-themes";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -10,6 +10,7 @@ import { CollegeTab, getCachedRegistrarCollegeTabs, getRegistrarCollegeTabs } fr
 const topNavItems = [
   { label: "Dashboard", icon: LayoutGrid, href: "/dashboard" },
   { label: "FAQs & Context", icon: MessageSquareQuote, href: "/faq" },
+  { label: "Questions", icon: HelpCircle, href: "/questions" },
   { label: "Documents", icon: FileText, href: "/document" },
   { label: "Accounts", icon: FileText, href: "/create" },
 ];

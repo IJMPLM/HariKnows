@@ -35,6 +35,7 @@ export type RagResponseMeta = {
   citations: RagCitation[];
   redirectOffice?: string | null;
   redirectReason?: string | null;
+  uncertainQuestion?: string | null;
 };
 
 export type ConversationSession = {

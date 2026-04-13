@@ -1,8 +1,11 @@
 using System.Text;
+using HariKnowsBackend.Data;
+using HariKnowsBackend.Data.Entities;
 using GeminiChatbot.Models;
 using GeminiChatbot.Services;
 using HariKnowsBackend.Models;
 using HariKnowsBackend.Repositories;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace HariKnowsBackend.Services;
@@ -12,12 +15,15 @@ public sealed class RagAssistantOptions
     public int MaxHistoryTurns { get; set; } = 8;
     public int MaxHistoryCharsPerTurn { get; set; } = 220;
     public int MaxFaqCharsPerEntry { get; set; } = 360;
+    public double UncertainConfidenceThreshold { get; set; } = 0.66;
+    public int UncertainDedupMinutes { get; set; } = 20;
 }
 
 public sealed class RagAssistantService(
     IRegistrarRepository registrarRepository,
     IGeminiService geminiService,
     IAuthService authService,
+    HariKnowsDbContext dbContext,
     IOptions<RagAssistantOptions> optionsAccessor
 ) : GeminiChatbot.Services.IRagAssistantService
 {
@@ -52,19 +58,50 @@ public sealed class RagAssistantService(
             ? Array.Empty<StudentDocumentRequestDto>()
             : registrarRepository.GetStudentRequests(studentNo, null, 10);
         var faqScopeType = isGuest ? "general" : null;
-        var contextEntries = registrarRepository.GetFaqEntries(faqScopeType, student?.CollegeCode, student?.ProgramCode, false, 120);
-        var faqMatches = registrarRepository.SearchFaqEntries(message, faqScopeType, student?.CollegeCode, student?.ProgramCode, 6);
+        var includeUnpublished = !isGuest;
+        var contextEntries = registrarRepository.GetFaqEntries(faqScopeType, student?.CollegeCode, student?.ProgramCode, includeUnpublished, 120);
+        var faqMatches = registrarRepository.SearchFaqEntries(message, faqScopeType, student?.CollegeCode, student?.ProgramCode, includeUnpublished, 6);
 
         var routing = DetermineRouting(message, faqMatches, recentRequests);
         var citations = faqMatches
             .Select(entry => new RagCitationDto(
                 entry.Id,
                 entry.Title,
-                $"/faq/{entry.Id}",
+                $"/FAQs?faqId={entry.Id}",
                 entry.ScopeType,
                 entry.Category
             ))
             .ToList();
+
+        var hasKnowledgeMatch = faqMatches.Count > 0;
+
+        async Task<RagResponseDto> FinalizeResponseAsync(RagResponseDto response)
+        {
+            var linkedReply = AddInlineFaqLink(response.Reply, citations);
+            var finalResponse = response with { Reply = linkedReply };
+
+            if (ShouldCaptureUncertainQuestion(message, finalResponse.Confidence, hasKnowledgeMatch))
+            {
+                await CaptureUncertainQuestionAsync(studentNo, student, conversationId, message, finalResponse.Routing, finalResponse.Confidence, cancellationToken);
+                finalResponse = finalResponse with { UncertainQuestion = message.Trim() };
+            }
+
+            return finalResponse;
+        }
+
+        if (faqMatches.Count > 0 && IsStrongFaqMatch(message, faqMatches[0].Title))
+        {
+            var topMatch = faqMatches[0];
+            return await FinalizeResponseAsync(new RagResponseDto(
+                topMatch.Answer,
+                "faq",
+                "faq",
+                0.95,
+                citations,
+                null,
+                null
+            ));
+        }
 
         if (IsAuthStatusQuestion(message))
         {
@@ -74,7 +111,7 @@ public sealed class RagAssistantService(
 
             var authReply = RenderTemplate(authReplyTemplate, student?.FullName ?? "your account", studentNo ?? string.Empty);
 
-            return new RagResponseDto(
+            return await FinalizeResponseAsync(new RagResponseDto(
                 authReply,
                 "gemini",
                 "helpdesk",
@@ -82,14 +119,14 @@ public sealed class RagAssistantService(
                 citations,
                 null,
                 null
-            );
+            ));
         }
 
         if (IsGradeDataAvailabilityQuestion(message))
         {
             if (isGuest)
             {
-                return new RagResponseDto(
+                return await FinalizeResponseAsync(new RagResponseDto(
                     "In guest mode, I cannot access student-specific grade records. Sign in with your student account so I can verify whether your grade records are on file.",
                     "gemini",
                     "helpdesk",
@@ -97,7 +134,7 @@ public sealed class RagAssistantService(
                     citations,
                     null,
                     null
-                );
+                ));
             }
 
             if (gradeSnapshot.TotalGradeRecords > 0)
@@ -106,7 +143,7 @@ public sealed class RagAssistantService(
                     ? $" Last grade-record update: {lastUpdated:yyyy-MM-dd HH:mm} UTC."
                     : string.Empty;
 
-                return new RagResponseDto(
+                return await FinalizeResponseAsync(new RagResponseDto(
                     $"Yes. I can see your grade records in HariKnows ({gradeSnapshot.TotalGradeRecords} records across {gradeSnapshot.DistinctCourses} courses). I can use these records for eligibility and registrar guidance.{updatedText} I will not reveal private per-subject grade details unless policy explicitly allows it.",
                     "gemini",
                     "helpdesk",
@@ -114,10 +151,10 @@ public sealed class RagAssistantService(
                     citations,
                     null,
                     null
-                );
+                ));
             }
 
-            return new RagResponseDto(
+            return await FinalizeResponseAsync(new RagResponseDto(
                 "I checked your signed-in record, but I currently do not see grade records linked to your student number in HariKnows. This usually means grades have not been imported yet or were not matched during ETL.",
                 "gemini",
                 "helpdesk",
@@ -125,14 +162,14 @@ public sealed class RagAssistantService(
                 citations,
                 null,
                 null
-            );
+            ));
         }
 
         if (IsGradeDisclosureQuestion(message))
         {
             if (isGuest)
             {
-                return new RagResponseDto(
+                return await FinalizeResponseAsync(new RagResponseDto(
                     "In guest mode, I cannot access student-specific grade records. Sign in with your student account so I can verify your grade-record availability.",
                     "gemini",
                     "helpdesk",
@@ -140,12 +177,12 @@ public sealed class RagAssistantService(
                     citations,
                     null,
                     null
-                );
+                ));
             }
 
             if (gradeSnapshot.TotalGradeRecords <= 0)
             {
-                return new RagResponseDto(
+                return await FinalizeResponseAsync(new RagResponseDto(
                     "I checked your signed-in account and do not currently see grade records linked to your student number in HariKnows. This usually means grades were not imported yet or were not matched during ETL.",
                     "gemini",
                     "helpdesk",
@@ -153,14 +190,14 @@ public sealed class RagAssistantService(
                     citations,
                     null,
                     null
-                );
+                ));
             }
 
             var updatedText = gradeSnapshot.LastUpdatedUtc is DateTime lastUpdated
                 ? $" Most recent grade-record update: {lastUpdated:yyyy-MM-dd HH:mm} UTC."
                 : string.Empty;
 
-            return new RagResponseDto(
+            return await FinalizeResponseAsync(new RagResponseDto(
                 $"I can confirm that your signed-in account has grade records on file ({gradeSnapshot.TotalGradeRecords} records across {gradeSnapshot.DistinctCourses} courses).{updatedText} For privacy and policy compliance, I do not display exact grade values in chat. These records are used internally to validate eligibility for registrar document requests and related services.",
                 "gemini",
                 "helpdesk",
@@ -168,14 +205,14 @@ public sealed class RagAssistantService(
                 citations,
                 null,
                 null
-            );
+            ));
         }
 
         if (IsCurriculumQuestion(message))
         {
             if (isGuest)
             {
-                return new RagResponseDto(
+                return await FinalizeResponseAsync(new RagResponseDto(
                     "In guest mode, I cannot verify your program-specific curriculum. Sign in so I can check the curriculum records linked to your account.",
                     "gemini",
                     "helpdesk",
@@ -183,12 +220,12 @@ public sealed class RagAssistantService(
                     citations,
                     null,
                     null
-                );
+                ));
             }
 
             if (curriculumCount == 0)
             {
-                return new RagResponseDto(
+                return await FinalizeResponseAsync(new RagResponseDto(
                     $"I checked your signed-in program ({student?.ProgramCode}), but I do not see curriculum entries loaded yet for {student?.CollegeCode}/{student?.ProgramCode} in HariKnows.",
                     "gemini",
                     "helpdesk",
@@ -196,7 +233,7 @@ public sealed class RagAssistantService(
                     citations,
                     null,
                     null
-                );
+                ));
             }
 
             var lines = curriculumPreview
@@ -218,14 +255,14 @@ public sealed class RagAssistantService(
                 reply.AppendLine($"- ...and {curriculumCount - lines.Count} more entries.");
             }
 
-            return new RagResponseDto(reply.ToString().Trim(), "gemini", "helpdesk", 0.95, citations, null, null);
+            return await FinalizeResponseAsync(new RagResponseDto(reply.ToString().Trim(), "gemini", "helpdesk", 0.95, citations, null, null));
         }
 
         if (IsSyllabusQuestion(message))
         {
             if (isGuest)
             {
-                return new RagResponseDto(
+                return await FinalizeResponseAsync(new RagResponseDto(
                     "In guest mode, I cannot verify your program-specific syllabus entries. Sign in so I can check syllabus records linked to your account.",
                     "gemini",
                     "helpdesk",
@@ -233,12 +270,12 @@ public sealed class RagAssistantService(
                     citations,
                     null,
                     null
-                );
+                ));
             }
 
             if (syllabusCount == 0)
             {
-                return new RagResponseDto(
+                return await FinalizeResponseAsync(new RagResponseDto(
                     $"I checked your signed-in program ({student?.ProgramCode}), but I do not see syllabus entries loaded yet for {student?.CollegeCode}/{student?.ProgramCode} in HariKnows.",
                     "gemini",
                     "helpdesk",
@@ -246,7 +283,7 @@ public sealed class RagAssistantService(
                     citations,
                     null,
                     null
-                );
+                ));
             }
 
             var lines = syllabusPreview
@@ -268,7 +305,7 @@ public sealed class RagAssistantService(
                 reply.AppendLine($"- ...and {syllabusCount - lines.Count} more entries.");
             }
 
-            return new RagResponseDto(reply.ToString().Trim(), "gemini", "helpdesk", 0.95, citations, null, null);
+            return await FinalizeResponseAsync(new RagResponseDto(reply.ToString().Trim(), "gemini", "helpdesk", 0.95, citations, null, null));
         }
 
         if (string.Equals(routing, "redirect", StringComparison.OrdinalIgnoreCase) && faqMatches.Count == 0)
@@ -280,7 +317,7 @@ public sealed class RagAssistantService(
                 ? ResolveTemplate(contextEntries, RedirectNoteGuestTitle, "Guest mode provides general guidance only.")
                 : ResolveTemplate(contextEntries, RedirectNoteSignedInTitle, "Question appears out of scope for the helpdesk knowledge base.");
 
-            return new RagResponseDto(
+            return await FinalizeResponseAsync(new RagResponseDto(
                 RenderTemplate(redirectReplyTemplate, student?.FullName ?? "your account", studentNo ?? string.Empty),
                 "gemini",
                 routing,
@@ -288,7 +325,7 @@ public sealed class RagAssistantService(
                 citations,
                 "registrar",
                 RenderTemplate(redirectNote, student?.FullName ?? "your account", studentNo ?? string.Empty)
-            );
+            ));
         }
 
         var context = BuildContext(student, studentStatus, gradeSnapshot, curriculumCount, syllabusCount, recentRequests, faqMatches, contextEntries, conversationHistory, message, isGuest);
@@ -296,7 +333,129 @@ public sealed class RagAssistantService(
         var resolvedRouting = routing == "faq" ? "faq+gemini" : routing;
         var confidence = EstimateConfidence(resolvedRouting, faqMatches.Count, recentRequests.Count);
 
-        return new RagResponseDto(geminiReply, "gemini", resolvedRouting, confidence, citations, null, null);
+        return await FinalizeResponseAsync(new RagResponseDto(geminiReply, "gemini", resolvedRouting, confidence, citations, null, null));
+    }
+
+    private bool ShouldCaptureUncertainQuestion(string message, double confidence, bool hasKnowledgeMatch)
+    {
+        if (!IsKnowledgeExpansionCandidate(message))
+        {
+            return false;
+        }
+
+        return confidence < _options.UncertainConfidenceThreshold || !hasKnowledgeMatch;
+    }
+
+    private static bool IsKnowledgeExpansionCandidate(string message)
+    {
+        var lowered = message.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(lowered) || lowered.Length < 6)
+        {
+            return false;
+        }
+
+        if (lowered is "hi" or "hello" or "hey" or "thanks" or "thank you")
+        {
+            return false;
+        }
+
+        if (IsAuthStatusQuestion(lowered))
+        {
+            return false;
+        }
+
+        return lowered.Contains('?')
+            || lowered.Contains("how")
+            || lowered.Contains("what")
+            || lowered.Contains("when")
+            || lowered.Contains("where")
+            || lowered.Contains("can i")
+            || lowered.Contains("should i");
+    }
+
+    private async Task CaptureUncertainQuestionAsync(string? studentNo, StudentProfileDto? student, string conversationId, string message, string routing, double confidence, CancellationToken cancellationToken)
+    {
+        var normalized = NormalizeQuestion(message);
+        var now = DateTime.UtcNow;
+        var dedupWindowStart = now.AddMinutes(-Math.Max(1, _options.UncertainDedupMinutes));
+
+        var exists = await dbContext.UncertainQuestions
+            .AnyAsync(entry =>
+                entry.Status.ToLower() == "open"
+                && entry.NormalizedQuestion == normalized
+                && entry.ConversationId == conversationId
+                && entry.CreatedAt >= dedupWindowStart,
+                cancellationToken);
+
+        if (exists)
+        {
+            return;
+        }
+
+        dbContext.UncertainQuestions.Add(new UncertainQuestion
+        {
+            ConversationId = conversationId,
+            StudentNo = studentNo ?? string.Empty,
+            CollegeCode = student?.CollegeCode ?? string.Empty,
+            ProgramCode = student?.ProgramCode ?? string.Empty,
+            QuestionText = message.Trim(),
+            NormalizedQuestion = normalized,
+            Routing = routing,
+            Confidence = confidence,
+            Status = "open",
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private static string NormalizeQuestion(string message)
+    {
+        var compact = string.Join(' ', message
+            .Trim()
+            .ToLowerInvariant()
+            .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        return compact;
+    }
+
+    private static string AddInlineFaqLink(string reply, IReadOnlyList<RagCitationDto> citations)
+    {
+        if (citations.Count == 0)
+        {
+            return reply;
+        }
+
+        var topCitation = citations[0];
+        if (string.IsNullOrWhiteSpace(topCitation.Url) || reply.Contains(topCitation.Url, StringComparison.OrdinalIgnoreCase))
+        {
+            return reply;
+        }
+
+        return $"{reply.Trim()}\n\nSee related FAQ: [{topCitation.Title}]({topCitation.Url}).";
+    }
+
+    private static bool IsStrongFaqMatch(string message, string faqTitle)
+    {
+        var messageTokens = Tokenize(message);
+        var titleTokens = Tokenize(faqTitle);
+        if (messageTokens.Count == 0 || titleTokens.Count == 0)
+        {
+            return false;
+        }
+
+        var overlap = titleTokens.Count(token => messageTokens.Contains(token));
+        var ratio = (double)overlap / titleTokens.Count;
+        return ratio >= 0.55;
+    }
+
+    private static HashSet<string> Tokenize(string text)
+    {
+        return text
+            .ToLowerInvariant()
+            .Split([' ', '\t', '\r', '\n', ',', '.', '?', '!', ':', ';', '(', ')', '[', ']', '{', '}', '-', '_', '/'], StringSplitOptions.RemoveEmptyEntries)
+            .Where(token => token.Length > 2)
+            .ToHashSet();
     }
 
     private static string DetermineRouting(string message, IReadOnlyList<FaqContextEntryDto> faqMatches, IReadOnlyList<StudentDocumentRequestDto> recentRequests)
@@ -492,6 +651,10 @@ public sealed class RagAssistantService(
                 builder.AppendLine($"- {NormalizeRole(turn.Role)}: {turn.Content}");
             }
         }
+
+        builder.AppendLine("Response behavior:");
+        builder.AppendLine("- If a specific FAQ is relevant, prefer a concise answer and include one clear FAQ reference link.");
+        builder.AppendLine("- Do not mention internal uncertainty logging, triage queues, or hidden metadata in user-visible responses.");
 
         builder.AppendLine();
         builder.AppendLine("User message:");

@@ -74,7 +74,7 @@ public interface IRegistrarRepository
 
     bool DeleteFaqEntry(int faqId);
 
-    IReadOnlyList<FaqContextEntryDto> SearchFaqEntries(string query, string? scopeType, string? collegeCode, string? programCode, int limit);
+    IReadOnlyList<FaqContextEntryDto> SearchFaqEntries(string query, string? scopeType, string? collegeCode, string? programCode, bool includeUnpublished, int limit);
 
     void EnsureDatabaseInitialized();
 }

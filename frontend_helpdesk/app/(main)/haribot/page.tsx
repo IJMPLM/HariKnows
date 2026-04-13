@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Send, Loader2, Trash2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -35,7 +34,6 @@ function formatTime(value: string) {
 
 export default function HaribotPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   
   // Chat State
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -183,7 +181,9 @@ export default function HaribotPage() {
       setCurrentUser(resolvedUser ?? null);
       
       // Check for conversation parameter in URL (from recent chats list)
-      const queryConversation = searchParams.get("conversation");
+      const queryConversation = typeof window === "undefined"
+        ? null
+        : new URLSearchParams(window.location.search).get("conversation");
       const activeConv = queryConversation;
       
       setConversationId(activeConv);
@@ -191,7 +191,7 @@ export default function HaribotPage() {
     };
 
     void initialize();
-  }, [router, searchParams]);
+  }, [router]);
 
   const isEmpty = messages.length === 0;
   const displayName = currentUser?.fullName?.split(" ")[0] || "there";
@@ -332,14 +332,19 @@ export default function HaribotPage() {
                                   <ul className="mt-1 space-y-1">
                                     {meta.citations.slice(0, 4).map((citation) => (
                                       <li key={citation.id}>
+                                        {(() => {
+                                          const isInternal = citation.url.startsWith("/");
+                                          return (
                                         <a
                                           href={citation.url}
-                                          target="_blank"
-                                          rel="noreferrer"
+                                          target={isInternal ? undefined : "_blank"}
+                                          rel={isInternal ? undefined : "noreferrer"}
                                           className="underline text-[#6e3102] dark:text-[#d4855a]"
                                         >
                                           {citation.title}
                                         </a>
+                                          );
+                                        })()}
                                         <span className="text-gray-400 dark:text-gray-500"> ({citation.category})</span>
                                       </li>
                                     ))}

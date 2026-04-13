@@ -90,3 +90,30 @@ public record UpdateFaqContextEntryDto(
     bool IsGuestVisible
 );
 
+public record UncertainQuestionDto(
+    int Id,
+    string ConversationId,
+    string StudentNo,
+    string CollegeCode,
+    string ProgramCode,
+    string QuestionText,
+    string Routing,
+    double Confidence,
+    string Status,
+    string ResolutionCategory,
+    int? ResolutionEntryId,
+    DateTime CreatedAt,
+    DateTime UpdatedAt,
+    DateTime? ResolvedAt
+);
+
+public record ResolveUncertainQuestionRequestDto(
+    string Category,
+    string ScopeType,
+    string CollegeCode,
+    string ProgramCode,
+    string Title,
+    string Answer,
+    bool IsGuestVisible
+);
+

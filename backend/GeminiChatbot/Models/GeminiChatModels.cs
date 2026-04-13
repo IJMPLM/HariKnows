@@ -10,7 +10,7 @@ public record ClearHistoryResponse(bool Success, string Message);
 
 public record RagCitationDto(int Id, string Title, string Url, string ScopeType, string Category);
 
-public record RagResponseDto(string Reply, string ModelSource, string Routing, double Confidence, IReadOnlyList<RagCitationDto> Citations, string? RedirectOffice, string? RedirectReason);
+public record RagResponseDto(string Reply, string ModelSource, string Routing, double Confidence, IReadOnlyList<RagCitationDto> Citations, string? RedirectOffice, string? RedirectReason, string? UncertainQuestion = null);
 
 public record ConversationSessionDto(
     string ConversationId,

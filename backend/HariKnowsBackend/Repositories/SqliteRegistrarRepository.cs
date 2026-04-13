@@ -309,7 +309,7 @@ public sealed class SqliteRegistrarRepository(string connectionString) : IRegist
         throw new NotSupportedException("FAQ operations are not supported by SqliteRegistrarRepository.");
     }
 
-    public IReadOnlyList<FaqContextEntryDto> SearchFaqEntries(string query, string? scopeType, string? collegeCode, string? programCode, int limit)
+    public IReadOnlyList<FaqContextEntryDto> SearchFaqEntries(string query, string? scopeType, string? collegeCode, string? programCode, bool includeUnpublished, int limit)
     {
         return [];
     }

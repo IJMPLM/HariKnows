@@ -48,6 +48,12 @@ public interface IRegistrarService
     FaqContextEntryDto? UpdateFaqEntry(int faqId, UpdateFaqContextEntryDto request);
 
     bool DeleteFaqEntry(int faqId);
+
+    IReadOnlyList<UncertainQuestionDto> GetUncertainQuestions(string? status, int limit);
+
+    UncertainQuestionDto? GetUncertainQuestion(int questionId);
+
+    (UncertainQuestionDto Question, FaqContextEntryDto CreatedEntry)? ResolveUncertainQuestion(int questionId, ResolveUncertainQuestionRequestDto request);
 }
 
 public record DepartmentCreateResult(bool Success, bool NameConflict, string? Error, DepartmentDto? Department);

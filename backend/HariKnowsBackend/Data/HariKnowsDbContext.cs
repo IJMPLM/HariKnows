@@ -21,6 +21,7 @@ public class HariKnowsDbContext(DbContextOptions<HariKnowsDbContext> options) : 
     public DbSet<CurriculumCourse> CurriculumCourses { get; set; }
     public DbSet<GradeRecord> GradeRecords { get; set; }
     public DbSet<SyllabusEntry> SyllabusEntries { get; set; }
+    public DbSet<UncertainQuestion> UncertainQuestions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -197,6 +198,19 @@ public class HariKnowsDbContext(DbContextOptions<HariKnowsDbContext> options) : 
             entity.HasKey(e => e.Id);
             entity.Property(e => e.DateUpdated).IsRequired();
             entity.HasIndex(e => new { e.CollegeCode, e.ProgramCode, e.Code }).IsUnique();
+        });
+
+        modelBuilder.Entity<UncertainQuestion>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.QuestionText).IsRequired();
+            entity.Property(e => e.NormalizedQuestion).IsRequired();
+            entity.Property(e => e.Status).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.UpdatedAt).IsRequired();
+            entity.HasIndex(e => new { e.Status, e.CreatedAt });
+            entity.HasIndex(e => new { e.NormalizedQuestion, e.Status, e.CreatedAt });
+            entity.HasIndex(e => new { e.ConversationId, e.CreatedAt });
         });
     }
 }

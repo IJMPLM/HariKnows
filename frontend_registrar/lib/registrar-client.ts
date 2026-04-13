@@ -55,6 +55,23 @@ export type FaqContextEntry = {
   updatedAt: string;
 };
 
+export type UncertainQuestion = {
+  id: number;
+  conversationId: string;
+  studentNo: string;
+  collegeCode: string;
+  programCode: string;
+  questionText: string;
+  routing: string;
+  confidence: number;
+  status: string;
+  resolutionCategory: string;
+  resolutionEntryId?: number | null;
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt?: string | null;
+};
+
 export type ActivityEntry = {
   id: number;
   action: string;
@@ -343,6 +360,36 @@ export async function deleteFaqEntry(faqId: number): Promise<void> {
   });
 
   await parseJsonOrThrow(response);
+}
+
+export async function getUncertainQuestions(filters: { status?: string; limit?: number } = {}): Promise<UncertainQuestion[]> {
+  const url = new URL(`${API_BASE}/api/registrar/questions`);
+  if (filters.status) url.searchParams.set("status", filters.status);
+  url.searchParams.set("limit", String(filters.limit ?? 150));
+
+  const response = await fetch(url.toString());
+  return (await parseJsonOrThrow(response)) as UncertainQuestion[];
+}
+
+export async function resolveUncertainQuestion(
+  questionId: number,
+  payload: {
+    category: string;
+    scopeType: string;
+    collegeCode: string;
+    programCode: string;
+    title: string;
+    answer: string;
+    isGuestVisible: boolean;
+  }
+): Promise<{ question: UncertainQuestion; createdEntry: FaqContextEntry }> {
+  const response = await fetch(`${API_BASE}/api/registrar/questions/${questionId}/resolve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  return (await parseJsonOrThrow(response)) as { question: UncertainQuestion; createdEntry: FaqContextEntry };
 }
 
 export async function moveDocument(documentId: number, toDepartmentId: number): Promise<{ moved: boolean }> {

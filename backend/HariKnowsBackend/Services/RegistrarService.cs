@@ -1,12 +1,15 @@
 using System.Text;
+using HariKnowsBackend.Data;
+using HariKnowsBackend.Data.Entities;
 using HariKnowsBackend.Models;
 using HariKnowsBackend.Repositories;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 
 namespace HariKnowsBackend.Services;
 
-public sealed class RegistrarService(IRegistrarRepository repository, IAuthService authService) : IRegistrarService
+public sealed class RegistrarService(IRegistrarRepository repository, IAuthService authService, HariKnowsDbContext dbContext, IHostEnvironment hostEnvironment) : IRegistrarService
 {
     private static readonly HashSet<string> TerminalRequestStatuses = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -416,6 +419,7 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
     {
         ValidateFaqRequest(request.ScopeType, request.Category, request.Title, request.Answer);
         var created = repository.CreateFaqEntry(request, DateTime.UtcNow);
+        SyncFaqEntryToCsv(created);
         repository.WriteActivity($"FAQ/context created: {created.Title}", "Registrar");
         return created;
     }
@@ -426,6 +430,7 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
         var updated = repository.UpdateFaqEntry(faqId, request, DateTime.UtcNow);
         if (updated is not null)
         {
+            SyncFaqEntryToCsv(updated);
             repository.WriteActivity($"FAQ/context updated: {updated.Title}", "Registrar");
         }
 
@@ -441,6 +446,233 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
         }
 
         return deleted;
+    }
+
+    public IReadOnlyList<UncertainQuestionDto> GetUncertainQuestions(string? status, int limit)
+    {
+        var safeLimit = Math.Clamp(limit, 1, 250);
+        var query = dbContext.UncertainQuestions.AsNoTracking().AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            var normalizedStatus = status.Trim().ToLowerInvariant();
+            query = query.Where(entry => entry.Status.ToLower() == normalizedStatus);
+        }
+
+        return query
+            .OrderBy(entry => entry.Status)
+            .ThenByDescending(entry => entry.CreatedAt)
+            .Take(safeLimit)
+            .Select(ToUncertainQuestionDto)
+            .ToList();
+    }
+
+    public UncertainQuestionDto? GetUncertainQuestion(int questionId)
+    {
+        var question = dbContext.UncertainQuestions
+            .AsNoTracking()
+            .FirstOrDefault(entry => entry.Id == questionId);
+        return question is null ? null : ToUncertainQuestionDto(question);
+    }
+
+    public (UncertainQuestionDto Question, FaqContextEntryDto CreatedEntry)? ResolveUncertainQuestion(int questionId, ResolveUncertainQuestionRequestDto request)
+    {
+        var question = dbContext.UncertainQuestions.FirstOrDefault(entry => entry.Id == questionId);
+        if (question is null)
+        {
+            return null;
+        }
+
+        if (!string.Equals(question.Status, "open", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Only open questions can be resolved.");
+        }
+
+        var normalizedCategory = NormalizeResolutionCategory(request.Category);
+        var normalizedScope = NormalizeFaqScopeType(request.ScopeType, request.IsGuestVisible);
+        ValidateFaqRequest(normalizedScope, normalizedCategory, request.Title, request.Answer);
+
+        var created = CreateFaqEntry(new CreateFaqContextEntryDto(
+            normalizedScope,
+            request.CollegeCode.Trim().ToUpperInvariant(),
+            request.ProgramCode.Trim().ToUpperInvariant(),
+            normalizedCategory,
+            request.Title.Trim(),
+            request.Answer.Trim(),
+            request.IsGuestVisible
+        ));
+
+        var now = DateTime.UtcNow;
+        question.Status = "closed";
+        question.ResolutionCategory = normalizedCategory;
+        question.ResolutionEntryId = created.Id;
+        question.ResolutionAnswer = request.Answer.Trim();
+        question.ResolvedAt = now;
+        question.UpdatedAt = now;
+        dbContext.SaveChanges();
+
+        repository.WriteActivity($"Question {question.Id} resolved to {normalizedCategory} entry {created.Id}", "Registrar");
+
+        return (ToUncertainQuestionDto(question), created);
+    }
+
+    private static UncertainQuestionDto ToUncertainQuestionDto(UncertainQuestion entry)
+    {
+        return new UncertainQuestionDto(
+            entry.Id,
+            entry.ConversationId,
+            entry.StudentNo,
+            entry.CollegeCode,
+            entry.ProgramCode,
+            entry.QuestionText,
+            entry.Routing,
+            entry.Confidence,
+            entry.Status,
+            entry.ResolutionCategory,
+            entry.ResolutionEntryId,
+            entry.CreatedAt,
+            entry.UpdatedAt,
+            entry.ResolvedAt
+        );
+    }
+
+    private static string NormalizeResolutionCategory(string category)
+    {
+        var normalized = category.Trim().ToLowerInvariant();
+        if (normalized == "faq")
+        {
+            return "faq";
+        }
+
+        return string.IsNullOrWhiteSpace(normalized) ? "context" : normalized;
+    }
+
+    private static string NormalizeFaqScopeType(string scopeType, bool isGuestVisible)
+    {
+        var normalized = scopeType.Trim().ToLowerInvariant();
+        normalized = normalized switch
+        {
+            "global" => "general",
+            "non_guest" => "non-guest",
+            "nonguest" => "non-guest",
+            _ => normalized
+        };
+
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return isGuestVisible ? "general" : "non-guest";
+        }
+
+        return normalized;
+    }
+
+    private void SyncFaqEntryToCsv(FaqContextEntryDto changedEntry)
+    {
+        var isFaq = string.Equals(changedEntry.Category, "faq", StringComparison.OrdinalIgnoreCase);
+        var targetPath = ResolveCsvTargetPath(changedEntry, isFaq);
+
+        var rows = dbContext.FaqContextEntries
+            .AsNoTracking()
+            .Where(entry => isFaq
+                ? entry.Category.ToLower() == "faq"
+                : entry.Category.ToLower() != "faq")
+            .OrderBy(entry => entry.ScopeType)
+            .ThenBy(entry => entry.Category)
+            .ThenBy(entry => entry.Question)
+            .Select(entry => new CreateFaqContextEntryDto(
+                entry.ScopeType,
+                entry.CollegeCode,
+                entry.ProgramCode,
+                entry.Category,
+                entry.Question,
+                entry.Answer,
+                entry.IsPublished
+            ))
+            .ToList();
+
+        var directory = Path.GetDirectoryName(targetPath);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        using var writer = new StreamWriter(targetPath, false, new UTF8Encoding(false));
+        writer.WriteLine("scopeType,collegeCode,programCode,category,title,answer,isGuestVisible");
+        foreach (var row in rows)
+        {
+            writer.WriteLine(string.Join(",", new[]
+            {
+                EscapeCsv(row.ScopeType),
+                EscapeCsv(row.CollegeCode),
+                EscapeCsv(row.ProgramCode),
+                EscapeCsv(row.Category),
+                EscapeCsv(row.Title),
+                EscapeCsv(row.Answer),
+                EscapeCsv(row.IsGuestVisible ? "true" : "false")
+            }));
+        }
+    }
+
+    private string ResolveCsvTargetPath(FaqContextEntryDto changedEntry, bool isFaq)
+    {
+        var desiredCategory = isFaq ? "faq" : "context";
+        var normalizedCollegeCode = changedEntry.CollegeCode.Trim().ToUpperInvariant();
+        var normalizedProgramCode = changedEntry.ProgramCode.Trim().ToUpperInvariant();
+
+        var latestCsvFileName = dbContext.EtlUploadFiles
+            .AsNoTracking()
+            .Where(file => file.FileName.EndsWith(".csv") && file.Category.ToLower() == desiredCategory)
+            .OrderByDescending(file =>
+                file.CollegeCode.ToUpper() == normalizedCollegeCode
+                && file.ProgramCode.ToUpper() == normalizedProgramCode)
+            .ThenByDescending(file => file.ParsedAt)
+            .ThenByDescending(file => file.Id)
+            .Select(file => file.FileName)
+            .FirstOrDefault();
+
+        var fallbackFileName = isFaq ? "faqs.csv" : "consolidated_context.csv";
+        var docsContextPath = Path.GetFullPath(Path.Combine(hostEnvironment.ContentRootPath, "..", "..", "docs", "context", fallbackFileName));
+
+        if (string.IsNullOrWhiteSpace(latestCsvFileName))
+        {
+            return docsContextPath;
+        }
+
+        if (Path.IsPathRooted(latestCsvFileName) && File.Exists(latestCsvFileName))
+        {
+            return latestCsvFileName;
+        }
+
+        var relativeCandidates = new[]
+        {
+            Path.Combine(hostEnvironment.ContentRootPath, "..", "..", "docs", latestCsvFileName),
+            Path.Combine(hostEnvironment.ContentRootPath, "..", "..", "docs", "context", latestCsvFileName),
+            Path.Combine(hostEnvironment.ContentRootPath, latestCsvFileName)
+        };
+
+        foreach (var candidate in relativeCandidates)
+        {
+            var resolved = Path.GetFullPath(candidate);
+            if (File.Exists(resolved))
+            {
+                return resolved;
+            }
+        }
+
+        return docsContextPath;
+    }
+
+    private static string EscapeCsv(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return string.Empty;
+        }
+
+        var escaped = value.Replace("\"", "\"\"");
+        return escaped.IndexOfAny([',', '\"', '\n', '\r']) >= 0
+            ? $"\"{escaped}\""
+            : escaped;
     }
 
     private static void ValidateFaqRequest(string scopeType, string category, string title, string answer)
