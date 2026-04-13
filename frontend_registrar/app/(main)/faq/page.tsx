@@ -8,16 +8,52 @@ type Section = "faq" | "context";
 
 type FaqFormState = {
   scopeType: string;
-  programCode: string;
   category: string;
   title: string;
   answer: string;
   isGuestVisible: boolean;
 };
 
+const FAQ_TAG_OPTIONS = ["faq-general", "faq-non-guest"];
+
+const CONTEXT_TAG_OPTIONS = [
+  "assistant-identity",
+  "guidance-header",
+  "context-unavailable",
+  "guest-mode-tag",
+  "auth-status-guest",
+  "auth-status-signed-in",
+  "redirect-reply-guest",
+  "redirect-reply-signed-in",
+  "redirect-note-guest",
+  "redirect-note-signed-in",
+  "response-guardrail",
+  "context-general",
+  "context-non-guest",
+  "other",
+];
+
+const CATEGORY_BY_TAG: Record<string, string> = {
+  "assistant-identity": "assistant",
+  "guidance-header": "assistant",
+  "context-unavailable": "assistant",
+  "guest-mode-tag": "assistant",
+  "auth-status-guest": "assistant",
+  "auth-status-signed-in": "assistant",
+  "redirect-reply-guest": "assistant",
+  "redirect-reply-signed-in": "assistant",
+  "redirect-note-guest": "assistant",
+  "redirect-note-signed-in": "assistant",
+  "response-guardrail": "guardrail",
+  "context-general": "context",
+  "context-non-guest": "context",
+  "other": "context",
+  "faq-general": "faq",
+  "faq-non-guest": "faq",
+};
+
 const createEmptyForm = (section: Section): FaqFormState => ({
-  scopeType: "general",
-  programCode: "",
+  scopeType: section === "faq" ? "faq-general" : "context-general",
   category: section === "faq" ? "faq" : "context",
   title: "",
   answer: "",
@@ -27,19 +63,7 @@ const createEmptyForm = (section: Section): FaqFormState => ({
 const isFaqEntry = (entry: FaqContextEntry) => entry.category.trim().toLowerCase() === "faq";
 
 function normalizeScope(scopeType: string) {
-  const normalized = scopeType.trim().toLowerCase();
-  if (normalized === "global") return "general";
-  if (normalized === "nonguest" || normalized === "non_guest") return "non-guest";
-  return normalized || "general";
-}
-
-function deriveCollegeCodeFromScope(scopeType: string) {
-  const normalized = normalizeScope(scopeType);
-  if (normalized === "general" || normalized === "non-guest") {
-    return "";
-  }
-
-  return normalized.toUpperCase();
+  return scopeType.trim().toLowerCase();
 }
 
 export default function FaqContextPage() {
@@ -91,7 +115,6 @@ export default function FaqContextPage() {
     setActiveSection(isFaqEntry(entry) ? "faq" : "context");
     setForm({
       scopeType: normalizeScope(entry.scopeType),
-      programCode: entry.programCode,
       category: entry.category,
       title: entry.title,
       answer: entry.answer,
@@ -111,9 +134,11 @@ export default function FaqContextPage() {
 
     const payload = {
       scopeType: normalizeScope(form.scopeType),
-      collegeCode: deriveCollegeCodeFromScope(form.scopeType),
-      programCode: form.programCode.trim(),
-      category: activeSection === "faq" ? "faq" : form.category.trim() || "context",
+      collegeCode: "",
+      programCode: "",
+      category: activeSection === "faq"
+        ? "faq"
+        : (form.scopeType === "other" ? (form.category.trim() || "context") : (CATEGORY_BY_TAG[form.scopeType] ?? "context")),
       title: form.title.trim(),
       answer: form.answer.trim(),
       isGuestVisible: form.isGuestVisible,
@@ -141,8 +166,8 @@ export default function FaqContextPage() {
 
   const sectionLabel = activeSection === "faq" ? "FAQs" : "Context";
   const sectionDescription = activeSection === "faq"
-    ? "Short, general questions with a title, answer, and guest visibility flag."
-    : "Categorical context entries with a title and longer paragraph-style guidance.";
+    ? "FAQ entries use explicit faq-general/faq-non-guest tags."
+    : "Context entries map directly to prompt sections through prompt role tags.";
 
   return (
     <div className="relative min-h-screen text-gray-900 dark:text-gray-100 overflow-hidden">
@@ -208,14 +233,12 @@ export default function FaqContextPage() {
                           <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-gray-400">
                             <span>{entry.category}</span>
                             <span>·</span>
-                            <span>{entry.scopeType}</span>
+                            <span className="rounded-full bg-[#f2e8e1] dark:bg-[#39261a] px-2 py-1 text-[#6e3102] dark:text-[#d4855a] font-bold">{entry.scopeType}</span>
                             {entry.isGuestVisible ? <span className="text-emerald-600 dark:text-emerald-400">Guest visible</span> : <span>Signed-in users</span>}
                           </div>
                           <h2 className="font-bold mt-1">{entry.title}</h2>
                           <p className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{entry.answer}</p>
-                          {(entry.collegeCode || entry.programCode) ? (
-                            <p className="text-xs text-gray-400">{entry.collegeCode || "GLOBAL"}{entry.programCode ? ` / ${entry.programCode}` : ""}</p>
-                          ) : null}
+                          {entry.scopeType === "other" ? <p className="text-xs text-gray-400">Custom category: {entry.category}</p> : null}
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           <button onClick={() => startEdit(entry)} className="p-2 rounded-xl bg-white dark:bg-[#101014] border border-gray-200 dark:border-white/10">
@@ -242,30 +265,34 @@ export default function FaqContextPage() {
               </div>
               <p className="text-sm text-gray-500 dark:text-gray-400">{sectionDescription}</p>
 
-              {activeSection === "context" ? (
+              <select
+                value={form.scopeType}
+                onChange={(event) => {
+                  const nextScope = event.target.value;
+                  setForm({
+                    ...form,
+                    scopeType: nextScope,
+                    category: activeSection === "faq" ? "faq" : (nextScope === "other" ? form.category : (CATEGORY_BY_TAG[nextScope] ?? "context")),
+                    isGuestVisible: nextScope.endsWith("non-guest") ? false : form.isGuestVisible,
+                  });
+                }}
+                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10"
+              >
+                {(activeSection === "faq" ? FAQ_TAG_OPTIONS : CONTEXT_TAG_OPTIONS).map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+
+              {activeSection === "context" && form.scopeType === "other" ? (
                 <input
                   value={form.category}
                   onChange={(event) => setForm({ ...form, category: event.target.value })}
-                  placeholder="category"
+                  placeholder="custom category label"
                   className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10"
                 />
               ) : (
-                <input value="faq" disabled className="w-full px-4 py-3 rounded-xl bg-gray-100 dark:bg-[#101014] border border-gray-200 dark:border-white/10 text-gray-500" />
+                <input value={activeSection === "faq" ? "faq" : (CATEGORY_BY_TAG[form.scopeType] ?? "context")} disabled className="w-full px-4 py-3 rounded-xl bg-gray-100 dark:bg-[#101014] border border-gray-200 dark:border-white/10 text-gray-500" />
               )}
-
-              <input
-                value={form.scopeType}
-                onChange={(event) => setForm({ ...form, scopeType: event.target.value })}
-                placeholder="scopeType (general, non-guest, CA, etc.)"
-                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10"
-              />
-
-              <input
-                value={form.programCode}
-                onChange={(event) => setForm({ ...form, programCode: event.target.value })}
-                placeholder="programCode (optional)"
-                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10"
-              />
 
               <input
                 value={form.title}
@@ -281,7 +308,7 @@ export default function FaqContextPage() {
                 className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 resize-y min-h-[140px]"
               />
               <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={form.isGuestVisible} onChange={(event) => setForm({ ...form, isGuestVisible: event.target.checked, scopeType: event.target.checked ? "general" : "non-guest" })} />
+                <input type="checkbox" checked={form.isGuestVisible} onChange={(event) => setForm({ ...form, isGuestVisible: event.target.checked })} />
                 Visible to guest users
               </label>
 

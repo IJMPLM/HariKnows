@@ -1,6 +1,7 @@
 using HariKnowsBackend.Data;
 using HariKnowsBackend.Data.Entities;
 using HariKnowsBackend.Models;
+using HariKnowsBackend.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace HariKnowsBackend.Repositories;
@@ -12,9 +13,7 @@ public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegis
         var normalized = rawScope.Trim().ToLowerInvariant();
         return normalized switch
         {
-            "global" => "general",
-            "non_guest" => "non-guest",
-            "nonguest" => "non-guest",
+            "faq" => "faq",
             _ => normalized
         };
     }
@@ -495,41 +494,17 @@ public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegis
         if (!string.IsNullOrWhiteSpace(scopeType))
         {
             var normalizedScope = NormalizeFaqScope(scopeType);
-            if (normalizedScope == "general")
+            if (normalizedScope == "faq")
             {
                 query = query.Where(e =>
-                    e.ScopeType.ToLower() == "general" ||
-                    e.ScopeType.ToLower() == "global");
-            }
-            else if (normalizedScope == "non-guest")
-            {
-                query = query.Where(e =>
-                    e.ScopeType.ToLower() == "non-guest" ||
-                    e.ScopeType.ToLower() == "non_guest" ||
-                    e.ScopeType.ToLower() == "nonguest");
+                    e.ScopeType.ToLower() == PromptRoleTags.FaqGeneral ||
+                    e.ScopeType.ToLower() == PromptRoleTags.FaqNonGuest);
             }
             else
             {
                 query = query.Where(e =>
                     e.ScopeType.ToLower() == normalizedScope);
             }
-        }
-
-        if (!string.IsNullOrWhiteSpace(collegeCode))
-        {
-            var normalizedCollegeCode = collegeCode.Trim().ToUpperInvariant();
-            query = query.Where(e =>
-                string.IsNullOrWhiteSpace(e.CollegeCode)
-                || e.CollegeCode.ToUpper() == normalizedCollegeCode
-                || e.ScopeType.ToUpper() == normalizedCollegeCode);
-        }
-
-        if (!string.IsNullOrWhiteSpace(programCode))
-        {
-            var normalizedProgramCode = programCode.Trim().ToUpperInvariant();
-            query = query.Where(e =>
-                string.IsNullOrWhiteSpace(e.ProgramCode)
-                || e.ProgramCode.ToUpper() == normalizedProgramCode);
         }
 
         return query
@@ -610,7 +585,10 @@ public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegis
             return [];
         }
 
-        var entries = GetFaqEntries(scopeType, collegeCode, programCode, includeUnpublished, safeLimit * 2)
+        var filteredScope = string.IsNullOrWhiteSpace(scopeType) ? "faq" : scopeType;
+
+        var entries = GetFaqEntries(filteredScope, collegeCode, programCode, includeUnpublished, safeLimit * 2)
+            .Where(entry => PromptRoleTags.IsFaq(entry.ScopeType))
             .Where(entry =>
                 entry.Title.Contains(normalized, StringComparison.OrdinalIgnoreCase) ||
                 entry.Answer.Contains(normalized, StringComparison.OrdinalIgnoreCase) ||

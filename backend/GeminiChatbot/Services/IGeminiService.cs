@@ -11,7 +11,13 @@ namespace GeminiChatbot.Services;
 public interface IGeminiService
 {
     Task<string> GetChatResponseAsync(string userMessage, IReadOnlyList<ChatResponseDto> conversationHistory);
+
+    GeminiRequestPreview BuildRequestPreview(string userMessage, IReadOnlyList<ChatResponseDto> conversationHistory);
 }
+
+public sealed record GeminiRequestPreview(string[] ModelCandidates, IReadOnlyList<GeminiRequestPart> Contents);
+
+public sealed record GeminiRequestPart(string Role, string Text);
 
 public sealed class GeminiRateLimitException(string message, int? retryAfterSeconds, Exception innerException)
     : Exception(message, innerException)
@@ -54,28 +60,7 @@ public sealed class GeminiService(IConfiguration config, ILogger<GeminiService> 
             .TakeLast(_maxHistoryItems)
             .ToList();
 
-        var contents = new List<Content>();
-
-        foreach (var message in recentHistory)
-        {
-            contents.Add(new Content
-            {
-                Role = NormalizeRoleForGemini(message.Role),
-                Parts = new List<Part> 
-                {
-                    new Part { Text = message.Content }
-                }
-            });
-        }
-
-        contents.Add(new Content
-        {
-            Role = "user",
-            Parts = new List<Part>
-            {
-                new Part { Text = userMessage }
-            }
-        });
+        var contents = BuildContents(userMessage, recentHistory);
 
         var generationConfig = new GenerateContentConfig();
 
@@ -103,6 +88,48 @@ public sealed class GeminiService(IConfiguration config, ILogger<GeminiService> 
         {
             RequestGate.Release();
         }
+    }
+
+    public GeminiRequestPreview BuildRequestPreview(string userMessage, IReadOnlyList<ChatResponseDto> conversationHistory)
+    {
+        var recentHistory = conversationHistory
+            .TakeLast(_maxHistoryItems)
+            .ToList();
+
+        var previewContents = recentHistory
+            .Select(message => new GeminiRequestPart(NormalizeRoleForGemini(message.Role), message.Content))
+            .ToList();
+
+        previewContents.Add(new GeminiRequestPart("user", userMessage));
+        return new GeminiRequestPreview(_modelCandidates, previewContents);
+    }
+
+    private static List<Content> BuildContents(string userMessage, IReadOnlyList<ChatResponseDto> recentHistory)
+    {
+        var contents = new List<Content>();
+
+        foreach (var message in recentHistory)
+        {
+            contents.Add(new Content
+            {
+                Role = NormalizeRoleForGemini(message.Role),
+                Parts = new List<Part>
+                {
+                    new Part { Text = message.Content }
+                }
+            });
+        }
+
+        contents.Add(new Content
+        {
+            Role = "user",
+            Parts = new List<Part>
+            {
+                new Part { Text = userMessage }
+            }
+        });
+
+        return contents;
     }
 
     private static bool IsRateLimitOrQuota(Exception ex, out int? retryAfterSeconds)

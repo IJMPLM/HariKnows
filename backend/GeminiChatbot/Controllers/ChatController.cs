@@ -2,15 +2,18 @@ using GeminiChatbot.Models;
 using GeminiChatbot.Repositories;
 using GeminiChatbot.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Text;
+using System.Text.Json;
 using System.Security.Claims;
 
 namespace GeminiChatbot.Controllers;
 
 [ApiController]
 [Route("api/chat")]
-public sealed class ChatController(IRagAssistantService ragAssistantService, IChatsRepository chatsRepository) : ControllerBase
+public sealed class ChatController(IRagAssistantService ragAssistantService, IGeminiService geminiService, IChatsRepository chatsRepository, IWebHostEnvironment hostEnvironment) : ControllerBase
 {
     [HttpPost("message")]
     [AllowAnonymous]
@@ -71,6 +74,60 @@ public sealed class ChatController(IRagAssistantService ragAssistantService, ICh
         {
             return BadRequest(new { error = ex.Message });
         }
+    }
+
+    [HttpPost("debug/raw-prompt")]
+    [AllowAnonymous]
+    public async Task<IActionResult> BuildRawPrompt([FromBody] CreateChatRequest request, [FromQuery] string? conversationId)
+    {
+        var studentNo = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var isGuest = string.IsNullOrWhiteSpace(studentNo);
+        var convId = BuildConversationId(studentNo, conversationId, isGuest);
+        if (string.IsNullOrWhiteSpace(convId))
+        {
+            return Forbid();
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Content))
+        {
+            return BadRequest(new { error = "Content is required." });
+        }
+
+        var trimmedContent = request.Content.Trim();
+        var history = isGuest
+            ? new List<ChatResponseDto>()
+            : await chatsRepository.GetChatHistoryAsync(convId);
+
+        var rawPrompt = await ragAssistantService.BuildRawPromptAsync(studentNo, trimmedContent, history, HttpContext.RequestAborted);
+        var preview = geminiService.BuildRequestPreview(rawPrompt, history);
+
+        var output = new StringBuilder();
+        output.AppendLine("# Exact Prompt Sent To Gemini");
+        output.AppendLine();
+        output.AppendLine("## Raw Prompt String");
+        output.AppendLine();
+        output.AppendLine(rawPrompt);
+        output.AppendLine();
+        output.AppendLine("## Gemini API Contents Payload");
+        output.AppendLine();
+        output.AppendLine(JsonSerializer.Serialize(preview, new JsonSerializerOptions { WriteIndented = true }));
+
+        var targetFile = Path.GetFullPath(Path.Combine(hostEnvironment.ContentRootPath, "..", "..", "docs", "context", "complete_raw_prompt.txt"));
+        var targetDir = Path.GetDirectoryName(targetFile);
+        if (!string.IsNullOrWhiteSpace(targetDir))
+        {
+            Directory.CreateDirectory(targetDir);
+        }
+
+        await System.IO.File.WriteAllTextAsync(targetFile, output.ToString(), HttpContext.RequestAborted);
+
+        return Ok(new
+        {
+            conversationId = convId,
+            outputPath = targetFile,
+            rawPrompt,
+            payload = preview
+        });
     }
 
     [HttpGet("history")]

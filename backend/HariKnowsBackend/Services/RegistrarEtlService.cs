@@ -237,8 +237,8 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
             }
 
             var normalizedScope = NormalizeFaqScopeType(request.ScopeType);
-            var normalizedCollege = request.CollegeCode.Trim().ToUpperInvariant();
-            var normalizedProgram = request.ProgramCode.Trim().ToUpperInvariant();
+            var normalizedCollege = string.Empty;
+            var normalizedProgram = string.Empty;
             var normalizedCategory = string.IsNullOrWhiteSpace(request.Category) ? "faq" : request.Category.Trim();
             var normalizedTitle = request.Title.Trim();
 
@@ -269,8 +269,8 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
             }
 
             existing.ScopeType = normalizedScope;
-            existing.CollegeCode = normalizedCollege;
-            existing.ProgramCode = normalizedProgram;
+            existing.CollegeCode = string.Empty;
+            existing.ProgramCode = string.Empty;
             existing.Category = normalizedCategory;
             existing.Question = normalizedTitle;
             existing.Answer = request.Answer.Trim();
@@ -1393,9 +1393,9 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
         var headerLookup = header.ToHashSet(StringComparer.OrdinalIgnoreCase);
         var hasAnswerLikeColumn = headerLookup.Contains("answer") || headerLookup.Contains("context") || headerLookup.Contains("content");
 
-        if (!headerLookup.Contains("scopeType") || !headerLookup.Contains("category") || !headerLookup.Contains("title") || !hasAnswerLikeColumn)
+        if (!headerLookup.Contains("promptRoleTag") || !headerLookup.Contains("category") || !headerLookup.Contains("title") || !hasAnswerLikeColumn)
         {
-            throw new InvalidOperationException("FAQ/context CSV must include scopeType, category, title, and answer (or context/content) columns.");
+            throw new InvalidOperationException("FAQ/context CSV must include promptRoleTag, category, title, and answer (or context/content) columns.");
         }
 
         for (var lineIndex = 1; lineIndex < lines.Count; lineIndex++)
@@ -1417,9 +1417,7 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
 
             var inferredCategory = fields.TryGetValue("category", out var category)
                 ? category
-                : fields.TryGetValue("section", out var section)
-                    ? section
-                    : "general";
+                : "context";
 
             var title = fields.TryGetValue("title", out var titleValue)
                 ? titleValue
@@ -1435,7 +1433,7 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
                     ? contentValue
                     : string.Empty;
 
-            var scopeType = NormalizeFaqScopeType(fields.TryGetValue("scopeType", out var scopeTypeRaw) ? scopeTypeRaw : "general");
+            var scopeType = NormalizeFaqScopeType(fields.TryGetValue("promptRoleTag", out var scopeTypeRaw) ? scopeTypeRaw : string.Empty);
             var isGuestVisible = ParseGuestVisibility(fields.TryGetValue("isGuestVisible", out var isGuestVisibleRaw) ? isGuestVisibleRaw : null, scopeType);
 
             if (string.IsNullOrWhiteSpace(title))
@@ -1448,8 +1446,8 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
 
             entries.Add(new CreateFaqContextEntryDto(
                 scopeType,
-                fields.TryGetValue("collegeCode", out var collegeCode) ? collegeCode : string.Empty,
-                fields.TryGetValue("programCode", out var programCode) ? programCode : string.Empty,
+                string.Empty,
+                string.Empty,
                 inferredCategory,
                 title,
                 answer,
@@ -1463,20 +1461,19 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
     private static string NormalizeFaqScopeType(string rawScopeType)
     {
         var normalized = rawScopeType.Trim().ToLowerInvariant();
-        return normalized switch
+        if (string.IsNullOrWhiteSpace(normalized) || !PromptRoleTags.IsValid(normalized))
         {
-            "global" => "general",
-            "non_guest" => "non-guest",
-            "nonguest" => "non-guest",
-            _ => string.IsNullOrWhiteSpace(normalized) ? "general" : normalized
-        };
+            throw new InvalidOperationException($"Invalid promptRoleTag '{rawScopeType}'. See rag_guide.md for supported values.");
+        }
+
+        return normalized;
     }
 
     private static bool ParseGuestVisibility(string? rawValue, string normalizedScopeType)
     {
         if (string.IsNullOrWhiteSpace(rawValue))
         {
-            return normalizedScopeType != "non-guest";
+            return normalizedScopeType is not PromptRoleTags.FaqNonGuest and not PromptRoleTags.ContextNonGuest;
         }
 
         var normalized = rawValue.Trim().ToLowerInvariant();
@@ -1484,7 +1481,7 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
         {
             "true" or "1" or "yes" or "y" => true,
             "false" or "0" or "no" or "n" => false,
-            _ => normalizedScopeType != "non-guest"
+            _ => normalizedScopeType is not PromptRoleTags.FaqNonGuest and not PromptRoleTags.ContextNonGuest
         };
     }
 

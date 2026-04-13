@@ -417,8 +417,16 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
 
     public FaqContextEntryDto CreateFaqEntry(CreateFaqContextEntryDto request)
     {
-        ValidateFaqRequest(request.ScopeType, request.Category, request.Title, request.Answer);
-        var created = repository.CreateFaqEntry(request, DateTime.UtcNow);
+        var normalizedScope = NormalizeFaqScopeType(request.ScopeType);
+        var normalizedRequest = request with
+        {
+            ScopeType = normalizedScope,
+            CollegeCode = string.Empty,
+            ProgramCode = string.Empty
+        };
+
+        ValidateFaqRequest(normalizedRequest.ScopeType, normalizedRequest.Category, normalizedRequest.Title, normalizedRequest.Answer);
+        var created = repository.CreateFaqEntry(normalizedRequest, DateTime.UtcNow);
         SyncFaqEntryToCsv(created);
         repository.WriteActivity($"FAQ/context created: {created.Title}", "Registrar");
         return created;
@@ -426,8 +434,16 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
 
     public FaqContextEntryDto? UpdateFaqEntry(int faqId, UpdateFaqContextEntryDto request)
     {
-        ValidateFaqRequest(request.ScopeType, request.Category, request.Title, request.Answer);
-        var updated = repository.UpdateFaqEntry(faqId, request, DateTime.UtcNow);
+        var normalizedScope = NormalizeFaqScopeType(request.ScopeType);
+        var normalizedRequest = request with
+        {
+            ScopeType = normalizedScope,
+            CollegeCode = string.Empty,
+            ProgramCode = string.Empty
+        };
+
+        ValidateFaqRequest(normalizedRequest.ScopeType, normalizedRequest.Category, normalizedRequest.Title, normalizedRequest.Answer);
+        var updated = repository.UpdateFaqEntry(faqId, normalizedRequest, DateTime.UtcNow);
         if (updated is not null)
         {
             SyncFaqEntryToCsv(updated);
@@ -489,18 +505,30 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
         }
 
         var normalizedCategory = NormalizeResolutionCategory(request.Category);
-        var normalizedScope = NormalizeFaqScopeType(request.ScopeType, request.IsGuestVisible);
+        var normalizedScope = NormalizeFaqScopeType(request.ScopeType);
         ValidateFaqRequest(normalizedScope, normalizedCategory, request.Title, request.Answer);
 
         var created = CreateFaqEntry(new CreateFaqContextEntryDto(
             normalizedScope,
-            request.CollegeCode.Trim().ToUpperInvariant(),
-            request.ProgramCode.Trim().ToUpperInvariant(),
+            string.Empty,
+            string.Empty,
             normalizedCategory,
             request.Title.Trim(),
             request.Answer.Trim(),
             request.IsGuestVisible
         ));
+
+        var duplicateOpenQuestions = dbContext.UncertainQuestions
+            .Where(entry =>
+                entry.Id != question.Id
+                && entry.Status.ToLower() == "open"
+                && entry.NormalizedQuestion == question.NormalizedQuestion)
+            .ToList();
+
+        if (duplicateOpenQuestions.Count > 0)
+        {
+            dbContext.UncertainQuestions.RemoveRange(duplicateOpenQuestions);
+        }
 
         var now = DateTime.UtcNow;
         question.Status = "closed";
@@ -547,20 +575,12 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
         return string.IsNullOrWhiteSpace(normalized) ? "context" : normalized;
     }
 
-    private static string NormalizeFaqScopeType(string scopeType, bool isGuestVisible)
+    private static string NormalizeFaqScopeType(string scopeType)
     {
-        var normalized = scopeType.Trim().ToLowerInvariant();
-        normalized = normalized switch
+        var normalized = PromptRoleTags.Normalize(scopeType);
+        if (string.IsNullOrWhiteSpace(normalized) || !PromptRoleTags.IsValid(normalized))
         {
-            "global" => "general",
-            "non_guest" => "non-guest",
-            "nonguest" => "non-guest",
-            _ => normalized
-        };
-
-        if (string.IsNullOrWhiteSpace(normalized))
-        {
-            return isGuestVisible ? "general" : "non-guest";
+            throw new ArgumentException("A valid prompt role tag is required.");
         }
 
         return normalized;
@@ -581,8 +601,8 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
             .ThenBy(entry => entry.Question)
             .Select(entry => new CreateFaqContextEntryDto(
                 entry.ScopeType,
-                entry.CollegeCode,
-                entry.ProgramCode,
+                string.Empty,
+                string.Empty,
                 entry.Category,
                 entry.Question,
                 entry.Answer,
@@ -597,14 +617,12 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
         }
 
         using var writer = new StreamWriter(targetPath, false, new UTF8Encoding(false));
-        writer.WriteLine("scopeType,collegeCode,programCode,category,title,answer,isGuestVisible");
+        writer.WriteLine("promptRoleTag,category,title,answer,isGuestVisible");
         foreach (var row in rows)
         {
             writer.WriteLine(string.Join(",", new[]
             {
                 EscapeCsv(row.ScopeType),
-                EscapeCsv(row.CollegeCode),
-                EscapeCsv(row.ProgramCode),
                 EscapeCsv(row.Category),
                 EscapeCsv(row.Title),
                 EscapeCsv(row.Answer),
@@ -616,8 +634,8 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
     private string ResolveCsvTargetPath(FaqContextEntryDto changedEntry, bool isFaq)
     {
         var desiredCategory = isFaq ? "faq" : "context";
-        var normalizedCollegeCode = changedEntry.CollegeCode.Trim().ToUpperInvariant();
-        var normalizedProgramCode = changedEntry.ProgramCode.Trim().ToUpperInvariant();
+        var normalizedCollegeCode = string.Empty;
+        var normalizedProgramCode = string.Empty;
 
         var latestCsvFileName = dbContext.EtlUploadFiles
             .AsNoTracking()
@@ -679,7 +697,12 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
     {
         if (string.IsNullOrWhiteSpace(scopeType) || string.IsNullOrWhiteSpace(category) || string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(answer))
         {
-            throw new ArgumentException("Scope, category, title, and answer are required.");
+            throw new ArgumentException("Prompt role tag, category, title, and answer are required.");
+        }
+
+        if (!PromptRoleTags.IsValid(scopeType))
+        {
+            throw new ArgumentException($"Invalid prompt role tag '{scopeType}'.");
         }
     }
 
