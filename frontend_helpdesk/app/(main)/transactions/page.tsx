@@ -38,17 +38,17 @@ interface Transaction {
   steps: Step[];
 }
 
-const tabs = ["All", "requested", "prepared", "claimed", "disposed"];
+const tabs = ["All", "Requested", "Prepared", "Claimed", "Disposed"];
 
 function getStatusStyles(status: string) {
   switch (status) {
-    case "claimed":
+    case "Claimed":
       return "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400 border-green-200 dark:border-green-500/20";
-    case "disposed":
+    case "Disposed":
       return "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400 border-red-200 dark:border-red-500/20";
-    case "prepared":
+    case "Prepared":
       return "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400 border-blue-200 dark:border-blue-500/20";
-    case "requested":
+    case "Requested":
     default:
       return "bg-gray-100 text-gray-600 dark:bg-white/5 dark:text-gray-400 border-gray-200 dark:border-white/10";
   }
@@ -56,13 +56,13 @@ function getStatusStyles(status: string) {
 
 function getTransactionIcon(category: string, className = "w-5 h-5 lg:w-6 lg:h-6") {
   switch (category) {
-    case "claimed":
+    case "Claimed":
       return <FileCheck className={`text-green-600 dark:text-green-400 ${className}`} />;
-    case "disposed":
+    case "Disposed":
       return <FileWarning className={`text-red-600 dark:text-red-400 ${className}`} />;
-    case "prepared":
+    case "Prepared":
       return <Package className={`text-blue-600 dark:text-blue-400 ${className}`} />;
-    case "requested":
+    case "Requested":
     default:
       return <Hourglass className={`text-gray-500 dark:text-gray-400 ${className}`} />;
   }

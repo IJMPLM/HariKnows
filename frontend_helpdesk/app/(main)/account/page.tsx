@@ -7,19 +7,22 @@ import {
   Mail,
   BookOpen,
   Building2,
-  Hash,
-  LogOut
+  Hash
 } from "lucide-react";
 import DesktopSidebar from "../../components/DesktopSidebar";
 import MobileSidebar from "../../components/MobileSidebar";
-import { changePassword, getCurrentUser, signOut, type StudentProfile } from "../../../lib/auth-client";
+import { changePassword, getCurrentUser, type StudentProfile } from "../../../lib/auth-client";
 
 export default function AccountPage() {
   const router = useRouter();
 
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
-  const [showLogOutModal, setShowLogOutModal] = useState(false);
+  
+  // Modal state for changing password
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  
+  // Password form states
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -41,11 +44,6 @@ export default function AccountPage() {
 
     void init();
   }, [router]);
-
-  const handleLogout = async () => {
-    await signOut();
-    router.replace("/sign-in");
-  };
 
   const handleChangePassword = async () => {
     if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
@@ -80,6 +78,15 @@ export default function AccountPage() {
     } finally {
       setChangingPassword(false);
     }
+  };
+
+  const closePasswordModal = () => {
+    setShowPasswordModal(false);
+    setPasswordError("");
+    setPasswordSuccess("");
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
   };
 
   return (
@@ -211,74 +218,21 @@ export default function AccountPage() {
                   </div>
                 </div>
 
-                {/* Divider */}
-                <div className="md:col-span-2 border-t border-gray-200 dark:border-white/10 my-2" />
+                {/* Change Password */}
+                <div className="md:col-span-2 flex flex-col">
+                  <div className="border-t border-gray-200 dark:border-white/10 mb-4" />
+                  
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => setShowPasswordModal(true)}
+                      className="px-6 py-3 rounded-xl bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212] font-bold text-[0.95rem] hover:bg-[#5a2801] dark:hover:bg-[#e09873] transition-all shadow-md shadow-[#6e3102]/20 dark:shadow-[#d4855a]/10"
+                    >
+                      Change Password
+                    </button>
+                  </div>
+                </div>
 
               </div>
-            </section>
-
-            {/* Log Out Card */}
-            <section className="bg-white dark:bg-[#18181b] border border-gray-200/80 dark:border-white/10 rounded-3xl p-6 lg:p-8 shadow-sm flex flex-col gap-4 animate-fade-in-up" style={{ animationDelay: "200ms" }}>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Account Actions</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Current Password</label>
-                  <input
-                    type="password"
-                    value={currentPassword}
-                    onChange={(event) => setCurrentPassword(event.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#1f1f1f] border border-gray-200 dark:border-white/10 text-sm outline-none focus:ring-2 focus:ring-[#6e3102]/30 dark:focus:ring-[#d4855a]/30"
-                    autoComplete="current-password"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">New Password</label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(event) => setNewPassword(event.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#1f1f1f] border border-gray-200 dark:border-white/10 text-sm outline-none focus:ring-2 focus:ring-[#6e3102]/30 dark:focus:ring-[#d4855a]/30"
-                    autoComplete="new-password"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Confirm New Password</label>
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#1f1f1f] border border-gray-200 dark:border-white/10 text-sm outline-none focus:ring-2 focus:ring-[#6e3102]/30 dark:focus:ring-[#d4855a]/30"
-                    autoComplete="new-password"
-                  />
-                </div>
-              </div>
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <p className="text-sm text-gray-500 dark:text-gray-400">Use this to update the password tied to your current account. Password recovery is not available here.</p>
-                <button
-                  onClick={() => void handleChangePassword()}
-                  disabled={changingPassword}
-                  className="px-6 py-3 rounded-xl bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212] font-bold text-[0.95rem] hover:bg-[#5a2801] dark:hover:bg-[#e09873] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-[#6e3102]/20 dark:shadow-[#d4855a]/10"
-                >
-                  {changingPassword ? "Updating..." : "Change Password"}
-                </button>
-              </div>
-              {passwordError && (
-                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
-                  {passwordError}
-                </div>
-              )}
-              {passwordSuccess && (
-                <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-200">
-                  {passwordSuccess}
-                </div>
-              )}
-              <button
-                onClick={() => setShowLogOutModal(true)}
-                className="w-full px-8 py-3 rounded-xl bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212] font-bold text-[0.95rem] hover:bg-[#5a2801] dark:hover:bg-[#e09873] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-md shadow-[#6e3102]/20 dark:shadow-[#d4855a]/10 flex items-center justify-center gap-2"
-              >
-                <LogOut size={18} />
-                Log Out
-              </button>
             </section>
 
             {/* Bottom Padding for mobile scrolling */}
@@ -288,24 +242,70 @@ export default function AccountPage() {
         </div>
       </div>
 
-      {/* Log Out Confirmation Modal */}
-      {showLogOutModal && (
+      {/* Change Password Modal */}
+      {showPasswordModal && (
         <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-[#18181b] border border-gray-200/80 dark:border-white/10 rounded-3xl p-6 lg:p-8 shadow-lg max-w-md w-full animate-fade-in-up">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Confirm Log Out</h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">Are you sure you want to log out?</p>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Change Password</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">Use this to update the password tied to your current account. Password recovery is not available here.</p>
+            
+            <div className="flex flex-col gap-4 mb-6">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Current Password</label>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(event) => setCurrentPassword(event.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#1f1f1f] border border-gray-200 dark:border-white/10 text-sm outline-none focus:ring-2 focus:ring-[#6e3102]/30 dark:focus:ring-[#d4855a]/30"
+                  autoComplete="current-password"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">New Password</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#1f1f1f] border border-gray-200 dark:border-white/10 text-sm outline-none focus:ring-2 focus:ring-[#6e3102]/30 dark:focus:ring-[#d4855a]/30"
+                  autoComplete="new-password"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Confirm New Password</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#1f1f1f] border border-gray-200 dark:border-white/10 text-sm outline-none focus:ring-2 focus:ring-[#6e3102]/30 dark:focus:ring-[#d4855a]/30"
+                  autoComplete="new-password"
+                />
+              </div>
+            </div>
+
+            {passwordError && (
+              <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200 mb-6">
+                {passwordError}
+              </div>
+            )}
+            {passwordSuccess && (
+              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-200 mb-6">
+                {passwordSuccess}
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button
-                onClick={() => setShowLogOutModal(false)}
+                onClick={closePasswordModal}
                 className="flex-1 px-4 py-3 rounded-xl bg-gray-200 dark:bg-[#2a2a2a] text-gray-900 dark:text-white font-bold text-[0.95rem] hover:bg-gray-300 dark:hover:bg-[#3a3a3a] active:scale-[0.98] transition-all"
               >
                 Cancel
               </button>
               <button
-                onClick={() => void handleLogout()}
-                className="flex-1 px-4 py-3 rounded-xl bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212] font-bold text-[0.95rem] hover:bg-[#5a2801] dark:hover:bg-[#e09873] active:scale-[0.98] transition-all shadow-md shadow-[#6e3102]/20 dark:shadow-[#d4855a]/10"
+                onClick={() => void handleChangePassword()}
+                disabled={changingPassword}
+                className="flex-1 px-4 py-3 rounded-xl bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212] font-bold text-[0.95rem] hover:bg-[#5a2801] dark:hover:bg-[#e09873] disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-all shadow-md shadow-[#6e3102]/20 dark:shadow-[#d4855a]/10"
               >
-                Log Out
+                {changingPassword ? "Updating..." : "Change Password"}
               </button>
             </div>
           </div>
