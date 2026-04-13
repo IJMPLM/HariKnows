@@ -20,12 +20,12 @@ import { getSignedInSnapshot, hasLocalSession, initializeSession, setSignedInSna
 const signedInLinks = [
   { href: "/haribot",      label: "Talk with Hari",       icon: <MessageCircle size={16} /> },
   { href: "/transactions", label: "Transaction History",   icon: <BarChart2 size={16} /> },
-  { href: "/FAQs",         label: "FAQs",                  icon: <HelpCircle size={16} /> },
+  { href: "/faqs",         label: "FAQs",                  icon: <HelpCircle size={16} /> },
 ];
 
 const guestLinks = [
   { href: "/haribot", label: "Talk with Hari", icon: <MessageCircle size={16} /> },
-  { href: "/FAQs", label: "FAQs", icon: <HelpCircle size={16} /> },
+  { href: "/faqs", label: "FAQs", icon: <HelpCircle size={16} /> },
 ];
 
 const recentChatsLink = {
