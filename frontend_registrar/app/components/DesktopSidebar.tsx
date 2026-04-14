@@ -15,11 +15,22 @@ const topNavItems = [
   { label: "Accounts", icon: FileText, href: "/create" },
 ];
 
+const officeItems = [
+  { label: "Registrar", icon: ClipboardList, href: "/registrar" },
+  { label: "NSTP Office", icon: BookOpen, href: "/nstp" },
+  { label: "OSD", icon: BookOpen, href: "/osds" },
+];
+
 export default function DesktopSidebar() {
   const { theme, setTheme } = useTheme();
   const pathname = usePathname();
   const [collegeTabs, setCollegeTabs] = useState<CollegeTab[]>(() => getCachedRegistrarCollegeTabs() ?? []);
-  const [expandedSections, setExpandedSections] = useState({ offices: false, colleges: false });
+  
+  // Initialize with the dropdown open if the user starts on an office or college route
+  const [expandedSections, setExpandedSections] = useState({ 
+    offices: officeItems.some(item => item.href === pathname), 
+    colleges: pathname.startsWith('/ca') || pathname.startsWith('/cn') // Add your other college prefixes here if needed
+  });
 
   useEffect(() => {
     const loadTabs = async () => {
@@ -40,15 +51,7 @@ export default function DesktopSidebar() {
     void loadTabs();
   }, []);
 
-  useEffect(() => {
-    setExpandedSections({ offices: false, colleges: false });
-  }, [pathname]);
-
-  const officeItems = [
-    { label: "Registrar", icon: ClipboardList, href: "/registrar" },
-    { label: "NSTP Office", icon: BookOpen, href: "/nstp" },
-    { label: "OSD", icon: BookOpen, href: "/osds" },
-  ];
+  // Removed the useEffect that was resetting the expandedSections on every pathname change!
 
   const toggleSection = (section: "offices" | "colleges") => {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));

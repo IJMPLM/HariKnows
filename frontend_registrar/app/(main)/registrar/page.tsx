@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ClipboardList, Plus, Search, RefreshCw, UserSearch, CheckCircle2, Clock3, Ban } from "lucide-react";
+import CustomSelect from "../../components/CustomSelect";
 import {
   createRegistrarRequest,
   getRegistrarRequests,
@@ -156,13 +157,13 @@ export default function RegistrarPage() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                   <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search requests..." className="w-full pl-10 pr-4 py-3 rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#101014]" />
                 </div>
-                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="px-4 py-3 rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#101014]">
-                  <option value="all">All</option>
-                  <option value="requested">Requested</option>
-                  <option value="prepared">Prepared</option>
-                  <option value="claimed">Claimed</option>
-                  <option value="disposed">Disposed</option>
-                </select>
+                <div className="w-40 z-20 shrink-0">
+                  <CustomSelect
+                    value={statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}
+                    options={["All", "Requested", "Prepared", "Claimed", "Disposed"]}
+                    onChange={(val) => setStatusFilter(val.toLowerCase())}
+                  />
+                </div>
               </div>
 
               <div className="overflow-x-auto">
@@ -241,10 +242,18 @@ export default function RegistrarPage() {
             )}
 
             <div className="grid sm:grid-cols-1 gap-3">
-              <select value={requestForm.documentType} onChange={(event) => setRequestForm((current) => ({ ...current, documentType: event.target.value }))} className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#101014]">
-                <option value="">Select document type</option>
-                {DOCUMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
-              </select>
+              <div className="z-10 relative">
+                <CustomSelect
+                  value={requestForm.documentType || "Select document type"}
+                  options={["Select document type", ...DOCUMENT_TYPES]}
+                  onChange={(val) => 
+                    setRequestForm((current) => ({ 
+                      ...current, 
+                      documentType: val === "Select document type" ? "" : val 
+                    }))
+                  }
+                />
+              </div>
             </div>
 
             <textarea value={requestForm.notes} onChange={(event) => setRequestForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Notes" rows={3} className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#101014]" />

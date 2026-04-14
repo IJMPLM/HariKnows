@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Plus, RefreshCw, Search, Pencil, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState, useRef } from "react";
+import { Plus, RefreshCw, Search, Pencil, Trash2, ChevronDown, Check } from "lucide-react";
 import { createFaqEntry, deleteFaqEntry, getFaqEntries, updateFaqEntry, type FaqContextEntry } from "../../../lib/registrar-client";
 
 type Section = "faq" | "context";
@@ -64,6 +64,68 @@ const isFaqEntry = (entry: FaqContextEntry) => entry.category.trim().toLowerCase
 
 function normalizeScope(scopeType: string) {
   return scopeType.trim().toLowerCase();
+}
+
+function CustomSelect({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: string[];
+  onChange: (val: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative w-full" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 flex items-center justify-between text-left focus:outline-none focus:ring-2 focus:ring-[#6e3102] dark:focus:ring-[#d4855a] transition-all"
+      >
+        <span className="truncate block">{value}</span>
+        <ChevronDown
+          size={16}
+          className={`text-gray-500 transition-transform duration-200 flex-shrink-0 ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-10 w-full mt-2 bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10 rounded-xl shadow-xl max-h-60 overflow-y-auto py-1 animate-in fade-in zoom-in-95 duration-100">
+          {options.map((option) => (
+            <div
+              key={option}
+              onClick={() => {
+                onChange(option);
+                setIsOpen(false);
+              }}
+              className={`px-4 py-2.5 cursor-pointer transition-colors text-sm flex items-center ${
+                value === option
+                  ? "bg-gray-100 dark:bg-white/10 text-[#6e3102] dark:text-[#d4855a] font-bold"
+                  : "hover:bg-gray-50 dark:hover:bg-white/5 text-gray-700 dark:text-gray-300"
+              }`}
+            >
+              {option}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function FaqContextPage() {
@@ -179,7 +241,7 @@ export default function FaqContextPage() {
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#6e3102] dark:text-[#d4855a]">Registrar Knowledge Base</p>
                 <h1 className="text-3xl font-extrabold tracking-tight">FAQs and Context</h1>
               </div>
-              <button onClick={() => void load()} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10">
+              <button onClick={() => void load()} className="mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#6e3102] hover:bg-[#5a2801] dark:bg-[#d4855a] dark:hover:bg-[#e9a67f] text-white dark:text-[#121212] font-semibold">
               <RefreshCw size={16} /> Refresh
             </button>
           </div>
@@ -189,14 +251,14 @@ export default function FaqContextPage() {
             <button
               type="button"
               onClick={() => setActiveSection("faq")}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold ${activeSection === "faq" ? "bg-[#6e3102] text-white" : "text-gray-600 dark:text-gray-300"}`}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${activeSection === "faq" ? "bg-[#6e3102] text-white" : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5"}`}
             >
               FAQ CRUD
             </button>
             <button
               type="button"
               onClick={() => setActiveSection("context")}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold ${activeSection === "context" ? "bg-[#6e3102] text-white" : "text-gray-600 dark:text-gray-300"}`}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${activeSection === "context" ? "bg-[#6e3102] text-white" : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5"}`}
             >
               Context CRUD
             </button>
@@ -218,7 +280,7 @@ export default function FaqContextPage() {
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder={`Search ${activeSection === "faq" ? "FAQs" : "context"}...`}
-                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10"
+                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-[#6e3102] dark:focus:ring-[#d4855a] transition-all"
                 />
               </div>
 
@@ -241,10 +303,10 @@ export default function FaqContextPage() {
                           {entry.scopeType === "other" ? <p className="text-xs text-gray-400">Custom category: {entry.category}</p> : null}
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          <button onClick={() => startEdit(entry)} className="p-2 rounded-xl bg-white dark:bg-[#101014] border border-gray-200 dark:border-white/10">
+                          <button onClick={() => startEdit(entry)} className="p-2 rounded-xl bg-white dark:bg-[#101014] border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
                             <Pencil size={14} />
                           </button>
-                          <button onClick={() => void remove(entry.id)} className="p-2 rounded-xl bg-white dark:bg-[#101014] border border-gray-200 dark:border-white/10 text-red-500">
+                          <button onClick={() => void remove(entry.id)} className="p-2 rounded-xl bg-white dark:bg-[#101014] border border-gray-200 dark:border-white/10 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
                             <Trash2 size={14} />
                           </button>
                         </div>
@@ -265,10 +327,10 @@ export default function FaqContextPage() {
               </div>
               <p className="text-sm text-gray-500 dark:text-gray-400">{sectionDescription}</p>
 
-              <select
+              <CustomSelect
                 value={form.scopeType}
-                onChange={(event) => {
-                  const nextScope = event.target.value;
+                options={activeSection === "faq" ? FAQ_TAG_OPTIONS : CONTEXT_TAG_OPTIONS}
+                onChange={(nextScope) => {
                   setForm({
                     ...form,
                     scopeType: nextScope,
@@ -276,47 +338,55 @@ export default function FaqContextPage() {
                     isGuestVisible: nextScope.endsWith("non-guest") ? false : form.isGuestVisible,
                   });
                 }}
-                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10"
-              >
-                {(activeSection === "faq" ? FAQ_TAG_OPTIONS : CONTEXT_TAG_OPTIONS).map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
+              />
 
               {activeSection === "context" && form.scopeType === "other" ? (
                 <input
                   value={form.category}
                   onChange={(event) => setForm({ ...form, category: event.target.value })}
                   placeholder="custom category label"
-                  className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-[#6e3102] dark:focus:ring-[#d4855a] transition-all"
                 />
               ) : (
-                <input value={activeSection === "faq" ? "faq" : (CATEGORY_BY_TAG[form.scopeType] ?? "context")} disabled className="w-full px-4 py-3 rounded-xl bg-gray-100 dark:bg-[#101014] border border-gray-200 dark:border-white/10 text-gray-500" />
+                <input value={activeSection === "faq" ? "faq" : (CATEGORY_BY_TAG[form.scopeType] ?? "context")} disabled className="w-full px-4 py-3 rounded-xl bg-gray-100 dark:bg-[#101014] border border-gray-200 dark:border-white/10 text-gray-500 cursor-not-allowed" />
               )}
 
               <input
                 value={form.title}
                 onChange={(event) => setForm({ ...form, title: event.target.value })}
                 placeholder={activeSection === "faq" ? "title" : "context title"}
-                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10"
+                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-[#6e3102] dark:focus:ring-[#d4855a] transition-all"
               />
               <textarea
                 value={form.answer}
                 onChange={(event) => setForm({ ...form, answer: event.target.value })}
                 placeholder={activeSection === "faq" ? "answer" : "context paragraphs"}
                 rows={6}
-                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 resize-y min-h-[140px]"
+                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 resize-y min-h-[140px] focus:outline-none focus:ring-2 focus:ring-[#6e3102] dark:focus:ring-[#d4855a] transition-all"
               />
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={form.isGuestVisible} onChange={(event) => setForm({ ...form, isGuestVisible: event.target.checked })} />
-                Visible to guest users
+              
+              <label className="flex items-center gap-3 text-sm cursor-pointer w-fit group py-1">
+                <div className="relative flex items-center justify-center w-5 h-5 rounded border border-gray-300 dark:border-white/20 bg-white dark:bg-[#101014] group-hover:border-[#6e3102] dark:group-hover:border-[#d4855a] transition-colors">
+                  <input 
+                    type="checkbox" 
+                    className="absolute opacity-0 w-full h-full cursor-pointer z-10"
+                    checked={form.isGuestVisible} 
+                    onChange={(event) => setForm({ ...form, isGuestVisible: event.target.checked })}
+                  />
+                  <div className={`absolute inset-0 flex items-center justify-center rounded transition-all duration-200 ${form.isGuestVisible ? 'bg-[#6e3102] dark:bg-[#d4855a] scale-100' : 'scale-0'}`}>
+                    <Check size={14} className="text-white dark:text-[#121212] stroke-[3]" />
+                  </div>
+                </div>
+                <span className="text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
+                  Visible to guest users
+                </span>
               </label>
 
               <div className="flex gap-3 pt-2">
-                <button onClick={() => void submit()} className="px-4 py-2 rounded-xl bg-[#6e3102] text-white font-semibold">
+                <button onClick={() => void submit()} className="px-4 py-2 rounded-xl bg-[#6e3102] hover:bg-[#5a2801] dark:bg-[#d4855a] dark:hover:bg-[#e9a67f] dark:text-[#121212] text-white font-semibold transition-colors">
                   {editing ? "Save" : "Create"}
                 </button>
-                <button onClick={resetForm} className="px-4 py-2 rounded-xl border border-gray-200 dark:border-white/10">Reset</button>
+                <button onClick={resetForm} className="px-4 py-2 rounded-xl border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">Reset</button>
               </div>
             </section>
           </div>

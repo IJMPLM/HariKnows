@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, RefreshCw, Search } from "lucide-react";
+import { useEffect, useMemo, useState, useRef } from "react";
+import { CheckCircle2, RefreshCw, Search, ChevronDown, Check } from "lucide-react";
 import {
   getUncertainQuestions,
   resolveUncertainQuestion,
@@ -49,6 +49,70 @@ function formatDate(value: string) {
     timeZone: "Asia/Manila",
   });
 }
+
+// --- REUSABLE CUSTOM SELECT COMPONENT ---
+function CustomSelect({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: string[];
+  onChange: (val: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative w-full" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 flex items-center justify-between text-left focus:outline-none focus:ring-2 focus:ring-[#6e3102] dark:focus:ring-[#d4855a] transition-all"
+      >
+        <span className="truncate block capitalize">{value === "faq" ? "FAQ" : value}</span>
+        <ChevronDown
+          size={16}
+          className={`text-gray-500 transition-transform duration-200 flex-shrink-0 ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-20 w-full mt-2 bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10 rounded-xl shadow-xl max-h-60 overflow-y-auto py-1 animate-in fade-in zoom-in-95 duration-100">
+          {options.map((option) => (
+            <div
+              key={option}
+              onClick={() => {
+                onChange(option);
+                setIsOpen(false);
+              }}
+              className={`px-4 py-2.5 cursor-pointer transition-colors text-sm flex items-center capitalize ${
+                value === option
+                  ? "bg-gray-100 dark:bg-white/10 text-[#6e3102] dark:text-[#d4855a] font-bold"
+                  : "hover:bg-gray-50 dark:hover:bg-white/5 text-gray-700 dark:text-gray-300"
+              }`}
+            >
+              {option === "faq" ? "FAQ" : option}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+// ----------------------------------------
 
 export default function QuestionsPage() {
   const [questions, setQuestions] = useState<UncertainQuestion[]>([]);
@@ -159,7 +223,7 @@ export default function QuestionsPage() {
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#6e3102] dark:text-[#d4855a]">Knowledge Expansion Queue</p>
                 <h1 className="text-3xl font-extrabold tracking-tight">Captured Questions</h1>
               </div>
-              <button onClick={() => void loadQuestions()} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10">
+              <button onClick={() => void loadQuestions()} className="mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#6e3102] hover:bg-[#5a2801] dark:bg-[#d4855a] dark:hover:bg-[#e9a67f] text-white dark:text-[#121212] font-semibold">
                 <RefreshCw size={16} /> Refresh
               </button>
             </div>
@@ -177,14 +241,15 @@ export default function QuestionsPage() {
                     className="w-full pl-10 pr-4 py-3 rounded-2xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10"
                   />
                 </div>
-                <select
-                  value={statusFilter}
-                  onChange={(event) => setStatusFilter(event.target.value)}
-                  className="px-3 py-2 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10"
-                >
-                  <option value="open">Open</option>
-                  <option value="closed">Closed</option>
-                </select>
+                
+                {/* --- CUSTOM STATUS FILTER DROPDOWN --- */}
+                <div className="w-32 z-20">
+                  <CustomSelect
+                    value={statusFilter}
+                    options={["open", "closed"]}
+                    onChange={(val) => setStatusFilter(val)}
+                  />
+                </div>
               </div>
 
               <div className="space-y-3 max-h-[72vh] overflow-y-auto pr-1">
@@ -236,11 +301,13 @@ export default function QuestionsPage() {
                     <p className="text-sm mt-1 whitespace-pre-wrap">{selectedQuestion.questionText}</p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <select
+                  <div className="grid grid-cols-2 gap-3 z-10 relative">
+                    {/* --- CUSTOM CATEGORY DROPDOWN --- */}
+                    <CustomSelect
                       value={form.category}
-                      onChange={(event) => {
-                        const nextCategory = event.target.value as "faq" | "context";
+                      options={["faq", "context"]}
+                      onChange={(val) => {
+                        const nextCategory = val as "faq" | "context";
                         setForm((current) => ({
                           ...current,
                           category: nextCategory,
@@ -249,16 +316,13 @@ export default function QuestionsPage() {
                             : current.title,
                         }));
                       }}
-                      className="px-3 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10"
-                    >
-                      <option value="faq">FAQ</option>
-                      <option value="context">Context</option>
-                    </select>
+                    />
+                    
                     <input
                       value={form.scopeType}
                       onChange={(event) => setForm((current) => ({ ...current, scopeType: event.target.value }))}
                       placeholder="scopeType"
-                      className="px-3 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10"
+                      className="px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-[#6e3102] dark:focus:ring-[#d4855a] transition-all"
                     />
                   </div>
 
@@ -267,9 +331,9 @@ export default function QuestionsPage() {
                       value={form.programCode}
                       onChange={(event) => setForm((current) => ({ ...current, programCode: event.target.value }))}
                       placeholder="programCode (optional)"
-                      className="px-3 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10"
+                      className="px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-[#6e3102] dark:focus:ring-[#d4855a] transition-all"
                     />
-                    <div className="px-3 py-3 rounded-xl bg-gray-100/60 dark:bg-[#101014] border border-gray-200 dark:border-white/10 text-xs text-gray-500 flex items-center">
+                    <div className="px-4 py-3 rounded-xl bg-gray-100/60 dark:bg-[#101014] border border-gray-200 dark:border-white/10 text-xs text-gray-500 flex items-center">
                       college from scopeType: {deriveCollegeCodeFromScope(form.scopeType) || "none"}
                     </div>
                   </div>
@@ -282,13 +346,13 @@ export default function QuestionsPage() {
                       value={form.title}
                       onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
                       placeholder={form.category === "faq" ? "FAQ question" : "Entry title"}
-                      className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10"
+                      className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-[#6e3102] dark:focus:ring-[#d4855a] transition-all"
                     />
                     {form.category === "faq" && selectedQuestion ? (
                       <button
                         type="button"
                         onClick={() => setForm((current) => ({ ...current, title: selectedQuestion.questionText }))}
-                        className="text-xs text-[#6e3102] dark:text-[#d4855a] underline"
+                        className="text-xs text-[#6e3102] dark:text-[#d4855a] hover:underline"
                       >
                         Use captured question text
                       </button>
@@ -300,26 +364,35 @@ export default function QuestionsPage() {
                     onChange={(event) => setForm((current) => ({ ...current, answer: event.target.value }))}
                     placeholder="Answer content"
                     rows={6}
-                    className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 resize-y"
+                    className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 resize-y focus:outline-none focus:ring-2 focus:ring-[#6e3102] dark:focus:ring-[#d4855a] transition-all"
                   />
 
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={form.isGuestVisible}
-                      onChange={(event) => setForm((current) => ({
-                        ...current,
-                        isGuestVisible: event.target.checked,
-                        scopeType: event.target.checked ? "general" : "non-guest",
-                      }))}
-                    />
-                    Visible to guest users
+                  {/* --- CUSTOM CHECKBOX --- */}
+                  <label className="flex items-center gap-3 text-sm cursor-pointer w-fit group py-1">
+                    <div className="relative flex items-center justify-center w-5 h-5 rounded border border-gray-300 dark:border-white/20 bg-white dark:bg-[#101014] group-hover:border-[#6e3102] dark:group-hover:border-[#d4855a] transition-colors">
+                      <input
+                        type="checkbox"
+                        className="absolute opacity-0 w-full h-full cursor-pointer z-10"
+                        checked={form.isGuestVisible}
+                        onChange={(event) => setForm((current) => ({
+                          ...current,
+                          isGuestVisible: event.target.checked,
+                          scopeType: event.target.checked ? "general" : "non-guest",
+                        }))}
+                      />
+                      <div className={`absolute inset-0 flex items-center justify-center rounded transition-all duration-200 ${form.isGuestVisible ? 'bg-[#6e3102] dark:bg-[#d4855a] scale-100' : 'scale-0'}`}>
+                        <Check size={14} className="text-white dark:text-[#121212] stroke-[3]" />
+                      </div>
+                    </div>
+                    <span className="text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
+                      Visible to guest users
+                    </span>
                   </label>
 
                   <button
                     onClick={() => void submitResolution()}
                     disabled={saving || selectedQuestion.status !== "open"}
-                    className="px-4 py-2 rounded-xl bg-[#6e3102] text-white font-semibold disabled:opacity-60"
+                    className="px-4 py-2 mt-2 rounded-xl bg-[#6e3102] hover:bg-[#5a2801] dark:bg-[#d4855a] dark:hover:bg-[#e9a67f] dark:text-[#121212] text-white font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {saving ? "Saving..." : "Resolve Question"}
                   </button>

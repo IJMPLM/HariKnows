@@ -73,7 +73,7 @@ export default function CsvUploadHistoryPanel({
                 </div>
                 <button
                   onClick={() => void load()}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#6e3102] text-white hover:bg-[#5a2801] dark:bg-[#d4855a] dark:text-[#121212] dark:hover:bg-[#e39a73]"
+                  className="mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#6e3102] hover:bg-[#5a2801] dark:bg-[#d4855a] dark:hover:bg-[#e9a67f] text-white dark:text-[#121212] font-semibold"
                 >
                   <RefreshCcw size={14} />
                   Refresh

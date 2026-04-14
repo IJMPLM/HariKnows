@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -11,6 +11,7 @@ import {
   Upload,
   Users,
   X,
+  ChevronDown
 } from "lucide-react";
 import {
   importIctoAccounts,
@@ -34,6 +35,20 @@ const EMPTY_FORM: AccountForm = {
   password: "",
 };
 
+const SORT_LABEL_TO_KEY: Record<string, SortKey> = {
+  "Newest first": "newest",
+  "Oldest first": "oldest",
+  "Name A - Z": "name-asc",
+  "Name Z - A": "name-desc",
+};
+
+const SORT_KEY_TO_LABEL: Record<SortKey, string> = {
+  "newest": "Newest first",
+  "oldest": "Oldest first",
+  "name-asc": "Name A - Z",
+  "name-desc": "Name Z - A",
+};
+
 function formatDate(value: string) {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
@@ -50,6 +65,70 @@ function formatDate(value: string) {
 function fullName(student: StudentDirectoryEntry) {
   return student.fullName || student.studentNo;
 }
+
+// --- REUSABLE CUSTOM SELECT COMPONENT ---
+function CustomSelect({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: string[];
+  onChange: (val: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative w-full" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#101014] text-sm font-medium flex items-center justify-between text-left focus:outline-none focus:ring-2 focus:ring-[#6e3102]/40 dark:focus:ring-[#d4855a]/40 transition-all"
+      >
+        <span className="truncate block">{value}</span>
+        <ChevronDown
+          size={16}
+          className={`text-gray-500 transition-transform duration-200 flex-shrink-0 ml-2 ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 z-20 w-48 mt-2 bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10 rounded-xl shadow-xl max-h-60 overflow-y-auto py-1 animate-in fade-in zoom-in-95 duration-100">
+          {options.map((option) => (
+            <div
+              key={option}
+              onClick={() => {
+                onChange(option);
+                setIsOpen(false);
+              }}
+              className={`px-4 py-2.5 cursor-pointer transition-colors text-sm flex items-center ${
+                value === option
+                  ? "bg-gray-100 dark:bg-white/10 text-[#6e3102] dark:text-[#d4855a] font-bold"
+                  : "hover:bg-gray-50 dark:hover:bg-white/5 text-gray-700 dark:text-gray-300"
+              }`}
+            >
+              {option}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+// ----------------------------------------
 
 export default function StudentPage() {
   const [students, setStudents] = useState<StudentDirectoryEntry[]>([]);
@@ -242,7 +321,6 @@ export default function StudentPage() {
 
   return (
     <div className="relative min-h-screen text-gray-900 dark:text-gray-100 overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(110,49,2,0.12),_transparent_35%),radial-gradient(circle_at_bottom_right,_rgba(212,133,90,0.12),_transparent_30%)] pointer-events-none" />
       <div className="pt-16 lg:pt-0 px-5 lg:px-8 py-6 space-y-6 relative z-10">
         <div className="max-w-7xl mx-auto space-y-6">
           <section className="rounded-3xl border border-gray-200 dark:border-white/10 bg-white/95 dark:bg-[#18181b]/95 backdrop-blur p-5 sm:p-6 shadow-sm" aria-labelledby="page-heading">
@@ -345,17 +423,13 @@ export default function StudentPage() {
                 />
               </div>
 
-              <div className="shrink-0">
-                <select
-                  value={sortKey}
-                  onChange={(event) => setSortKey(event.target.value as SortKey)}
-                  className="px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#101014] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#6e3102]/40 dark:focus:ring-[#d4855a]/40"
-                >
-                  <option value="newest">Newest first</option>
-                  <option value="oldest">Oldest first</option>
-                  <option value="name-asc">Name A - Z</option>
-                  <option value="name-desc">Name Z - A</option>
-                </select>
+              {/* --- NEW CUSTOM DROPDOWN --- */}
+              <div className="shrink-0 w-44 z-20">
+                <CustomSelect
+                  value={SORT_KEY_TO_LABEL[sortKey]}
+                  options={["Newest first", "Oldest first", "Name A - Z", "Name Z - A"]}
+                  onChange={(label) => setSortKey(SORT_LABEL_TO_KEY[label] as SortKey)}
+                />
               </div>
             </div>
 
