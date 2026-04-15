@@ -9,6 +9,7 @@ import { CollegeTab, getCachedRegistrarCollegeTabs, getRegistrarCollegeTabs } fr
 
 const topNavItems = [
   { label: "Dashboard", icon: LayoutGrid, href: "/dashboard" },
+  { label: "Registrar", icon: ClipboardList, href: "/registrar" },
   { label: "FAQs & Context", icon: MessageSquareQuote, href: "/faq" },
   { label: "Questions", icon: HelpCircle, href: "/questions" },
   { label: "Documents", icon: FileText, href: "/document" },
@@ -46,7 +47,6 @@ export default function MobileSidebar() {
   }, [pathname]);
 
   const officeItems = [
-    { label: "Registrar", icon: ClipboardList, href: "/registrar" },
     { label: "NSTP Office", icon: BookOpen, href: "/nstp" },
     { label: "OSD", icon: BookOpen, href: "/osds" },
   ];
