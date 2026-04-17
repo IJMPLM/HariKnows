@@ -2,7 +2,31 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, Archive, CheckCircle2, ClipboardList, RefreshCw } from "lucide-react";
-import { getRegistrarUploadHistory, type EtlUploadHistoryEntry } from "../../../lib/registrar-client";
+import {
+  bulkUploadRegistrarCsv,
+  clearRegistrarEtlStaging,
+  commitRegistrarEtl,
+  EtlBulkUploadResponse,
+  EtlUploadHistoryEntry,
+  flushRegistrarDatabase,
+  getRegistrarUploadHistory,
+  importFaqCsvFile,
+} from "../../../lib/registrar-client";
+import UploadSection from "../../components/UploadSection";
+import SummaryCards from "../../components/SummaryCards";
+import StagedDataModal from "../../components/StagedDataModal";
+
+type TabKey =
+  | "departments"
+  | "admissions"
+  | "discipline"
+  | "service"
+  | "technology"
+  | "students"
+  | "grades"
+  | "curriculums"
+  | "syllabi"
+  | "thesis";
 
 type SummaryRow = {
   key: string;
@@ -28,25 +52,40 @@ function officeFromCategory(category: string) {
 }
 
 export default function DashboardPage() {
+  // Upload history state
   const [history, setHistory] = useState<EtlUploadHistoryEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState("");
+
+  // File upload state
+  const [files, setFiles] = useState<File[]>([]);
+  const [isParseLoading, setIsParseLoading] = useState(false);
+  const [isSaveLoading, setIsSaveLoading] = useState(false);
+  const [isFlushLoading, setIsFlushLoading] = useState(false);
+  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const load = async () => {
+  // Staging state
+  const [result, setResult] = useState<EtlBulkUploadResponse | null>(null);
+  const [activeTab, setActiveTab] = useState<TabKey>("students");
+  const [decisions, setDecisions] = useState<Record<number, "merge" | "skip">>({});
+  const [incompleteByFile, setIncompleteByFile] = useState<Record<string, boolean>>({});
+
+  const loadHistory = async () => {
     try {
-      setError("");
-      setLoading(true);
+      setHistoryError("");
+      setHistoryLoading(true);
       const rows = await getRegistrarUploadHistory(500);
       setHistory(rows);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Failed to load dashboard status.");
+      setHistoryError(loadError instanceof Error ? loadError.message : "Failed to load dashboard status.");
     } finally {
-      setLoading(false);
+      setHistoryLoading(false);
     }
   };
 
   useEffect(() => {
-    void load();
+    void loadHistory();
   }, []);
 
   const summaryRows = useMemo(() => {
@@ -113,8 +152,150 @@ export default function DashboardPage() {
     );
   }, [summaryRows]);
 
+  const handleFilesSelected = (selectedFiles: File[]) => {
+    setFiles(selectedFiles);
+    setIncompleteByFile((previous) => {
+      const next: Record<string, boolean> = {};
+      selectedFiles.forEach((file) => {
+        next[file.name] = previous[file.name] ?? false;
+      });
+      return next;
+    });
+  };
+
+  const handleParse = async () => {
+    if (files.length === 0) {
+      setError("Please select CSV files first.");
+      return;
+    }
+
+    try {
+      setError("");
+      setMessage("");
+      setIsParseLoading(true);
+      const faqFiles = files.filter((file) => {
+        const name = file.name.toLowerCase();
+        return ["faqs.csv", "consolidated_context.csv"].includes(name);
+      });
+      const csvFiles = files.filter((file) => {
+        const name = file.name.toLowerCase();
+        const isDelimited = name.endsWith(".csv");
+        return isDelimited && !faqFiles.includes(file);
+      });
+      const incompleteFiles = csvFiles.filter((file) => incompleteByFile[file.name]).map((file) => file.name);
+
+      let parsed: EtlBulkUploadResponse | null = null;
+      if (csvFiles.length > 0) {
+        parsed = await bulkUploadRegistrarCsv(csvFiles, incompleteFiles);
+        setResult(parsed);
+        const initialDecisions: Record<number, "merge" | "skip"> = {};
+        parsed.conflicts.forEach((c) => {
+          initialDecisions[c.stagingId] = "merge";
+        });
+        setDecisions(initialDecisions);
+      } else {
+        setResult(null);
+        setDecisions({});
+      }
+
+      const faqMessages: string[] = [];
+      for (const file of faqFiles) {
+        const summary = await importFaqCsvFile(file);
+        faqMessages.push(`${file.name}: imported ${summary.imported}, updated ${summary.updated}, skipped ${summary.skipped}`);
+      }
+
+      const stagingMessage = parsed ? `Staged ${parsed.files.length} file(s). Batch: ${parsed.batchId}` : "";
+      const faqMessage = faqMessages.length > 0 ? `Imported FAQs from ${faqMessages.join("; ")}.` : "";
+      setMessage([stagingMessage, faqMessage].filter(Boolean).join(" "));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to parse files.");
+    } finally {
+      setIsParseLoading(false);
+    }
+  };
+
+  const handleCommit = async () => {
+    if (!result) return;
+
+    try {
+      setError("");
+      setMessage("");
+      setIsSaveLoading(true);
+      const requestDecisions = result.conflicts.map((c) => ({
+        stagingId: c.stagingId,
+        action: decisions[c.stagingId] ?? "merge",
+      }));
+      const summary = await commitRegistrarEtl(result.batchId, requestDecisions);
+      setMessage(`Saved to database. Inserted: ${summary.inserted}, Updated: ${summary.updated}, Skipped: ${summary.skipped}, Errors: ${summary.errors}`);
+      setResult(null);
+      setFiles([]);
+      setDecisions({});
+      await loadHistory();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Commit failed.");
+    } finally {
+      setIsSaveLoading(false);
+    }
+  };
+
+  const handleDiscard = async () => {
+    if (!result) {
+      setFiles([]);
+      return;
+    }
+
+    try {
+      await clearRegistrarEtlStaging(result.batchId);
+      setResult(null);
+      setFiles([]);
+      setDecisions({});
+      setMessage("Staging batch discarded.");
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to discard staging data.");
+    }
+  };
+
+  const handleFlushDatabase = async () => {
+    const approved = window.confirm(
+      "This will clear registrar and ETL data in the database and reseed default departments/programs. Continue?"
+    );
+    if (!approved) {
+      return;
+    }
+
+    const token = window.prompt("Type FLUSH to confirm database flush:", "");
+    if (token !== "FLUSH") {
+      setError("Database flush canceled. Confirmation token did not match FLUSH.");
+      return;
+    }
+
+    try {
+      setIsFlushLoading(true);
+      setError("");
+      setMessage("");
+      const summary = await flushRegistrarDatabase(token);
+      setResult(null);
+      setFiles([]);
+      setDecisions({});
+      setMessage(
+        `Database flushed. Students: ${summary.deletedStudents}, Curriculums: ${summary.deletedCurriculumCourses}, Staging rows: ${summary.deletedStagingRows}, Documents: ${summary.deletedDocuments}.`
+      );
+      await loadHistory();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to flush database.");
+    } finally {
+      setIsFlushLoading(false);
+    }
+  };
+
+  const handleIncompleteChange = (fileName: string, checked: boolean) => {
+    setIncompleteByFile((previous) => ({ ...previous, [fileName]: checked }));
+  };
+
   return (
     <div className="min-h-screen text-gray-900 dark:text-white">
+      {/* Dashboard Header */}
       <div className="px-8 py-7">
         <section className="rounded-2xl border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] p-5 sm:p-6">
           <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-gray-600 dark:text-[#aaaaaa] mb-2">
@@ -127,33 +308,47 @@ export default function DashboardPage() {
               <h1 className="text-3xl lg:text-[2rem] font-extrabold tracking-tight leading-tight text-gray-900 dark:text-white mb-1">
                 Document Upload <span className="text-[#6e3102] dark:text-[#d4855a]">Dashboard</span>
               </h1>
-              <p className="text-sm text-gray-600 dark:text-[#aaaaaa] mb-6">Overall status across offices and colleges</p>
+              <p className="text-sm text-gray-600 dark:text-[#aaaaaa] mb-6">Upload, stage, and manage registrar documents</p>
             </div>
-          <button
-            onClick={() => void load()}
-            className="mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#6e3102] hover:bg-[#5a2801] dark:bg-[#d4855a] dark:hover:bg-[#e9a67f] text-white dark:text-[#121212] font-semibold"
-          >
-            <RefreshCw size={14} />
-            Refresh
-          </button>
-        </div>
+            <button
+              onClick={() => void loadHistory()}
+              className="mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#6e3102] hover:bg-[#5a2801] dark:bg-[#d4855a] dark:hover:bg-[#e9a67f] text-white dark:text-[#121212] font-semibold"
+            >
+              <RefreshCw size={14} />
+              Refresh
+            </button>
+          </div>
         </section>
       </div>
 
+      {/* Upload Section */}
+      <UploadSection
+        files={files}
+        onFilesSelected={handleFilesSelected}
+        onParse={handleParse}
+        onCommit={handleCommit}
+        onDiscard={handleDiscard}
+        onFlush={handleFlushDatabase}
+        isParseLoading={isParseLoading}
+        isSaveLoading={isSaveLoading}
+        isFlushLoading={isFlushLoading}
+        hasStaged={result !== null}
+        message={message}
+        error={error}
+        incompleteByFile={incompleteByFile}
+        onIncompleteChange={handleIncompleteChange}
+      />
+
+      {/* Summary Cards */}
+      <SummaryCards totals={totals} />
+
+      {/* Upload History Table */}
       <div className="px-8 py-7 space-y-6">
-        {error && (
+        {historyError && (
           <div className="rounded-xl border border-red-500/35 bg-red-500/10 text-red-200 px-4 py-3 text-sm">
-            {error}
+            {historyError}
           </div>
         )}
-
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="bg-white dark:bg-[#1a1a1a] rounded-xl p-5 border border-gray-200 dark:border-[#2a2a2a]"><p className="text-xs text-gray-600 dark:text-[#aaaaaa] uppercase tracking-wide">Total</p><p className="text-3xl font-extrabold mt-2">{totals.total}</p></div>
-          <div className="bg-white dark:bg-[#1a1a1a] rounded-xl p-5 border border-gray-200 dark:border-[#2a2a2a]"><p className="text-xs text-gray-600 dark:text-[#aaaaaa] uppercase tracking-wide">Active</p><p className="text-3xl font-extrabold mt-2 text-emerald-400">{totals.active}</p></div>
-          <div className="bg-white dark:bg-[#1a1a1a] rounded-xl p-5 border border-gray-200 dark:border-[#2a2a2a]"><p className="text-xs text-gray-600 dark:text-[#aaaaaa] uppercase tracking-wide">Archived</p><p className="text-3xl font-extrabold mt-2 text-zinc-300">{totals.archived}</p></div>
-          <div className="bg-white dark:bg-[#1a1a1a] rounded-xl p-5 border border-gray-200 dark:border-[#2a2a2a]"><p className="text-xs text-gray-600 dark:text-[#aaaaaa] uppercase tracking-wide">Incomplete</p><p className="text-3xl font-extrabold mt-2 text-amber-300">{totals.incomplete}</p></div>
-          <div className="bg-white dark:bg-[#1a1a1a] rounded-xl p-5 border border-gray-200 dark:border-[#2a2a2a]"><p className="text-xs text-gray-600 dark:text-[#aaaaaa] uppercase tracking-wide">Errors</p><p className="text-3xl font-extrabold mt-2 text-red-400">{totals.errors}</p></div>
-        </div>
 
         <section className="bg-white dark:bg-[#1a1a1a] rounded-2xl overflow-hidden border border-gray-200 dark:border-[#2a2a2a]">
           <table className="w-full min-w-[920px]">
@@ -170,7 +365,7 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
+              {historyLoading ? (
                 <tr><td colSpan={8} className="text-center text-gray-600 dark:text-[#aaaaaa] py-8">Loading dashboard...</td></tr>
               ) : summaryRows.length === 0 ? (
                 <tr><td colSpan={8} className="text-center text-gray-600 dark:text-[#aaaaaa] py-8">No upload records found.</td></tr>
@@ -192,6 +387,17 @@ export default function DashboardPage() {
           </table>
         </section>
       </div>
+
+      {/* Staged Data Modal */}
+      <StagedDataModal
+        isOpen={result !== null}
+        result={result}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onClose={handleDiscard}
+        decisions={decisions}
+        onDecisionChange={(stagingId, action) => setDecisions((prev) => ({ ...prev, [stagingId]: action }))}
+      />
     </div>
   );
 }
