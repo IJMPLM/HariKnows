@@ -11,7 +11,6 @@ const topNavItems = [
   { label: "Dashboard", icon: LayoutGrid, href: "/dashboard" },
   { label: "Registrar", icon: ClipboardList, href: "/registrar" },
   { label: "FAQs & Context", icon: MessageSquareQuote, href: "/faq" },
-  { label: "Questions", icon: HelpCircle, href: "/questions" },
   { label: "Accounts", icon: FileText, href: "/create" },
 ];
 
