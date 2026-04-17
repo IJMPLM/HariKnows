@@ -229,7 +229,7 @@ public sealed class SqliteRegistrarRepository(string connectionString) : IRegist
         return [];
     }
 
-    public StudentDirectoryEntryDto? UpdateStudentCredentials(string studentNo, string email, string passwordHash, DateTime updatedAt)
+    public StudentDirectoryEntryDto? UpdateStudentCredentials(string studentNo, string? email, string passwordHash, DateTime updatedAt)
     {
         throw new NotSupportedException("Student account operations are not supported by SqliteRegistrarRepository.");
     }

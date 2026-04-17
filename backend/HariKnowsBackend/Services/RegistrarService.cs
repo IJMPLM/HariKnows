@@ -235,13 +235,18 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
 
     public StudentDirectoryEntryDto? UpdateStudentCredentials(UpsertStudentCredentialsRequestDto request)
     {
-        if (string.IsNullOrWhiteSpace(request.StudentNo) || string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
+        if (string.IsNullOrWhiteSpace(request.StudentNo) || string.IsNullOrWhiteSpace(request.Password))
         {
-            throw new ArgumentException("Student number, email, and password are required.");
+            throw new ArgumentException("Student number and password are required.");
         }
 
         var studentNo = request.StudentNo.Trim();
-        var email = request.Email.Trim().ToLowerInvariant();
+        var email = request.Email?.Trim();
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            email = email.ToLowerInvariant();
+        }
+
         var passwordHash = authService.HashPassword(request.Password.Trim());
         var updated = repository.UpdateStudentCredentials(studentNo, email, passwordHash, DateTime.UtcNow);
 
@@ -286,10 +291,9 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
         var delimiter = DetectDelimiter(lines[0]);
         var headerRow = ParseCsvLine(lines[1], delimiter).Select(NormalizeCsvHeader).ToArray();
         if (!headerRow.Contains("studentNo", StringComparer.OrdinalIgnoreCase)
-            || !headerRow.Contains("email", StringComparer.OrdinalIgnoreCase)
             || !headerRow.Contains("password", StringComparer.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException("ICTO CSV must include student number, email, and password columns.");
+            throw new InvalidOperationException("ICTO CSV must include student number and password columns.");
         }
 
         var imported = 0;
@@ -314,10 +318,10 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
             var email = GetValue(payload, "email");
             var password = GetValue(payload, "password");
 
-            if (string.IsNullOrWhiteSpace(studentNo) || string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+            if (string.IsNullOrWhiteSpace(studentNo) || string.IsNullOrWhiteSpace(password))
             {
                 skipped++;
-                errors.Add($"Row {lineIndex + 1}: studentNo, email, and password are required.");
+                errors.Add($"Row {lineIndex + 1}: studentNo and password are required.");
                 continue;
             }
 

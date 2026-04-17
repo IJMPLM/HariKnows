@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   User,
-  Mail,
   BookOpen,
   Building2,
   Hash
@@ -176,20 +175,6 @@ export default function AccountPage() {
                   </div>
                 </div>
 
-                {/* PLM Email */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Email Address</label>
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                    <input
-                      type="email"
-                      defaultValue={profile?.email ?? ""}
-                      disabled
-                      className="w-full pl-11 pr-4 py-3 rounded-xl bg-gray-100 dark:bg-[#1f1f1f] border border-gray-200 dark:border-white/5 text-[0.95rem] text-gray-600 dark:text-gray-400 outline-none cursor-not-allowed font-medium"
-                    />
-                  </div>
-                </div>
-
                 {/* College */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">College</label>
@@ -205,7 +190,7 @@ export default function AccountPage() {
                 </div>
 
                 {/* Course */}
-                <div className="space-y-1.5 md:col-span-2">
+                <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Program / Course</label>
                   <div className="relative">
                     <BookOpen className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />

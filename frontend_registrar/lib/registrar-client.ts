@@ -19,9 +19,9 @@ export type StudentDirectoryEntry = {
   fullName: string;
   collegeCode: string;
   programCode: string;
-  email: string;
   dateCreated: string;
   hasPassword: boolean;
+  isPasswordConfigured: boolean;
 };
 
 export type StudentDocumentRequest = {
@@ -281,7 +281,7 @@ export async function searchStudents(query: string, limit = 20): Promise<Student
   return (await parseJsonOrThrow(response)) as StudentDirectoryEntry[];
 }
 
-export async function updateStudentCredentials(studentNo: string, payload: { email: string; password: string }): Promise<StudentDirectoryEntry> {
+export async function updateStudentCredentials(studentNo: string, payload: { password: string }): Promise<StudentDirectoryEntry> {
   const response = await fetch(`${API_BASE}/api/registrar/students/${encodeURIComponent(studentNo)}/credentials`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },

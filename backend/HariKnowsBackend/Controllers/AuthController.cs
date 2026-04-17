@@ -17,7 +17,7 @@ public sealed class AuthController(IAuthService authService, IConfiguration conf
         var token = await authService.LoginAsync(request, cancellationToken);
         if (token is null)
         {
-            return Unauthorized(new { error = "Invalid email or password." });
+            return Unauthorized(new { error = "Invalid student number or password." });
         }
 
         SetRefreshCookie(token.RefreshToken, token.RefreshTokenExpiresAtUtc);

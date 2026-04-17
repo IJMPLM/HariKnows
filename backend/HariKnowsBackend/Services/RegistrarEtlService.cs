@@ -712,6 +712,7 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
             if (!string.IsNullOrWhiteSpace(rawPassword))
             {
                 student.PasswordHash = authService.HashPassword(rawPassword);
+                student.IsPasswordConfigured = false;
             }
         }
         else if (sourceCategory == "thesis")

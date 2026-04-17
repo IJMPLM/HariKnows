@@ -9,7 +9,7 @@ public sealed class JwtOptions
     public int RefreshTokenDays { get; set; } = 7;
 }
 
-public sealed record LoginRequestDto(string Email, string Password);
+public sealed record LoginRequestDto(string StudentNo, string Password);
 
 public sealed record ChangePasswordRequestDto(string CurrentPassword, string NewPassword);
 

@@ -8,7 +8,6 @@ export type StudentProfile = {
   fullName: string;
   collegeCode: string;
   programCode: string;
-  email: string;
 };
 
 type ChangePasswordResponse = {
@@ -164,11 +163,11 @@ export function hasLocalSession(): boolean {
   return Boolean(getAccessToken() && getStoredUser());
 }
 
-export async function signIn(email: string, password: string): Promise<StudentProfile> {
+export async function signIn(studentNo: string, password: string): Promise<StudentProfile> {
   const response = await fetch(`${API_BASE}/api/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ studentNo, password }),
     credentials: "include",
   });
 
