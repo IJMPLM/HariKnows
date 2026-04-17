@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Send, Loader2, Trash2, MessageSquarePlus, X } from "lucide-react";
+import { Send, Loader2, MessageSquarePlus, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 import DesktopSidebar from "../../components/DesktopSidebar"; 
@@ -271,31 +271,6 @@ export default function HaribotPage() {
     } finally {
       setBusy(false);
       inFlightRef.current = false;
-    }
-  };
-
-  const handleClearHistory = async () => {
-    if (!confirm("Are you sure you want to clear the chat history?")) {
-      return;
-    }
-
-    try {
-      if (!conversationId) {
-        return;
-      }
-
-      if (!currentUser) {
-        window.localStorage.removeItem(GUEST_CONVERSATION_KEY);
-        setConversationId(null);
-        setMessages([]);
-        return;
-      }
-
-      await clearChatHistory(conversationId);
-      setMessages([]);
-    } catch (error) {
-      console.error("Failed to clear history:", error);
-      alert("Failed to clear history. Please try again.");
     }
   };
 
@@ -598,18 +573,6 @@ export default function HaribotPage() {
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
-
-                {messages.length > 0 && (
-                  <div className="flex justify-center">
-                    <button
-                      className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-[#18181b] border border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/10 transition-colors shadow-sm"
-                      onClick={handleClearHistory}
-                    >
-                      <Trash2 size={14} />
-                      Clear History
-                    </button>
                   </div>
                 )}
               </div>
