@@ -100,31 +100,34 @@ export default function CsvUploadHistoryPanel({
                 <table className="w-full min-w-[900px] text-sm">
                   <thead className="bg-[var(--card)] border-b border-[var(--line)]">
                     <tr>
-                      <th className="text-left px-4 py-3 text-[var(--muted)]">When</th>
+                      <th className="text-left px-4 py-3 text-[var(--muted)]">Date Uploaded</th>
                       <th className="text-left px-4 py-3 text-[var(--muted)]">File</th>
                       <th className="text-left px-4 py-3 text-[var(--muted)]">College</th>
                       <th className="text-left px-4 py-3 text-[var(--muted)]">Program</th>
                       <th className="text-left px-4 py-3 text-[var(--muted)]">Category</th>
                       <th className="text-left px-4 py-3 text-[var(--muted)]">Rows</th>
                       <th className="text-left px-4 py-3 text-[var(--muted)]">Status</th>
-                      <th className="text-left px-4 py-3 text-[var(--muted)]">Batch</th>
                     </tr>
                   </thead>
                   <tbody>
                     {isLoading && (
                       <tr>
-                        <td colSpan={8} className="px-4 py-8 text-center text-[var(--muted)]">Loading upload history...</td>
+                        <td colSpan={7} className="px-4 py-8 text-center text-[var(--muted)]">Loading upload history...</td>
                       </tr>
                     )}
                     {!isLoading && filteredHistory.map((entry) => (
                       <tr key={`${entry.batchId}-${entry.fileName}-${entry.parsedAt}`} className="border-t border-[var(--line)]">
-                        <td className="px-4 py-3 text-[var(--muted)] whitespace-nowrap inline-flex items-center gap-2">
-                          <Clock3 size={13} />
-                          {new Date(entry.parsedAt).toLocaleString()}
+                        <td className="px-4 py-3 text-[var(--muted)] whitespace-nowrap">
+                          <div className="inline-flex items-center gap-2">
+                            <Clock3 size={13} />
+                            {new Date(entry.parsedAt).toLocaleString()}
+                          </div>
                         </td>
-                        <td className="px-4 py-3 font-medium whitespace-nowrap inline-flex items-center gap-2">
-                          <FileSpreadsheet size={14} className="text-[#6e3102] dark:text-[#d4855a]" />
-                          {entry.fileName}
+                        <td className="px-4 py-3 font-medium whitespace-nowrap">
+                          <div className="inline-flex items-center gap-2">
+                            <FileSpreadsheet size={14} className="text-[#6e3102] dark:text-[#d4855a]" />
+                            {entry.fileName}
+                          </div>
                         </td>
                         <td className="px-4 py-3 uppercase tracking-wide text-xs text-[var(--muted)]">{entry.collegeCode || "-"}</td>
                         <td className="px-4 py-3 uppercase tracking-wide text-xs text-[var(--muted)]">{entry.programCode || "-"}</td>
@@ -142,12 +145,11 @@ export default function CsvUploadHistoryPanel({
                             ) : null}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-xs text-[var(--muted)]">{entry.batchId.slice(0, 10)}...</td>
                       </tr>
                     ))}
                     {!isLoading && filteredHistory.length === 0 && (
                       <tr>
-                        <td colSpan={8} className="px-4 py-10 text-center text-[var(--muted)]">
+                        <td colSpan={7} className="px-4 py-10 text-center text-[var(--muted)]">
                           No upload records yet for this office.
                         </td>
                       </tr>
