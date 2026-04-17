@@ -9,7 +9,7 @@ import { signIn } from "../../../lib/auth-client";
 export default function SignInPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState("");
+  const [studentNo, setStudentNo] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -21,10 +21,9 @@ export default function SignInPage() {
     }
 
     setError("");
-    const normalizedEmail = email.trim().toLowerCase();
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailPattern.test(normalizedEmail)) {
-      setError("Please enter a valid email address.");
+    const normalizedStudentNo = studentNo.trim();
+    if (!normalizedStudentNo) {
+      setError("Student number is required.");
       return;
     }
 
@@ -36,7 +35,7 @@ export default function SignInPage() {
     setIsSubmitting(true);
 
     try {
-      await signIn(normalizedEmail, password);
+      await signIn(normalizedStudentNo, password);
       router.push("/haribot");
     } catch (signInError) {
       const message = signInError instanceof Error ? signInError.message : "Failed to sign in.";
@@ -92,14 +91,15 @@ export default function SignInPage() {
           {/* Form */}
           <form onSubmit={handleSignIn} className="space-y-3">
 
-            {/* Email */}
+            {/* Student Number */}
             <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
+              id="studentNo"
+              type="text"
+              value={studentNo}
+              onChange={(e) => setStudentNo(e.target.value)}
+              placeholder="Student Number"
               required
+              autoComplete="username"
               className="w-full px-4 py-3 rounded-xl text-white placeholder-white/25 text-sm
                          focus:outline-none focus:ring-2 focus:ring-[#d4855a]/40
                          transition-all duration-200"

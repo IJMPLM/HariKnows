@@ -113,6 +113,7 @@ public class HariKnowsDbContext(DbContextOptions<HariKnowsDbContext> options) : 
             entity.Property(e => e.StudentNo).IsRequired();
             entity.HasIndex(e => e.StudentNo).IsUnique();
             entity.Property(e => e.PasswordHash).IsRequired();
+            entity.Property(e => e.IsPasswordConfigured).IsRequired();
             entity.Property(e => e.DateCreated).IsRequired();
             entity.Property(e => e.DateUpdated).IsRequired();
         });

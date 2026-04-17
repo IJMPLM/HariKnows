@@ -23,7 +23,6 @@ import {
 type SortKey = "newest" | "oldest" | "name-asc" | "name-desc";
 type AccountForm = {
   studentNo: string;
-  email: string;
   password: string;
 };
 
@@ -31,7 +30,6 @@ const PAGE_SIZE = 8;
 
 const EMPTY_FORM: AccountForm = {
   studentNo: "",
-  email: "",
   password: "",
 };
 
@@ -187,7 +185,6 @@ export default function StudentPage() {
         return (
           student.studentNo.toLowerCase().includes(query) ||
           student.fullName.toLowerCase().includes(query) ||
-          student.email.toLowerCase().includes(query) ||
           student.programCode.toLowerCase().includes(query)
         );
       });
@@ -218,19 +215,20 @@ export default function StudentPage() {
   }, [searchQuery, activeCollege, sortKey]);
 
   const openCreateModal = (student?: StudentDirectoryEntry) => {
+    if (!student) {
+      setAccountError("Select a student from the table and use Edit to update password.");
+      setAccountMessage("");
+      return;
+    }
+
     setShowCreateModal(true);
     setAccountError("");
     setAccountMessage("");
     setShowPassword(false);
-    setForm(
-      student
-        ? {
-            studentNo: student.studentNo,
-            email: student.email,
-            password: "",
-          }
-        : EMPTY_FORM,
-    );
+    setForm({
+      studentNo: student.studentNo,
+      password: "",
+    });
   };
 
   const closeCreateModal = () => {
@@ -242,8 +240,8 @@ export default function StudentPage() {
   };
 
   const handleSubmitAccount = async () => {
-    if (!form.studentNo.trim() || !form.email.trim() || !form.password.trim()) {
-      setAccountError("Student number, email, and password are required.");
+    if (!form.studentNo.trim() || !form.password.trim()) {
+      setAccountError("Student number and password are required.");
       setAccountMessage("");
       return;
     }
@@ -253,7 +251,6 @@ export default function StudentPage() {
       setAccountError("");
       setAccountMessage("");
       await updateStudentCredentials(form.studentNo.trim(), {
-        email: form.email.trim(),
         password: form.password,
       });
       setAccountMessage(`Credentials updated for ${form.studentNo.trim()}.`);
@@ -344,13 +341,6 @@ export default function StudentPage() {
                 >
                   <Upload size={16} aria-hidden="true" /> Upload CSV
                 </button>
-                <button
-                  onClick={() => openCreateModal()}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#6e3102] dark:bg-[#d4855a] text-white dark:text-[#121212] text-sm font-semibold hover:opacity-90 transition-opacity"
-                  aria-label="Create or overwrite student credentials"
-                >
-                  Create Account
-                </button>
               </div>
             </div>
           </section>
@@ -418,7 +408,7 @@ export default function StudentPage() {
                   type="search"
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search by name, student no., email, or program..."
+                  placeholder="Search by name, student no., or program..."
                   className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#101014] text-sm focus:outline-none focus:ring-2 focus:ring-[#6e3102]/40 dark:focus:ring-[#d4855a]/40"
                 />
               </div>
@@ -439,7 +429,6 @@ export default function StudentPage() {
                   <tr className="text-left text-xs uppercase tracking-[0.2em] text-gray-500 border-b border-gray-200 dark:border-white/10">
                     <th scope="col" className="py-3 pr-4 font-semibold">Student No.</th>
                     <th scope="col" className="py-3 pr-4 font-semibold">Name</th>
-                    <th scope="col" className="py-3 pr-4 font-semibold">Email</th>
                     <th scope="col" className="py-3 pr-4 font-semibold">Program</th>
                     <th scope="col" className="py-3 pr-4 font-semibold">Created</th>
                     <th scope="col" className="py-3 pr-4 font-semibold">Password</th>
@@ -449,13 +438,13 @@ export default function StudentPage() {
                 <tbody>
                   {isLoading ? (
                     <tr>
-                      <td colSpan={7} className="py-16 text-center text-gray-400 text-sm">
+                      <td colSpan={6} className="py-16 text-center text-gray-400 text-sm">
                         Loading student accounts...
                       </td>
                     </tr>
                   ) : paginatedStudents.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-16 text-center text-gray-400 text-sm">
+                      <td colSpan={6} className="py-16 text-center text-gray-400 text-sm">
                         No students found.
                       </td>
                     </tr>
@@ -469,12 +458,19 @@ export default function StudentPage() {
                           <div className="font-semibold text-sm">{fullName(student)}</div>
                           <div className="text-xs text-gray-400 mt-0.5">{student.collegeCode}</div>
                         </td>
-                        <td className="py-4 pr-4 text-sm text-gray-600 dark:text-gray-400">{student.email}</td>
                         <td className="py-4 pr-4 text-sm text-gray-600 dark:text-gray-400">{student.programCode}</td>
                         <td className="py-4 pr-4 text-sm text-gray-500 whitespace-nowrap">{formatDate(student.dateCreated)}</td>
                         <td className="py-4 pr-4 text-sm">
-                          <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${student.hasPassword ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-amber-500/10 text-amber-700 dark:text-amber-300"}`}>
-                            {student.hasPassword ? "Configured" : "Missing"}
+                          <span
+                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+                              !student.hasPassword
+                                ? "bg-rose-500/10 text-rose-700 dark:text-rose-300"
+                                : student.isPasswordConfigured
+                                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                                  : "bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                            }`}
+                          >
+                            {!student.hasPassword ? "Missing" : student.isPasswordConfigured ? "Configured" : "Temporary"}
                           </span>
                         </td>
                         <td className="py-4 pr-4 text-sm">
@@ -482,7 +478,7 @@ export default function StudentPage() {
                             onClick={() => openCreateModal(student)}
                             className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
                           >
-                            <Pencil size={14} aria-hidden="true" /> Edit
+                            <Pencil size={14} aria-hidden="true" /> Set Password
                           </button>
                         </td>
                       </tr>
@@ -566,7 +562,7 @@ export default function StudentPage() {
                   <CloudUpload size={36} className="text-gray-400" aria-hidden="true" />
                   <div className="text-center">
                     <p className="font-semibold text-sm">Drop the ICTO CSV here</p>
-                    <p className="text-xs text-gray-400 mt-1">Headers should include student number, email, and password.</p>
+                    <p className="text-xs text-gray-400 mt-1">Headers should include student number and password.</p>
                   </div>
                 </>
               )}
@@ -623,23 +619,10 @@ export default function StudentPage() {
                   id="student-no"
                   type="text"
                   value={form.studentNo}
-                  onChange={(event) => setForm((previous) => ({ ...previous, studentNo: event.target.value }))}
-                  placeholder="e.g. 2024-10001"
-                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#101014] text-sm focus:outline-none focus:ring-2 focus:ring-[#6e3102]/40 dark:focus:ring-[#d4855a]/40"
+                  disabled
+                  readOnly
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-[#0f0f12] text-sm text-gray-500 dark:text-gray-400 outline-none cursor-not-allowed"
                   autoComplete="off"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="student-email" className="block text-xs uppercase tracking-[0.18em] font-bold text-gray-500 mb-1.5">Email Address</label>
-                <input
-                  id="student-email"
-                  type="email"
-                  value={form.email}
-                  onChange={(event) => setForm((previous) => ({ ...previous, email: event.target.value }))}
-                  placeholder="student@hari.knows"
-                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#101014] text-sm focus:outline-none focus:ring-2 focus:ring-[#6e3102]/40 dark:focus:ring-[#d4855a]/40"
-                  autoComplete="email"
                 />
               </div>
 
@@ -666,7 +649,7 @@ export default function StudentPage() {
               </div>
 
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                This updates the email and password for an existing student number. It does not create a new student masterlist entry.
+                Registrar-set passwords are temporary by default. The status becomes Configured only after the student changes password in Helpdesk.
               </p>
             </div>
 

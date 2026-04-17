@@ -1,5 +1,4 @@
 using System.IdentityModel.Tokens.Jwt;
-using System.Net.Mail;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -18,20 +17,15 @@ public sealed class AuthService(HariKnowsDbContext db, IOptions<JwtOptions> jwtO
 
     public async Task<TokenResponseDto?> LoginAsync(LoginRequestDto request, CancellationToken cancellationToken)
     {
-        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(normalizedEmail) || string.IsNullOrWhiteSpace(request.Password))
-        {
-            return null;
-        }
-
-        if (!IsValidEmail(normalizedEmail))
+        var normalizedStudentNo = request.StudentNo?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(normalizedStudentNo) || string.IsNullOrWhiteSpace(request.Password))
         {
             return null;
         }
 
         var student = await db.StudentMasters
             .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.Email.ToLower() == normalizedEmail, cancellationToken);
+            .FirstOrDefaultAsync(s => s.StudentNo == normalizedStudentNo, cancellationToken);
 
         if (student is null || string.IsNullOrWhiteSpace(student.PasswordHash))
         {
@@ -109,6 +103,7 @@ public sealed class AuthService(HariKnowsDbContext db, IOptions<JwtOptions> jwtO
         }
 
         student.PasswordHash = HashPassword(normalizedNewPassword);
+        student.IsPasswordConfigured = true;
         student.DateUpdated = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
 
@@ -220,16 +215,4 @@ public sealed class AuthService(HariKnowsDbContext db, IOptions<JwtOptions> jwtO
         );
     }
 
-    private static bool IsValidEmail(string email)
-    {
-        try
-        {
-            _ = new MailAddress(email);
-            return true;
-        }
-        catch (FormatException)
-        {
-            return false;
-        }
-    }
 }

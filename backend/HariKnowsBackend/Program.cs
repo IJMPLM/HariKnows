@@ -187,11 +187,13 @@ using (var scope = app.Services.CreateScope())
             ""TocStatus"" TEXT NOT NULL DEFAULT '',
             ""Email"" TEXT NOT NULL DEFAULT '',
             ""PasswordHash"" TEXT NOT NULL DEFAULT '',
+            ""IsPasswordConfigured"" INTEGER NOT NULL DEFAULT 0,
             ""DateCreated"" TEXT NOT NULL,
             ""DateUpdated"" TEXT NOT NULL
         );
     ");
     await EnsureSqliteColumnAsync(db, "StudentMasters", "PasswordHash", "TEXT NOT NULL DEFAULT ''");
+    await EnsureSqliteColumnAsync(db, "StudentMasters", "IsPasswordConfigured", "INTEGER NOT NULL DEFAULT 0");
     await db.Database.ExecuteSqlRawAsync(@"
         CREATE UNIQUE INDEX IF NOT EXISTS ""IX_StudentMasters_StudentNo""
         ON ""StudentMasters"" (""StudentNo"");

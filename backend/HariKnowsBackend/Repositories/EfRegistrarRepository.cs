@@ -281,11 +281,19 @@ public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegis
             .ThenBy(s => s.StudentNo)
             .Take(safeLimit)
             .AsEnumerable()
-            .Select(s => new StudentDirectoryEntryDto(s.StudentNo, s.FullName, s.CollegeCode, s.ProgramCode, s.Email, s.DateCreated, !string.IsNullOrWhiteSpace(s.PasswordHash)))
+            .Select(s => new StudentDirectoryEntryDto(
+                s.StudentNo,
+                s.FullName,
+                s.CollegeCode,
+                s.ProgramCode,
+                s.Email,
+                s.DateCreated,
+                !string.IsNullOrWhiteSpace(s.PasswordHash),
+                s.IsPasswordConfigured))
             .ToList();
     }
 
-    public StudentDirectoryEntryDto? UpdateStudentCredentials(string studentNo, string email, string passwordHash, DateTime updatedAt)
+    public StudentDirectoryEntryDto? UpdateStudentCredentials(string studentNo, string? email, string passwordHash, DateTime updatedAt)
     {
         var normalizedStudentNo = studentNo.Trim();
         var student = dbContext.StudentMasters.FirstOrDefault(s => s.StudentNo == normalizedStudentNo);
@@ -294,12 +302,24 @@ public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegis
             return null;
         }
 
-        student.Email = email.Trim();
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            student.Email = email.Trim();
+        }
         student.PasswordHash = passwordHash;
+        student.IsPasswordConfigured = false;
         student.DateUpdated = updatedAt;
         dbContext.SaveChanges();
 
-        return new StudentDirectoryEntryDto(student.StudentNo, student.FullName, student.CollegeCode, student.ProgramCode, student.Email, student.DateCreated, !string.IsNullOrWhiteSpace(student.PasswordHash));
+        return new StudentDirectoryEntryDto(
+            student.StudentNo,
+            student.FullName,
+            student.CollegeCode,
+            student.ProgramCode,
+            student.Email,
+            student.DateCreated,
+            !string.IsNullOrWhiteSpace(student.PasswordHash),
+            student.IsPasswordConfigured);
     }
 
     public StudentStatusDto? GetStudentStatus(string studentNo)

@@ -7,7 +7,8 @@ public record StudentDirectoryEntryDto(
     string ProgramCode,
     string Email,
     DateTime DateCreated,
-    bool HasPassword
+    bool HasPassword,
+    bool IsPasswordConfigured
 );
 
 public record StudentGradeSnapshotDto(
@@ -53,7 +54,7 @@ public record CreateStudentDocumentRequestDto(string StudentNo, string DocumentT
 
 public record UpdateStudentDocumentStatusDto(string Status, string? HandledBy, string? DisposedReason, string? Notes);
 
-public record UpsertStudentCredentialsRequestDto(string StudentNo, string Email, string Password);
+public record UpsertStudentCredentialsRequestDto(string StudentNo, string? Email, string Password);
 
 public record IctoAccountImportResultDto(int Imported, int Updated, int Skipped, int NotFound, IReadOnlyList<string> Errors);
 
