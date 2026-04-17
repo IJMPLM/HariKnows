@@ -1383,18 +1383,16 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
     private static List<CreateFaqContextEntryDto> ParseFaqCsv(string content)
     {
         var entries = new List<CreateFaqContextEntryDto>();
-        var lines = content
-            .Split(new[] { "\r\n", "\n" }, StringSplitOptions.None)
-            .Where(line => !string.IsNullOrWhiteSpace(line))
-            .ToList();
+        var lines = content.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+        var delimiter = DetectDelimiter(lines);
+        var rows = ParseCsvRows(content, delimiter);
 
-        if (lines.Count < 2)
+        if (rows.Count < 2)
         {
             return entries;
         }
 
-        var delimiter = DetectDelimiter(lines);
-        var header = ParseCsvLine(lines[0], delimiter).Select(value => value.Trim()).ToArray();
+        var header = rows[0].Select(value => value.Trim()).ToArray();
         var headerLookup = header.ToHashSet(StringComparer.OrdinalIgnoreCase);
         var hasAnswerLikeColumn = headerLookup.Contains("answer") || headerLookup.Contains("context") || headerLookup.Contains("content");
 
@@ -1403,9 +1401,9 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
             throw new InvalidOperationException("FAQ/context CSV must include promptRoleTag, category, title, and answer (or context/content) columns.");
         }
 
-        for (var lineIndex = 1; lineIndex < lines.Count; lineIndex++)
+        for (var rowIndex = 1; rowIndex < rows.Count; rowIndex++)
         {
-            var cells = ParseCsvLine(lines[lineIndex], delimiter).Select(value => value.Trim()).ToArray();
+            var cells = rows[rowIndex].Select(value => value.Trim()).ToArray();
             if (cells.All(string.IsNullOrWhiteSpace))
             {
                 continue;
@@ -1458,6 +1456,73 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
         }
 
         return entries;
+    }
+
+    private static List<List<string>> ParseCsvRows(string content, char delimiter = ',')
+    {
+        var rows = new List<List<string>>();
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return rows;
+        }
+
+        var currentRow = new List<string>();
+        var currentCell = new StringBuilder();
+        var inQuotes = false;
+
+        for (var i = 0; i < content.Length; i++)
+        {
+            var c = content[i];
+
+            if (c == '"')
+            {
+                if (inQuotes && i + 1 < content.Length && content[i + 1] == '"')
+                {
+                    currentCell.Append('"');
+                    i++;
+                    continue;
+                }
+
+                inQuotes = !inQuotes;
+                continue;
+            }
+
+            if (c == delimiter && !inQuotes)
+            {
+                currentRow.Add(currentCell.ToString());
+                currentCell.Clear();
+                continue;
+            }
+
+            if ((c == '\n' || c == '\r') && !inQuotes)
+            {
+                if (c == '\r' && i + 1 < content.Length && content[i + 1] == '\n')
+                {
+                    i++;
+                }
+
+                currentRow.Add(currentCell.ToString());
+                currentCell.Clear();
+
+                if (currentRow.Any(cell => !string.IsNullOrWhiteSpace(cell)))
+                {
+                    rows.Add(currentRow);
+                }
+
+                currentRow = new List<string>();
+                continue;
+            }
+
+            currentCell.Append(c);
+        }
+
+        currentRow.Add(currentCell.ToString());
+        if (currentRow.Any(cell => !string.IsNullOrWhiteSpace(cell)))
+        {
+            rows.Add(currentRow);
+        }
+
+        return rows;
     }
 
     private static string NormalizeFaqScopeType(string rawScopeType)
