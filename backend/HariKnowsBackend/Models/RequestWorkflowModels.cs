@@ -66,6 +66,7 @@ public record FaqContextEntryDto(
     string Category,
     string Title,
     string Answer,
+    bool IsGuestVisible,
     DateTime CreatedAt,
     DateTime UpdatedAt
 );

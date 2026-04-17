@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { AlertCircle, ListFilter, X } from "lucide-react";
-import { EtlBulkUploadResponse, EtlRow } from "../../../lib/registrar-client";
+import { EtlBulkUploadResponse, EtlRow } from "../../lib/registrar-client";
 
 type TabKey =
   | "departments"

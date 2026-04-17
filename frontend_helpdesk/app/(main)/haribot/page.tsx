@@ -20,7 +20,8 @@ const PAGE_SIZE = 20;
 const GUEST_CONVERSATION_KEY = "hk.chat.conversation.guest";
 
 type ParsedFaqReference = {
-  id: number;
+  id?: number;
+  ref: string;
   title: string;
 };
 
@@ -29,37 +30,58 @@ type ParsedChatMessage = {
   faqReferences: ParsedFaqReference[];
 };
 
-const FAQ_REFERENCE_TOKEN_REGEX = /\[\[FAQ_REF:(\d+)\|([^\]]+)\]\]/gi;
+const FAQ_REFERENCE_TOKEN_REGEX = /\[\[FAQ_REF:([^|\]]+)\|([^\]]+)\]\]/gi;
 const FAQ_MARKDOWN_LINK_REGEX = /\[([^\]]+)\]\(([^)]+)\)/gi;
 
 function parseChatMessageContent(rawContent: string): ParsedChatMessage {
-  const referencesById = new Map<number, ParsedFaqReference>();
+  const referencesByKey = new Map<string, ParsedFaqReference>();
 
-  const addReference = (idRaw: string | number, titleRaw: string) => {
-    const id = Number(idRaw);
+  const addReference = (refRaw: string | number, titleRaw: string, idOverride?: number) => {
+    const rawRef = String(refRaw).trim();
     const title = titleRaw.trim();
-    if (!Number.isInteger(id) || id <= 0 || !title) {
+    if (!rawRef || !title) {
       return;
     }
 
-    if (!referencesById.has(id)) {
-      referencesById.set(id, { id, title });
+    const inferredId = Number(rawRef);
+    const id = Number.isInteger(idOverride)
+      ? idOverride
+      : (Number.isInteger(inferredId) && inferredId > 0 ? inferredId : undefined);
+    const dedupeKey = id ? `id:${id}` : `ref:${rawRef.toLowerCase()}|title:${title.toLowerCase()}`;
+
+    if (!referencesByKey.has(dedupeKey)) {
+      referencesByKey.set(dedupeKey, {
+        id,
+        ref: rawRef,
+        title,
+      });
     }
   };
 
-  let cleaned = rawContent.replace(FAQ_REFERENCE_TOKEN_REGEX, (_, faqId, faqTitle) => {
-    addReference(faqId, faqTitle);
+  let cleaned = rawContent.replace(FAQ_REFERENCE_TOKEN_REGEX, (_, faqRef, faqTitle) => {
+    addReference(faqRef, faqTitle);
     return "";
   });
 
   cleaned = cleaned.replace(FAQ_MARKDOWN_LINK_REGEX, (fullMatch, linkText, linkUrl) => {
     const faqIdMatch = linkUrl.match(/[?&]faqId=(\d+)/i);
-    if (!faqIdMatch) {
-      return fullMatch;
+    const faqRefMatch = linkUrl.match(/[?&]faqRef=([^&#]+)/i);
+    const faqTitleMatch = linkUrl.match(/[?&]faqTitle=([^&#]+)/i);
+
+    if (faqIdMatch) {
+      const id = Number(faqIdMatch[1]);
+      addReference(String(id), linkText, id);
+      return "";
     }
 
-    addReference(faqIdMatch[1], linkText);
-    return "";
+    if (faqRefMatch || faqTitleMatch) {
+      const rawRef = faqRefMatch?.[1] ?? faqTitleMatch?.[1] ?? "";
+      const decodedRef = decodeURIComponent(rawRef.replace(/\+/g, " "));
+      addReference(decodedRef, linkText);
+      return "";
+    }
+
+    return fullMatch;
   });
 
   cleaned = cleaned
@@ -69,7 +91,7 @@ function parseChatMessageContent(rawContent: string): ParsedChatMessage {
 
   return {
     content: cleaned,
-    faqReferences: Array.from(referencesById.values()),
+    faqReferences: Array.from(referencesByKey.values()),
   };
 }
 
@@ -363,9 +385,17 @@ export default function HaribotPage() {
                             <div className="mt-2 flex flex-wrap gap-2 max-w-full">
                               {parsedMessage.faqReferences.map((reference) => (
                                 <button
-                                  key={`${message.id}-${reference.id}`}
+                                  key={`${message.id}-${reference.id ?? reference.ref}`}
                                   type="button"
-                                  onClick={() => router.push(`/FAQs?faqId=${reference.id}`)}
+                                  onClick={() => {
+                                    if (reference.id) {
+                                      router.push(`/FAQs?faqId=${reference.id}`);
+                                      return;
+                                    }
+
+                                    const titleQuery = encodeURIComponent(reference.title);
+                                    router.push(`/FAQs?faqTitle=${titleQuery}`);
+                                  }}
                                   className="inline-flex items-center rounded-full border border-[#d4855a]/70 bg-[#fdf1ea] px-3 py-1 text-xs font-medium text-[#6e3102] transition-colors hover:bg-[#f8e4d7] dark:border-[#d4855a]/40 dark:bg-[#3b2518] dark:text-[#f3cdb5] dark:hover:bg-[#4a2d1d]"
                                   title="Open this FAQ"
                                 >

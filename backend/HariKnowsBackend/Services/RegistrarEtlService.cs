@@ -412,6 +412,7 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
                 r.SourceRowNumber,
                 r.Status,
                 r.ConflictNote,
+                r.Error,
                 JsonSerializer.Deserialize<Dictionary<string, string>>(r.PayloadJson, JsonOptions)
                     ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             ))

@@ -27,12 +27,23 @@ export default function FAQsPage() {
 
       const data = await loadFaqEntries(user?.collegeCode, user?.programCode, !isSignedIn);
       setEntries(data);
-      const requestedFaqId = typeof window === "undefined"
-        ? NaN
-        : Number(new URLSearchParams(window.location.search).get("faqId"));
+      const searchParams = typeof window === "undefined"
+        ? null
+        : new URLSearchParams(window.location.search);
+      const requestedFaqId = Number(searchParams?.get("faqId"));
+      const requestedFaqTitle = searchParams?.get("faqTitle")?.trim().toLowerCase() ?? "";
+
       if (Number.isInteger(requestedFaqId) && requestedFaqId > 0 && data.some((entry) => entry.id === requestedFaqId)) {
         setOpenId(requestedFaqId);
         return;
+      }
+
+      if (requestedFaqTitle) {
+        const matchedByTitle = data.find((entry) => entry.title.trim().toLowerCase() === requestedFaqTitle);
+        if (matchedByTitle) {
+          setOpenId(matchedByTitle.id);
+          return;
+        }
       }
 
       if (data.length > 0) {

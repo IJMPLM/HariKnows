@@ -37,6 +37,8 @@ function normalizeScope(scopeType: string) {
   const normalized = scopeType.trim().toLowerCase();
   if (normalized === "global") return "general";
   if (normalized === "non_guest" || normalized === "nonguest" || normalized === "non-guest") return "student";
+  if (normalized === "faq-general" || normalized === "context-general") return "general";
+  if (normalized === "faq-student" || normalized === "context-student") return "student";
   return normalized;
 }
 
@@ -70,7 +72,8 @@ export async function loadFaqEntries(_studentCollegeCode?: string, _studentProgr
   const response = await fetch(url.toString(), { credentials: "include" });
   const entries = (await parseJsonOrThrow(response)) as FaqContextEntry[];
   return entries.filter((entry) => {
-    if (entry.category.trim().toLowerCase() !== "faq") {
+    const normalizedCategory = entry.category.trim().toLowerCase();
+    if (normalizedCategory !== "faq" && !normalizedCategory.startsWith("faq-")) {
       return false;
     }
 

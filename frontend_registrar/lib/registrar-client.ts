@@ -112,6 +112,7 @@ export type EtlRow = {
   sourceRow: number;
   status: string;
   conflictNote: string;
+  error: string;
   data: Record<string, string>;
 };
 

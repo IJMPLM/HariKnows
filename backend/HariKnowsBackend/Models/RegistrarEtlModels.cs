@@ -28,6 +28,7 @@ public record EtlRowDto(
     int SourceRow,
     string Status,
     string ConflictNote,
+    string Error,
     Dictionary<string, string> Data
 );
 

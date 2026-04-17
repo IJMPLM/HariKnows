@@ -14,6 +14,8 @@ public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegis
         return normalized switch
         {
             "faq" => "faq",
+            "global" or "general" => "general",
+            "non_guest" or "nonguest" or "non-guest" or "student" => "student",
             _ => normalized
         };
     }
@@ -46,6 +48,7 @@ public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegis
             entry.Category,
             entry.Question,
             entry.Answer,
+            PromptRoleTags.IsGuestVisible(entry.ScopeType),
             entry.CreatedAt,
             entry.UpdatedAt
         );
@@ -520,6 +523,24 @@ public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegis
                 query = query.Where(e =>
                     e.ScopeType.ToLower() == PromptRoleTags.FaqGeneral ||
                     e.ScopeType.ToLower() == PromptRoleTags.FaqStudent);
+            }
+            else if (normalizedScope == "general")
+            {
+                query = query.Where(e =>
+                    e.ScopeType.ToLower() == PromptRoleTags.FaqGeneral ||
+                    e.ScopeType.ToLower() == PromptRoleTags.ContextGeneral ||
+                    e.ScopeType.ToLower() == "general" ||
+                    e.ScopeType.ToLower() == "global");
+            }
+            else if (normalizedScope == "student")
+            {
+                query = query.Where(e =>
+                    e.ScopeType.ToLower() == PromptRoleTags.FaqStudent ||
+                    e.ScopeType.ToLower() == PromptRoleTags.ContextStudent ||
+                    e.ScopeType.ToLower() == "student" ||
+                    e.ScopeType.ToLower() == "non_guest" ||
+                    e.ScopeType.ToLower() == "non-guest" ||
+                    e.ScopeType.ToLower() == "nonguest");
             }
             else
             {

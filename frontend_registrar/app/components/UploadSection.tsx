@@ -6,14 +6,12 @@ import { AlertCircle, CheckCircle2, Upload, UploadCloud } from "lucide-react";
 interface UploadSectionProps {
   files: File[];
   onFilesSelected: (files: File[]) => void;
-  onParse: () => void;
-  onCommit: () => void;
-  onDiscard: () => void;
+  onSave: () => void;
+  onClearSelection: () => void;
   onFlush: () => void;
-  isParseLoading: boolean;
+  isSaving: boolean;
   isSaveLoading: boolean;
   isFlushLoading: boolean;
-  hasStaged: boolean;
   message: string;
   error: string;
   incompleteByFile: Record<string, boolean>;
@@ -23,14 +21,12 @@ interface UploadSectionProps {
 export default function UploadSection({
   files,
   onFilesSelected,
-  onParse,
-  onCommit,
-  onDiscard,
+  onSave,
+  onClearSelection,
   onFlush,
-  isParseLoading,
+  isSaving,
   isSaveLoading,
   isFlushLoading,
-  hasStaged,
   message,
   error,
   incompleteByFile,
@@ -68,7 +64,7 @@ export default function UploadSection({
               <UploadCloud className="w-4 h-4 text-[#6e3102] dark:text-[#e8834a]" />
               Drop CSV files here
             </p>
-            <p className="text-xs text-gray-600 dark:text-[#aaaaaa] mt-1">Registrar data files stage as usual. faq/context CSV files import into the registrar FAQ tab.</p>
+            <p className="text-xs text-gray-600 dark:text-[#aaaaaa] mt-1">Registrar data files now save in one step with automatic conflict merging. FAQ/context CSV files import into the registrar FAQ tab.</p>
           </div>
           <div className="flex items-center gap-2 flex-nowrap overflow-x-auto">
             <input
@@ -83,25 +79,18 @@ export default function UploadSection({
               Select files
             </label>
             <button
-              onClick={onParse}
-              disabled={isParseLoading || files.length === 0}
+              onClick={onSave}
+              disabled={isSaving || isSaveLoading || files.length === 0}
               className="px-4 py-2.5 rounded-xl bg-[#6e3102] hover:bg-[#5a2801] dark:bg-[#e8834a] dark:hover:bg-[#d97639] disabled:opacity-50 text-white dark:text-[#121212] text-sm font-semibold flex items-center gap-2 whitespace-nowrap"
             >
               <Upload size={14} />
-              {isParseLoading ? "Parsing..." : "Parse to staging"}
+              {isSaving || isSaveLoading ? "Saving..." : "Confirm & Save"}
             </button>
             <button
-              onClick={onCommit}
-              disabled={!hasStaged || isSaveLoading}
-              className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white dark:text-[#121212] text-sm font-semibold whitespace-nowrap"
-            >
-              {isSaveLoading ? "Saving..." : "Confirm & Save"}
-            </button>
-            <button
-              onClick={onDiscard}
+              onClick={onClearSelection}
               className="px-4 py-2.5 rounded-xl bg-gray-200 hover:bg-gray-300 dark:bg-[#2a2a2a] dark:hover:bg-[#333] text-sm text-gray-900 dark:text-white font-semibold whitespace-nowrap"
             >
-              Discard
+              Clear Selection
             </button>
             <button
               onClick={onFlush}
