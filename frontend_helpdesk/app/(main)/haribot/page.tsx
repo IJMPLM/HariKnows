@@ -19,6 +19,60 @@ import { initializeSession, type StudentProfile } from "../../../lib/auth-client
 const PAGE_SIZE = 20;
 const GUEST_CONVERSATION_KEY = "hk.chat.conversation.guest";
 
+type ParsedFaqReference = {
+  id: number;
+  title: string;
+};
+
+type ParsedChatMessage = {
+  content: string;
+  faqReferences: ParsedFaqReference[];
+};
+
+const FAQ_REFERENCE_TOKEN_REGEX = /\[\[FAQ_REF:(\d+)\|([^\]]+)\]\]/gi;
+const FAQ_MARKDOWN_LINK_REGEX = /\[([^\]]+)\]\(([^)]+)\)/gi;
+
+function parseChatMessageContent(rawContent: string): ParsedChatMessage {
+  const referencesById = new Map<number, ParsedFaqReference>();
+
+  const addReference = (idRaw: string | number, titleRaw: string) => {
+    const id = Number(idRaw);
+    const title = titleRaw.trim();
+    if (!Number.isInteger(id) || id <= 0 || !title) {
+      return;
+    }
+
+    if (!referencesById.has(id)) {
+      referencesById.set(id, { id, title });
+    }
+  };
+
+  let cleaned = rawContent.replace(FAQ_REFERENCE_TOKEN_REGEX, (_, faqId, faqTitle) => {
+    addReference(faqId, faqTitle);
+    return "";
+  });
+
+  cleaned = cleaned.replace(FAQ_MARKDOWN_LINK_REGEX, (fullMatch, linkText, linkUrl) => {
+    const faqIdMatch = linkUrl.match(/[?&]faqId=(\d+)/i);
+    if (!faqIdMatch) {
+      return fullMatch;
+    }
+
+    addReference(faqIdMatch[1], linkText);
+    return "";
+  });
+
+  cleaned = cleaned
+    .replace(/^\s*See related FAQ:\s*\.?\s*$/gim, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  return {
+    content: cleaned,
+    faqReferences: Array.from(referencesById.values()),
+  };
+}
+
 function getConversationStorageKey(studentNo: string) {
   return `hk.chat.conversation.${studentNo}`;
 }
@@ -255,6 +309,9 @@ export default function HaribotPage() {
               >
                 {messages.map((message) => {
                   const isUser = message.role === "user";
+                  const parsedMessage = isUser
+                    ? { content: message.content, faqReferences: [] as ParsedFaqReference[] }
+                    : parseChatMessageContent(message.content);
 
                   return (
                     <div key={message.id} className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -298,10 +355,25 @@ export default function HaribotPage() {
                                   code: ({node, ...props}) => <code className="bg-black/10 dark:bg-white/10 rounded px-1 py-0.5 text-[0.85em]" {...props} />
                                 }}
                               >
-                                {message.content}
+                                {parsedMessage.content}
                               </ReactMarkdown>
                             </div>
                           </div>
+                          {!isUser && parsedMessage.faqReferences.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-2 max-w-full">
+                              {parsedMessage.faqReferences.map((reference) => (
+                                <button
+                                  key={`${message.id}-${reference.id}`}
+                                  type="button"
+                                  onClick={() => router.push(`/FAQs?faqId=${reference.id}`)}
+                                  className="inline-flex items-center rounded-full border border-[#d4855a]/70 bg-[#fdf1ea] px-3 py-1 text-xs font-medium text-[#6e3102] transition-colors hover:bg-[#f8e4d7] dark:border-[#d4855a]/40 dark:bg-[#3b2518] dark:text-[#f3cdb5] dark:hover:bg-[#4a2d1d]"
+                                  title="Open this FAQ"
+                                >
+                                  FAQ: {reference.title}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                           <span className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                             {formatTime(message.createdAt)}
                           </span>

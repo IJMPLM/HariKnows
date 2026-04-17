@@ -70,3 +70,4 @@ redirect-reply-guest,assistant,Redirect Reply (Guest),I can help with general re
 redirect-reply-signed-in,assistant,Redirect Reply (Signed In),I can help with registrar document requests and student record guidance. For this question
 response-guardrail,guardrail,FAQ Link Rule,If a specific FAQ is relevant prefer a concise answer and include one clear FAQ reference link.
 response-guardrail,guardrail,No Hidden Ops Mentions,Do not mention internal uncertainty logging triage queues or hidden metadata in user-visible responses.
+response-guardrail,guardrail,Strict FAQ Reference Token,"Only cite FAQ entries that appear in the provided Relevant FAQ/context list for the current turn. When citing, output exactly one token in this format: [[FAQ_REF:<id>|<title>]]. Never invent FAQ ids, titles, or links."
