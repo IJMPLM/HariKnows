@@ -485,11 +485,82 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
         }
 
         return query
-            .OrderBy(entry => entry.Status)
-            .ThenByDescending(entry => entry.CreatedAt)
+            .OrderByDescending(entry => entry.CreatedAt)
             .Take(safeLimit)
             .Select(ToUncertainQuestionDto)
             .ToList();
+    }
+
+    public UncertainQuestionDto CreateUncertainQuestion(CreateUncertainQuestionRequestDto request)
+    {
+        var questionText = request.QuestionText?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(questionText))
+        {
+            throw new ArgumentException("Question text is required.");
+        }
+
+        var normalizedQuestion = NormalizeQuestionText(questionText);
+        if (string.IsNullOrWhiteSpace(normalizedQuestion))
+        {
+            throw new ArgumentException("Question text is required.");
+        }
+
+        var conversationId = string.IsNullOrWhiteSpace(request.ConversationId)
+            ? $"manual-{Guid.NewGuid():N}"
+            : request.ConversationId.Trim();
+        var studentNo = request.StudentNo?.Trim() ?? string.Empty;
+        var collegeCode = request.CollegeCode?.Trim() ?? string.Empty;
+        var programCode = request.ProgramCode?.Trim() ?? string.Empty;
+        var routing = string.IsNullOrWhiteSpace(request.Routing) ? "manual-review" : request.Routing.Trim();
+        var confidence = request.Confidence ?? 0;
+        var sourceAssistantMessageId = request.SourceAssistantMessageId;
+
+        var existingOpen = dbContext.UncertainQuestions
+            .FirstOrDefault(entry =>
+                entry.Status.ToLower() == "open"
+                && entry.ConversationId == conversationId
+                && (
+                    (sourceAssistantMessageId.HasValue && entry.SourceAssistantMessageId == sourceAssistantMessageId)
+                    || entry.NormalizedQuestion == normalizedQuestion));
+
+        if (existingOpen is not null)
+        {
+            if (sourceAssistantMessageId.HasValue && existingOpen.SourceAssistantMessageId != sourceAssistantMessageId)
+            {
+                existingOpen.SourceAssistantMessageId = sourceAssistantMessageId;
+                existingOpen.UpdatedAt = DateTime.UtcNow;
+                dbContext.SaveChanges();
+            }
+            return ToUncertainQuestionDto(existingOpen);
+        }
+
+        var now = DateTime.UtcNow;
+        var created = new UncertainQuestion
+        {
+            SourceAssistantMessageId = sourceAssistantMessageId,
+            ConversationId = conversationId,
+            StudentNo = studentNo,
+            CollegeCode = collegeCode,
+            ProgramCode = programCode,
+            QuestionText = questionText,
+            NormalizedQuestion = normalizedQuestion,
+            Routing = routing,
+            Confidence = confidence,
+            Status = "open",
+            ResolutionCategory = string.Empty,
+            ResolutionEntryId = null,
+            ResolutionAnswer = string.Empty,
+            CreatedAt = now,
+            UpdatedAt = now,
+            ResolvedAt = null
+        };
+
+        dbContext.UncertainQuestions.Add(created);
+        dbContext.SaveChanges();
+
+        repository.WriteActivity($"Question {created.Id} created from helpdesk", "Helpdesk");
+
+        return ToUncertainQuestionDto(created);
     }
 
     public UncertainQuestionDto? GetUncertainQuestion(int questionId)
@@ -498,6 +569,20 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
             .AsNoTracking()
             .FirstOrDefault(entry => entry.Id == questionId);
         return question is null ? null : ToUncertainQuestionDto(question);
+    }
+
+    public bool DeleteUncertainQuestion(int questionId)
+    {
+        var question = dbContext.UncertainQuestions.FirstOrDefault(entry => entry.Id == questionId);
+        if (question is null)
+        {
+            return false;
+        }
+
+        dbContext.UncertainQuestions.Remove(question);
+        dbContext.SaveChanges();
+        repository.WriteActivity($"Question {questionId} permanently deleted", "Registrar");
+        return true;
     }
 
     public (UncertainQuestionDto Question, FaqContextEntryDto CreatedEntry)? ResolveUncertainQuestion(int questionId, ResolveUncertainQuestionRequestDto request)
@@ -538,18 +623,13 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
             dbContext.UncertainQuestions.RemoveRange(duplicateOpenQuestions);
         }
 
-        var now = DateTime.UtcNow;
-        question.Status = "closed";
-        question.ResolutionCategory = normalizedCategory;
-        question.ResolutionEntryId = created.Id;
-        question.ResolutionAnswer = request.Answer.Trim();
-        question.ResolvedAt = now;
-        question.UpdatedAt = now;
+        var snapshot = ToUncertainQuestionDto(question);
+        dbContext.UncertainQuestions.Remove(question);
         dbContext.SaveChanges();
 
-        repository.WriteActivity($"Question {question.Id} resolved to {normalizedCategory} entry {created.Id}", "Registrar");
+        repository.WriteActivity($"Question {snapshot.Id} resolved to {normalizedCategory} entry {created.Id}", "Registrar");
 
-        return (ToUncertainQuestionDto(question), created);
+        return (snapshot, created);
     }
 
     public UncertainQuestionDto? CloseUncertainQuestion(int questionId, CloseUncertainQuestionRequestDto request)
@@ -583,6 +663,7 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
     {
         return new UncertainQuestionDto(
             entry.Id,
+            entry.SourceAssistantMessageId,
             entry.ConversationId,
             entry.StudentNo,
             entry.CollegeCode,
@@ -609,6 +690,16 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
         }
 
         return string.IsNullOrWhiteSpace(normalized) ? "context" : normalized;
+    }
+
+    private static string NormalizeQuestionText(string text)
+    {
+        var collapsed = string.Join(' ', text
+            .Trim()
+            .ToLowerInvariant()
+            .Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries));
+
+        return collapsed;
     }
 
     private static string NormalizeFaqScopeType(string scopeType)

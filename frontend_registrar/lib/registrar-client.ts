@@ -56,6 +56,7 @@ export type FaqContextEntry = {
 
 export type UncertainQuestion = {
   id: number;
+  sourceAssistantMessageId?: number | null;
   conversationId: string;
   studentNo: string;
   collegeCode: string;
@@ -414,6 +415,14 @@ export async function closeUncertainQuestion(
   }
 
   return (await parseJsonOrThrow(response)) as { question: UncertainQuestion };
+}
+
+export async function deleteUncertainQuestion(questionId: number): Promise<void> {
+  const response = await fetch(`${API_BASE}/api/registrar/questions/${questionId}`, {
+    method: "DELETE",
+  });
+
+  await parseJsonOrThrow(response);
 }
 
 export async function moveDocument(documentId: number, toDepartmentId: number): Promise<{ moved: boolean }> {

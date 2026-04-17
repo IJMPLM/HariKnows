@@ -3,6 +3,7 @@ namespace HariKnowsBackend.Data.Entities;
 public class UncertainQuestion
 {
     public int Id { get; set; }
+    public int? SourceAssistantMessageId { get; set; }
     public string ConversationId { get; set; } = string.Empty;
     public string StudentNo { get; set; } = string.Empty;
     public string CollegeCode { get; set; } = string.Empty;

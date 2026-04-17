@@ -51,7 +51,11 @@ public interface IRegistrarService
 
     IReadOnlyList<UncertainQuestionDto> GetUncertainQuestions(string? status, int limit);
 
+    UncertainQuestionDto CreateUncertainQuestion(CreateUncertainQuestionRequestDto request);
+
     UncertainQuestionDto? GetUncertainQuestion(int questionId);
+
+    bool DeleteUncertainQuestion(int questionId);
 
     (UncertainQuestionDto Question, FaqContextEntryDto CreatedEntry)? ResolveUncertainQuestion(int questionId, ResolveUncertainQuestionRequestDto request);
 

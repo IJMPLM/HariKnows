@@ -33,6 +33,25 @@ export type FaqContextEntry = {
   updatedAt: string;
 };
 
+export type UncertainQuestion = {
+  id: number;
+  sourceAssistantMessageId?: number | null;
+  conversationId: string;
+  studentNo: string;
+  collegeCode: string;
+  programCode: string;
+  questionText: string;
+  routing: string;
+  confidence: number;
+  status: string;
+  resolutionCategory: string;
+  resolutionEntryId?: number | null;
+  resolutionAnswer?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt?: string | null;
+};
+
 function normalizeScope(scopeType: string) {
   const normalized = scopeType.trim().toLowerCase();
   if (normalized === "global") return "general";
@@ -84,4 +103,40 @@ export async function loadFaqEntries(_studentCollegeCode?: string, _studentProgr
 
     return true;
   });
+}
+
+export async function createRegistrarQuestion(payload: {
+  conversationId: string;
+  questionText: string;
+  sourceAssistantMessageId?: number;
+  studentNo?: string;
+  collegeCode?: string;
+  programCode?: string;
+  routing?: string;
+  confidence?: number;
+}): Promise<UncertainQuestion> {
+  const response = await authFetch(`${API_BASE}/api/registrar/questions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      conversationId: payload.conversationId,
+      questionText: payload.questionText,
+      sourceAssistantMessageId: payload.sourceAssistantMessageId ?? null,
+      studentNo: payload.studentNo ?? "",
+      collegeCode: payload.collegeCode ?? "",
+      programCode: payload.programCode ?? "",
+      routing: payload.routing ?? "manual-review",
+      confidence: payload.confidence ?? 0,
+    }),
+  });
+
+  return (await parseJsonOrThrow(response)) as UncertainQuestion;
+}
+
+export async function loadRegistrarQuestions(limit = 200): Promise<UncertainQuestion[]> {
+  const url = new URL(`${API_BASE}/api/registrar/questions`);
+  url.searchParams.set("limit", String(limit));
+
+  const response = await authFetch(url.toString());
+  return (await parseJsonOrThrow(response)) as UncertainQuestion[];
 }

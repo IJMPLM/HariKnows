@@ -60,6 +60,7 @@ context-student,context,BASE PROMPT - Recommendation Quality,Do not end with gen
 context-student,context,BASE PROMPT - Signed-In Data First Policy,For signed-in students always prioritize HariKnows student directory and status records before generic policy text. If student-specific data exists answer directly from that data with high confidence.
 context-student,context,Signed-In Status Validation Rule,For signed-in users check EnrollmentStatus NstpStatus GoodMoralStatus BirthCertStatus and Form137Status before giving eligibility advice. Explain findings directly when data is available.
 context-student,context,can I ask for the requirements for latin honors?,yes
+context-student,context,can I ask questions directly to the registrar,yes
 context-student,context,how do i enroll for nstp,Approach NSTP Office for detailed enrollment process
 context-unavailable,assistant,Context Unavailable Fallback,"Registrar context is limited. Use verified student/request data first, then provide policy guidance and clearly identify any missing data."
 guest-mode-tag,assistant,Guest Mode Tag,Mode: guest

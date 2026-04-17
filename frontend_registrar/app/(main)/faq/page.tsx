@@ -14,6 +14,7 @@ import {
   normalizePromptRoleTag,
   type FaqSection,
 } from "../../../lib/faq-tags";
+import QuestionsPanel from "../../components/QuestionsPanel";
 
 type SelectOption = {
   value: string;
@@ -189,6 +190,7 @@ export default function FaqContextPage() {
   const [entries, setEntries] = useState<FaqContextEntry[]>([]);
   const [search, setSearch] = useState("");
   const [activeSection, setActiveSection] = useState<FaqSection>("faq");
+  const [showQuestions, setShowQuestions] = useState(false);
   const [loading, setLoading] = useState(true);
   const [faqDraft, setFaqDraft] = useState<FaqFormState>(createEmptyForm("faq"));
   const [contextDraft, setContextDraft] = useState<FaqFormState>(createEmptyForm("context"));
@@ -225,6 +227,17 @@ export default function FaqContextPage() {
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (tab === "questions") {
+      setShowQuestions(true);
+    }
   }, []);
 
   // Close sort menu when switching sections
@@ -406,9 +419,12 @@ export default function FaqContextPage() {
           <div className="rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#18181b] p-2 inline-flex gap-2">
             <button
               type="button"
-              onClick={() => setActiveSection("faq")}
+              onClick={() => {
+                setShowQuestions(false);
+                setActiveSection("faq");
+              }}
               className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 ${
-                activeSection === "faq"
+                !showQuestions && activeSection === "faq"
                   ? "bg-[#6e3102] text-white dark:bg-[#d4855a] dark:text-[#121212]"
                   : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5"
               }`}
@@ -426,9 +442,12 @@ export default function FaqContextPage() {
             </button>
             <button
               type="button"
-              onClick={() => setActiveSection("context")}
+              onClick={() => {
+                setShowQuestions(false);
+                setActiveSection("context");
+              }}
               className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 ${
-                activeSection === "context"
+                !showQuestions && activeSection === "context"
                   ? "bg-[#6e3102] text-white dark:bg-[#d4855a] dark:text-[#121212]"
                   : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5"
               }`}
@@ -444,9 +463,22 @@ export default function FaqContextPage() {
                 {contextEntries.length}
               </span>
             </button>
+            <button
+              type="button"
+              onClick={() => setShowQuestions(true)}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 ${
+                showQuestions
+                  ? "bg-[#6e3102] text-white dark:bg-[#d4855a] dark:text-[#121212]"
+                  : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5"
+              }`}
+            >
+              Questions
+            </button>
           </div>
 
-          <div className="grid lg:grid-cols-[1.2fr_0.8fr] gap-6">
+          {showQuestions ? <QuestionsPanel onKnowledgeAdded={load} /> : null}
+
+          {!showQuestions && <div className="grid lg:grid-cols-[1.2fr_0.8fr] gap-6">
 
             {/* ── Entry List Card ── */}
             <section className="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10 rounded-3xl p-5 space-y-4">
@@ -659,7 +691,7 @@ export default function FaqContextPage() {
               </div>
             </section>
 
-          </div>
+          </div>}
         </div>
       </div>
 

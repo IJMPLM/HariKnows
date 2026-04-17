@@ -91,6 +91,7 @@ public record UpdateFaqContextEntryDto(
 
 public record UncertainQuestionDto(
     int Id,
+    int? SourceAssistantMessageId,
     string ConversationId,
     string StudentNo,
     string CollegeCode,
@@ -105,6 +106,17 @@ public record UncertainQuestionDto(
     DateTime CreatedAt,
     DateTime UpdatedAt,
     DateTime? ResolvedAt
+);
+
+public record CreateUncertainQuestionRequestDto(
+    string ConversationId,
+    string QuestionText,
+    int? SourceAssistantMessageId,
+    string? StudentNo,
+    string? CollegeCode,
+    string? ProgramCode,
+    string? Routing,
+    double? Confidence
 );
 
 public record ResolveUncertainQuestionRequestDto(

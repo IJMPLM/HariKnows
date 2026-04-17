@@ -382,6 +382,7 @@ using (var scope = app.Services.CreateScope())
     await db.Database.ExecuteSqlRawAsync(@"
         CREATE TABLE IF NOT EXISTS ""UncertainQuestions"" (
             ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_UncertainQuestions"" PRIMARY KEY AUTOINCREMENT,
+            ""SourceAssistantMessageId"" INTEGER NULL,
             ""ConversationId"" TEXT NOT NULL DEFAULT '',
             ""StudentNo"" TEXT NOT NULL DEFAULT '',
             ""CollegeCode"" TEXT NOT NULL DEFAULT '',
@@ -400,6 +401,7 @@ using (var scope = app.Services.CreateScope())
         );
     ");
     await EnsureSqliteColumnAsync(db, "UncertainQuestions", "ConversationId", "TEXT NOT NULL DEFAULT ''");
+    await EnsureSqliteColumnAsync(db, "UncertainQuestions", "SourceAssistantMessageId", "INTEGER NULL");
     await EnsureSqliteColumnAsync(db, "UncertainQuestions", "StudentNo", "TEXT NOT NULL DEFAULT ''");
     await EnsureSqliteColumnAsync(db, "UncertainQuestions", "CollegeCode", "TEXT NOT NULL DEFAULT ''");
     await EnsureSqliteColumnAsync(db, "UncertainQuestions", "ProgramCode", "TEXT NOT NULL DEFAULT ''");

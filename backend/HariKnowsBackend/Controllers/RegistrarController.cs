@@ -334,11 +334,32 @@ public sealed class RegistrarController(IRegistrarService registrarService) : Co
         return Ok(registrarService.GetUncertainQuestions(status, limit));
     }
 
+    [HttpPost("questions")]
+    public IActionResult CreateUncertainQuestion([FromBody] CreateUncertainQuestionRequestDto request)
+    {
+        try
+        {
+            return Ok(registrarService.CreateUncertainQuestion(request));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpGet("questions/{questionId:int}")]
     public IActionResult GetUncertainQuestion(int questionId)
     {
         var question = registrarService.GetUncertainQuestion(questionId);
         return question is null ? NotFound(new { error = "Question entry not found." }) : Ok(question);
+    }
+
+    [HttpDelete("questions/{questionId:int}")]
+    public IActionResult DeleteUncertainQuestion(int questionId)
+    {
+        return registrarService.DeleteUncertainQuestion(questionId)
+            ? Ok(new { deleted = true })
+            : NotFound(new { error = "Question entry not found." });
     }
 
     [HttpPost("questions/{questionId:int}/resolve")]

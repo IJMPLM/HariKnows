@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Send, Loader2, Trash2 } from "lucide-react";
+import { Send, Loader2, Trash2, MessageSquarePlus, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 import DesktopSidebar from "../../components/DesktopSidebar"; 
@@ -15,6 +15,7 @@ import {
   type ChatMessage
 } from "../../../lib/gemini-client";
 import { initializeSession, type StudentProfile } from "../../../lib/auth-client";
+import { createRegistrarQuestion, loadRegistrarQuestions } from "../../../lib/registrar-api";
 
 const PAGE_SIZE = 20;
 const GUEST_CONVERSATION_KEY = "hk.chat.conversation.guest";
@@ -30,7 +31,7 @@ type ParsedChatMessage = {
   faqReferences: ParsedFaqReference[];
 };
 
-const FAQ_REFERENCE_TOKEN_REGEX = /\[\[FAQ_REF:([^|\]]+)\|([^\]]+)\]\]/gi;
+const FAQ_REFERENCE_TOKEN_REGEX = /\[\[(?:FAQ_REF:)?([^|\]]+)\|([^\]]+)\]\]/gi;
 const FAQ_MARKDOWN_LINK_REGEX = /\[([^\]]+)\]\(([^)]+)\)/gi;
 
 function parseChatMessageContent(rawContent: string): ParsedChatMessage {
@@ -110,6 +111,9 @@ function formatTime(value: string) {
     timeZone: "Asia/Manila",
   });
 }
+function normalizeQuestionText(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
 
 export default function HaribotPage() {
   const router = useRouter();
@@ -124,17 +128,53 @@ export default function HaribotPage() {
   const tempMessageIdRef = useRef(1_000_000_000);
   const inFlightRef = useRef(false);
   const threadRef = useRef<HTMLDivElement | null>(null);
+  const [assistantAutoQuestionIds, setAssistantAutoQuestionIds] = useState<Set<number>>(new Set());
+    const [submittedQuestionFingerprints, setSubmittedQuestionFingerprints] = useState<Set<string>>(new Set());
+  const [isManualQuestionModalOpen, setIsManualQuestionModalOpen] = useState(false);
+  const [manualQuestionDraft, setManualQuestionDraft] = useState("");
+  const [manualQuestionAssistantMessageId, setManualQuestionAssistantMessageId] = useState<number | null>(null);
+  const [manualQuestionSubmitting, setManualQuestionSubmitting] = useState(false);
+  const [manualQuestionError, setManualQuestionError] = useState("");
+  const [manualQuestionSuccess, setManualQuestionSuccess] = useState("");
+
+  const loadQuestionMessageState = async (activeConversationId: string, user: StudentProfile | null) => {
+    if (!user) {
+      setAssistantAutoQuestionIds(new Set());
+      return;
+    }
+
+    try {
+      const questions = await loadRegistrarQuestions(300);
+      const messageIds = questions
+        .filter((entry) => entry.conversationId === activeConversationId)
+        .map((entry) => entry.sourceAssistantMessageId)
+        .filter((value): value is number => typeof value === "number");
+      const fingerprints = questions
+        .filter((entry) => entry.conversationId === activeConversationId)
+        .map((entry) => normalizeQuestionText(entry.questionText))
+        .filter((value) => value.length > 0);
+
+      setAssistantAutoQuestionIds(new Set(messageIds));
+      setSubmittedQuestionFingerprints(new Set(fingerprints));
+    } catch {
+      // If this call fails, keep current in-memory state and continue chat UX.
+    }
+  };
 
   // Load initial chat history
   const loadInitial = async (activeConversationId: string | null, user: StudentProfile | null) => {
     if (!activeConversationId) {
       setMessages([]);
+      setAssistantAutoQuestionIds(new Set());
+      setSubmittedQuestionFingerprints(new Set());
       setIsLoading(false);
       return;
     }
 
     if (!user) {
       setMessages([]);
+      setAssistantAutoQuestionIds(new Set());
+      setSubmittedQuestionFingerprints(new Set());
       setIsLoading(false);
       return;
     }
@@ -143,6 +183,7 @@ export default function HaribotPage() {
       setIsLoading(true);
       const history = await getChatHistory(activeConversationId, PAGE_SIZE);
       setMessages(history);
+      await loadQuestionMessageState(activeConversationId, user);
       requestAnimationFrame(() => {
         threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight });
       });
@@ -191,10 +232,18 @@ export default function HaribotPage() {
       
       // Guests do not have chat history access; keep their session local.
       let assistantId = response.message.id;
+      const hasAutoCreatedQuestion = Boolean(response.meta?.uncertainQuestion?.trim());
       if (currentUser) {
         const history = await getChatHistory(response.conversationId, PAGE_SIZE);
         setMessages(history);
         setText("");
+        if (hasAutoCreatedQuestion) {
+          setAssistantAutoQuestionIds((previous) => {
+            const next = new Set(previous);
+            next.add(response.message.id);
+            return next;
+          });
+        }
       } else {
         assistantId = tempMessageIdRef.current++;
         setMessages((previous) => {
@@ -204,6 +253,13 @@ export default function HaribotPage() {
             { ...response.message, id: assistantId },
           ];
         });
+        if (hasAutoCreatedQuestion) {
+          setAssistantAutoQuestionIds((previous) => {
+            const next = new Set(previous);
+            next.add(assistantId);
+            return next;
+          });
+        }
       }
 
       requestAnimationFrame(() => {
@@ -240,6 +296,75 @@ export default function HaribotPage() {
     } catch (error) {
       console.error("Failed to clear history:", error);
       alert("Failed to clear history. Please try again.");
+    }
+  };
+
+  const openManualQuestionModal = (suggestedQuestion: string, assistantMessageId: number) => {
+    setManualQuestionDraft(suggestedQuestion.trim());
+    setManualQuestionAssistantMessageId(assistantMessageId);
+    setManualQuestionError("");
+    setManualQuestionSuccess("");
+    setIsManualQuestionModalOpen(true);
+  };
+
+  const closeManualQuestionModal = () => {
+    if (manualQuestionSubmitting) {
+      return;
+    }
+
+    setIsManualQuestionModalOpen(false);
+    setManualQuestionAssistantMessageId(null);
+    setManualQuestionError("");
+  };
+
+  const submitManualQuestion = async () => {
+    const questionText = manualQuestionDraft.trim();
+    if (!questionText) {
+      setManualQuestionError("Question text is required.");
+      return;
+    }
+
+    if (!conversationId) {
+      setManualQuestionError("Unable to send question because this conversation has no id yet.");
+      return;
+    }
+
+    try {
+      setManualQuestionSubmitting(true);
+      setManualQuestionError("");
+
+      await createRegistrarQuestion({
+        conversationId,
+        questionText,
+        sourceAssistantMessageId: manualQuestionAssistantMessageId ?? undefined,
+        studentNo: currentUser?.studentNo,
+        collegeCode: currentUser?.collegeCode,
+        programCode: currentUser?.programCode,
+        routing: "manual-review",
+        confidence: 0,
+      });
+
+      if (manualQuestionAssistantMessageId !== null) {
+        setAssistantAutoQuestionIds((previous) => {
+          const next = new Set(previous);
+          next.add(manualQuestionAssistantMessageId);
+          return next;
+        });
+      }
+      setSubmittedQuestionFingerprints((previous) => {
+        const next = new Set(previous);
+        next.add(normalizeQuestionText(questionText));
+        return next;
+      });
+
+      setManualQuestionSuccess("Question sent to Registrar.");
+      setIsManualQuestionModalOpen(false);
+      setManualQuestionDraft("");
+      setManualQuestionAssistantMessageId(null);
+    } catch (error) {
+      setManualQuestionError(error instanceof Error ? error.message : "Failed to send question.");
+    } finally {
+      setManualQuestionSubmitting(false);
     }
   };
 
@@ -280,7 +405,6 @@ export default function HaribotPage() {
 
         <div className="flex-1 lg:ml-64 flex flex-col h-full relative z-10 pt-16 lg:pt-0">
 
-          // Line ~328 in your file
           {/* Main Chat Area */}
           <main className="flex-1 flex flex-col max-w-4xl w-full mx-auto overflow-hidden relative">
             
@@ -333,11 +457,26 @@ export default function HaribotPage() {
                 className="flex-1 overflow-y-auto px-4 sm:px-8 pt-6 pb-32 space-y-8 scroll-smooth z-0" 
                 ref={threadRef}
               >
-                {messages.map((message) => {
+                {messages.map((message, index) => {
                   const isUser = message.role === "user";
                   const parsedMessage = isUser
                     ? { content: message.content, faqReferences: [] as ParsedFaqReference[] }
                     : parseChatMessageContent(message.content);
+                  const suggestedQuestion = (() => {
+                    for (let i = index - 1; i >= 0; i -= 1) {
+                      if (messages[i]?.role === "user") {
+                        return messages[i].content;
+                      }
+                    }
+
+                    return "";
+                  })();
+                  const hasSuggestedQuestion = suggestedQuestion.trim().length > 0;
+                  const suggestedQuestionFingerprint = normalizeQuestionText(suggestedQuestion);
+                  const alreadySubmittedByQuestion = submittedQuestionFingerprints.has(suggestedQuestionFingerprint);
+                  const isManualQuestionDisabled = assistantAutoQuestionIds.has(message.id)
+                    || !hasSuggestedQuestion
+                    || alreadySubmittedByQuestion;
 
                   return (
                     <div key={message.id} className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -385,28 +524,49 @@ export default function HaribotPage() {
                               </ReactMarkdown>
                             </div>
                           </div>
-                          {!isUser && parsedMessage.faqReferences.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-2 max-w-full">
-                              {parsedMessage.faqReferences.map((reference) => (
-                                <button
-                                  key={`${message.id}-${reference.id ?? reference.ref}`}
-                                  type="button"
-                                  onClick={() => {
-                                    if (reference.id) {
-                                      router.push(`/FAQs?faqId=${reference.id}`);
-                                      return;
-                                    }
+                          {!isUser && (
+                            <>
+                              {parsedMessage.faqReferences.length > 0 && (
+                                <div className="mt-2 flex flex-wrap gap-2 max-w-full">
+                                  {parsedMessage.faqReferences.map((reference) => (
+                                    <button
+                                      key={`${message.id}-${reference.id ?? reference.ref}`}
+                                      type="button"
+                                      onClick={() => {
+                                        if (reference.id) {
+                                          router.push(`/FAQs?faqId=${reference.id}`);
+                                          return;
+                                        }
 
-                                    const titleQuery = encodeURIComponent(reference.title);
-                                    router.push(`/FAQs?faqTitle=${titleQuery}`);
-                                  }}
-                                  className="inline-flex items-center rounded-full border border-[#d4855a]/70 bg-[#fdf1ea] px-3 py-1 text-xs font-medium text-[#6e3102] transition-colors hover:bg-[#f8e4d7] dark:border-[#d4855a]/40 dark:bg-[#3b2518] dark:text-[#f3cdb5] dark:hover:bg-[#4a2d1d]"
-                                  title="Open this FAQ"
+                                        const titleQuery = encodeURIComponent(reference.title);
+                                        router.push(`/FAQs?faqTitle=${titleQuery}`);
+                                      }}
+                                      className="inline-flex items-center rounded-full border border-[#d4855a]/70 bg-[#fdf1ea] px-3 py-1 text-xs font-medium text-[#6e3102] transition-colors hover:bg-[#f8e4d7] dark:border-[#d4855a]/40 dark:bg-[#3b2518] dark:text-[#f3cdb5] dark:hover:bg-[#4a2d1d]"
+                                      title="Open this FAQ"
+                                    >
+                                      FAQ: {reference.title}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                              <div className="mt-2">
+                                <button
+                                  type="button"
+                                  onClick={() => openManualQuestionModal(suggestedQuestion, message.id)}
+                                  disabled={isManualQuestionDisabled}
+                                  className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-200 dark:hover:bg-blue-900/50"
                                 >
-                                  FAQ: {reference.title}
+                                  <MessageSquarePlus size={14} />
+                                  {assistantAutoQuestionIds.has(message.id)
+                                    ? "Already sent to Registrar by AI"
+                                    : alreadySubmittedByQuestion
+                                      ? "Question already sent to Registrar"
+                                    : hasSuggestedQuestion
+                                      ? "Send this question to Registrar"
+                                      : "No user question to send"}
                                 </button>
-                              ))}
-                            </div>
+                              </div>
+                            </>
                           )}
                           <span className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                             {formatTime(message.createdAt)}
@@ -488,6 +648,72 @@ export default function HaribotPage() {
                 Haribot provides general guidance. Please verify official details directly with the Registrar. <a href="/privacy-policy" className="underline hover:no-underline text-[#6e3102] dark:text-[#d4855a]">Privacy Policy</a>
               </p>
             </div>
+
+            {isManualQuestionModalOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+                <div className="w-full max-w-xl rounded-2xl border border-gray-200 bg-white p-5 shadow-xl dark:border-white/10 dark:bg-[#18181b]">
+                  <div className="mb-4 flex items-start justify-between gap-4">
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Send Question to Registrar</h2>
+                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        This will create a question entry in the Registrar questions menu.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={closeManualQuestionModal}
+                      disabled={manualQuestionSubmitting}
+                      className="rounded-full p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-gray-200"
+                      aria-label="Close"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    Question
+                  </label>
+                  <textarea
+                    value={manualQuestionDraft}
+                    onChange={(event) => setManualQuestionDraft(event.target.value)}
+                    rows={5}
+                    className="w-full resize-y rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 outline-none focus:border-[#6e3102] focus:ring-2 focus:ring-[#6e3102]/25 dark:border-white/10 dark:bg-[#222] dark:text-gray-100 dark:focus:border-[#d4855a] dark:focus:ring-[#d4855a]/30"
+                    placeholder="Describe your question here..."
+                    disabled={manualQuestionSubmitting}
+                  />
+
+                  {manualQuestionError && (
+                    <p className="mt-2 text-sm text-red-600 dark:text-red-300">{manualQuestionError}</p>
+                  )}
+
+                  <div className="mt-4 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={closeManualQuestionModal}
+                      disabled={manualQuestionSubmitting}
+                      className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-60 dark:border-white/15 dark:text-gray-200 dark:hover:bg-white/10"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={submitManualQuestion}
+                      disabled={manualQuestionSubmitting}
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#6e3102] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#5a2801] disabled:opacity-60 dark:bg-[#d4855a] dark:text-[#121212] dark:hover:bg-[#e29a75]"
+                    >
+                      {manualQuestionSubmitting ? <Loader2 size={14} className="animate-spin" /> : null}
+                      {manualQuestionSubmitting ? "Sending..." : "Send to Registrar"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {manualQuestionSuccess && (
+              <div className="absolute top-4 left-1/2 z-40 -translate-x-1/2 rounded-full border border-emerald-300 bg-emerald-50 px-4 py-1.5 text-xs font-medium text-emerald-700 shadow-sm dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200">
+                {manualQuestionSuccess}
+              </div>
+            )}
 
           </main>
         </div>
