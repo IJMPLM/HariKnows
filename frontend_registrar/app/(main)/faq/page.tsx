@@ -664,7 +664,7 @@ export default function FaqContextPage() {
                     <input
                       value={qSearch}
                       onChange={(e) => setQSearch(e.target.value)}
-                      placeholder="Search captured questions..."
+                      placeholder="Search questions..."
                       className="w-full pl-9 pr-4 py-2 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e3102]/30 dark:focus:ring-[#d4855a]/30 focus:border-[#6e3102] dark:focus:border-[#d4855a] transition-all"
                     />
                   </div>

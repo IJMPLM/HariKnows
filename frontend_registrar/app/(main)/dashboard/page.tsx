@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, Archive, CheckCircle2, ClipboardList, RefreshCw, Upload } from "lucide-react";
+import { AlertCircle, Archive, CheckCircle2, ClipboardList, LayoutGrid, RefreshCw, Upload } from "lucide-react";
 import {
   bulkUploadRegistrarCsv,
   commitRegistrarEtl,
@@ -399,7 +399,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div>
               <p className="text-xs uppercase tracking-[0.24em] font-bold text-[#6e3102] dark:text-[#d4855a] flex items-center gap-2">
-                <ClipboardList size={13} aria-hidden="true" /> Registrar · Upload Dashboard
+                <LayoutGrid size={13} aria-hidden="true" /> Registrar · Upload Dashboard
               </p>
               <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
                 Document Upload Dashboard
