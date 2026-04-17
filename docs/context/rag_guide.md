@@ -10,16 +10,13 @@ Prompt content is assembled from the FAQ/context table and CSV imports only. Pro
 
 All FAQ/context imports must use this exact header order:
 
-promptRoleTag,category,title,answer,isGuestVisible
+promptRoleTag,category,title,answer
 
 Required fields:
 - promptRoleTag
 - category
 - title
 - answer
-
-Optional behavior:
-- isGuestVisible defaults based on promptRoleTag if omitted
 
 The parser accepts answer/context/content as answer aliases, but promptRoleTag/category/title are mandatory.
 
@@ -38,14 +35,14 @@ Allowed values:
 - redirect-note-signed-in
 - response-guardrail
 - context-general
-- context-non-guest
+	- context-student
 - faq-general
-- faq-non-guest
+	- faq-student
 - other
 
 Tag semantics:
-- faq-general and faq-non-guest are for retrieval/citation FAQ entries
-- context-general and context-non-guest are standard guidance entries
+	- faq-general and faq-student are for retrieval/citation FAQ entries
+	- context-general and context-student are standard guidance entries
 - assistant and redirect tags are single-section templates used directly in prompt assembly
 - response-guardrail rows are appended under Response behavior
 - other is for custom categorization labels (category remains editor-defined)
@@ -55,7 +52,7 @@ Tag semantics:
 RagAssistantService builds prompt text in this order:
 1. assistant-identity
 2. guidance-header
-3. context-general plus context-non-guest entries (signed-in only for context-non-guest)
+	3. context-general plus context-student entries (signed-in only for context-student)
 4. guest-mode-tag (guest only)
 5. student profile (signed-in only)
 6. student status block (signed-in only)
@@ -94,3 +91,4 @@ Create/update/import operations reject entries when:
 - category/title/answer is empty
 
 Legacy scope labels (general/non-guest/global) are no longer accepted for FAQ/context prompt entries.
+Legacy import mapping: non-guest, non_guest, nonguest, and student all normalize to context-student or faq-student.

@@ -17,9 +17,9 @@ public static class PromptRoleTags
     public const string RedirectNoteSignedIn = "redirect-note-signed-in";
     public const string ResponseGuardrail = "response-guardrail";
     public const string ContextGeneral = "context-general";
-    public const string ContextNonGuest = "context-non-guest";
+    public const string ContextStudent = "context-student";
     public const string FaqGeneral = "faq-general";
-    public const string FaqNonGuest = "faq-non-guest";
+    public const string FaqStudent = "faq-student";
     public const string Other = "other";
 
     public static readonly string[] All =
@@ -36,9 +36,9 @@ public static class PromptRoleTags
         RedirectNoteSignedIn,
         ResponseGuardrail,
         ContextGeneral,
-        ContextNonGuest,
+        ContextStudent,
         FaqGeneral,
-        FaqNonGuest,
+        FaqStudent,
         Other
     ];
 
@@ -57,18 +57,18 @@ public static class PromptRoleTags
     public static bool IsFaq(string tag)
     {
         var normalized = Normalize(tag);
-        return normalized is FaqGeneral or FaqNonGuest;
+        return normalized is FaqGeneral or FaqStudent;
     }
 
     public static bool IsGuidance(string tag)
     {
         var normalized = Normalize(tag);
-        return normalized is ContextGeneral or ContextNonGuest or Other;
+        return normalized is ContextGeneral or ContextStudent or Other;
     }
 
     public static bool IsGuestVisible(string tag)
     {
         var normalized = Normalize(tag);
-        return normalized is not FaqNonGuest and not ContextNonGuest;
+        return normalized is not FaqStudent and not ContextStudent;
     }
 }

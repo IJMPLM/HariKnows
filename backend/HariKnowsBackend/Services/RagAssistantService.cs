@@ -629,7 +629,7 @@ public sealed class RagAssistantService(
 
         var guidanceEntries = contextEntries
             .Where(entry => PromptRoleTags.IsGuidance(entry.ScopeType))
-            .Where(entry => !isGuest || entry.ScopeType != PromptRoleTags.ContextNonGuest)
+            .Where(entry => !isGuest || entry.ScopeType != PromptRoleTags.ContextStudent)
             .OrderBy(entry => GetGuidancePriority(entry.Category))
             .ThenBy(entry => entry.Title)
             .ToList();

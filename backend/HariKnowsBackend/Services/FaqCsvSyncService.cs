@@ -94,9 +94,9 @@ public sealed class FaqCsvSyncService(HariKnowsDbContext dbContext, IHostEnviron
             return isFaqCategory ? PromptRoleTags.FaqGeneral : PromptRoleTags.ContextGeneral;
         }
 
-        if (normalizedScope is "non-guest" or "non_guest" or "nonguest")
+        if (normalizedScope is "non-guest" or "non_guest" or "nonguest" or "student")
         {
-            return isFaqCategory ? PromptRoleTags.FaqNonGuest : PromptRoleTags.ContextNonGuest;
+            return isFaqCategory ? PromptRoleTags.FaqStudent : PromptRoleTags.ContextStudent;
         }
 
         return PromptRoleTags.Other;

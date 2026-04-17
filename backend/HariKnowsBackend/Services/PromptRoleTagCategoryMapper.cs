@@ -23,10 +23,10 @@ public static class PromptRoleTagCategoryMapper
             PromptRoleTags.ResponseGuardrail => "guardrail",
 
             PromptRoleTags.ContextGeneral
-            or PromptRoleTags.ContextNonGuest => "context",
+            or PromptRoleTags.ContextStudent => "context",
 
             PromptRoleTags.FaqGeneral
-            or PromptRoleTags.FaqNonGuest => "faq",
+            or PromptRoleTags.FaqStudent => "faq",
 
             PromptRoleTags.Other => string.IsNullOrWhiteSpace(normalizedCategory) ? "context" : normalizedCategory,
             _ => string.IsNullOrWhiteSpace(normalizedCategory) ? "context" : normalizedCategory

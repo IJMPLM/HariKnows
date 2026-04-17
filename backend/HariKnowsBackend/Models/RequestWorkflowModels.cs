@@ -100,6 +100,7 @@ public record UncertainQuestionDto(
     string Status,
     string ResolutionCategory,
     int? ResolutionEntryId,
+    string ResolutionAnswer,
     DateTime CreatedAt,
     DateTime UpdatedAt,
     DateTime? ResolvedAt

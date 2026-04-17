@@ -593,6 +593,7 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
             entry.Status,
             entry.ResolutionCategory,
             entry.ResolutionEntryId,
+            entry.ResolutionAnswer,
             entry.CreatedAt,
             entry.UpdatedAt,
             entry.ResolvedAt

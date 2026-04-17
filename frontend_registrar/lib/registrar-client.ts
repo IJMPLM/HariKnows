@@ -66,6 +66,7 @@ export type UncertainQuestion = {
   status: string;
   resolutionCategory: string;
   resolutionEntryId?: number | null;
+  resolutionAnswer?: string | null;
   createdAt: string;
   updatedAt: string;
   resolvedAt?: string | null;
@@ -331,6 +332,11 @@ export async function getFaqEntries(filters: { scopeType?: string; collegeCode?:
 
   const response = await fetch(url.toString());
   return (await parseJsonOrThrow(response)) as FaqContextEntry[];
+}
+
+export async function getFaqEntry(faqId: number): Promise<FaqContextEntry> {
+  const response = await fetch(`${API_BASE}/api/registrar/faq/${faqId}`);
+  return (await parseJsonOrThrow(response)) as FaqContextEntry;
 }
 
 export async function createFaqEntry(payload: Omit<FaqContextEntry, "id" | "createdAt" | "updatedAt">): Promise<FaqContextEntry> {

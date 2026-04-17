@@ -36,7 +36,7 @@ export type FaqContextEntry = {
 function normalizeScope(scopeType: string) {
   const normalized = scopeType.trim().toLowerCase();
   if (normalized === "global") return "general";
-  if (normalized === "non_guest" || normalized === "nonguest") return "non-guest";
+  if (normalized === "non_guest" || normalized === "nonguest" || normalized === "non-guest") return "student";
   return normalized;
 }
 

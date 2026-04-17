@@ -508,8 +508,8 @@ public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegis
         if (!includeUnpublished)
         {
             query = query.Where(e =>
-                e.ScopeType.ToLower() != PromptRoleTags.FaqNonGuest
-                && e.ScopeType.ToLower() != PromptRoleTags.ContextNonGuest);
+                e.ScopeType.ToLower() != PromptRoleTags.FaqStudent
+                && e.ScopeType.ToLower() != PromptRoleTags.ContextStudent);
         }
 
         if (!string.IsNullOrWhiteSpace(scopeType))
@@ -519,7 +519,7 @@ public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegis
             {
                 query = query.Where(e =>
                     e.ScopeType.ToLower() == PromptRoleTags.FaqGeneral ||
-                    e.ScopeType.ToLower() == PromptRoleTags.FaqNonGuest);
+                    e.ScopeType.ToLower() == PromptRoleTags.FaqStudent);
             }
             else
             {

@@ -1,10 +1,10 @@
 export type FaqSection = "faq" | "context";
 
-export const FAQ_TAG_OPTIONS = ["faq-general", "faq-non-guest"];
+export const FAQ_TAG_OPTIONS = ["faq-general", "faq-student"];
 
 export const CONTEXT_TAG_OPTIONS = [
   "context-general",
-  "context-non-guest",
+  "context-student",
   "assistant-identity",
   "response-guardrail",
   "other",
@@ -16,12 +16,12 @@ export function normalizePromptRoleTag(tag: string) {
 
 export function isFaqTag(tag: string) {
   const normalized = normalizePromptRoleTag(tag);
-  return normalized === "faq-general" || normalized === "faq-non-guest";
+  return normalized === "faq-general" || normalized === "faq-student";
 }
 
 export function isGuestVisibleScopeTag(tag: string) {
   const normalized = normalizePromptRoleTag(tag);
-  return normalized !== "faq-non-guest" && normalized !== "context-non-guest";
+  return normalized !== "faq-student" && normalized !== "context-student";
 }
 
 export function getTagOptions(section: FaqSection) {
@@ -47,10 +47,10 @@ export function deriveCategoryFromTag(tag: string, currentCategory = "context") 
     case "response-guardrail":
       return "guardrail";
     case "context-general":
-    case "context-non-guest":
+    case "context-student":
       return "context";
     case "faq-general":
-    case "faq-non-guest":
+    case "faq-student":
       return "faq";
     case "other":
       return normalizedCategory || "context";

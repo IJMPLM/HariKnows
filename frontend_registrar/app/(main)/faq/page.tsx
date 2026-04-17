@@ -279,7 +279,7 @@ export default function FaqContextPage() {
 
   const sectionLabel = activeSection === "faq" ? "FAQs" : "Context";
   const sectionDescription = activeSection === "faq"
-    ? "FAQ entries use explicit faq-general/faq-non-guest tags."
+    ? "FAQ entries use explicit faq-general/faq-student tags."
     : "Context entries map directly to prompt sections through prompt role tags.";
 
   return (

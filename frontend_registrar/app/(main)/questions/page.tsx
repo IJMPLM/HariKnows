@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { CheckCircle2, RefreshCw, Search, ChevronDown } from "lucide-react";
 import {
+  getFaqEntry,
   getUncertainQuestions,
   closeUncertainQuestion,
   resolveUncertainQuestion,
@@ -14,6 +15,7 @@ import {
   normalizePromptRoleTag,
   type FaqSection,
 } from "../../../lib/faq-tags";
+import { type FaqContextEntry } from "../../../lib/registrar-client";
 
 type SelectOption = {
   value: string;
@@ -142,6 +144,35 @@ export default function QuestionsPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [closeModalOpen, setCloseModalOpen] = useState(false);
   const [closeNotes, setCloseNotes] = useState("");
+  const [resolvedEntry, setResolvedEntry] = useState<FaqContextEntry | null>(null);
+
+  const resolvedFallbackAnswer = selectedQuestion?.resolutionAnswer?.trim() ?? "";
+  const hasMissingLinkedEntry = Boolean(
+    selectedQuestion?.status === "closed" &&
+    selectedQuestion?.resolutionEntryId &&
+    !resolvedEntry &&
+    !resolvedFallbackAnswer
+  );
+  useEffect(() => {
+    if (!selectedQuestion || selectedQuestion.status !== "closed") {
+      setResolvedEntry(null);
+      return;
+    }
+
+    const resolutionEntryId = selectedQuestion.resolutionEntryId;
+    if (resolutionEntryId) {
+      const loadEntry = async () => {
+        try {
+          const entry = await getFaqEntry(resolutionEntryId);
+          setResolvedEntry(entry);
+        } catch (error) {
+          setResolvedEntry(null);
+        }
+      };
+      void loadEntry();
+    }
+  }, [selectedQuestion]);
+
 
   const loadQuestions = async () => {
     setLoading(true);
@@ -376,18 +407,89 @@ export default function QuestionsPage() {
 
             <section className="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10 rounded-3xl p-5 space-y-3 h-fit">
               <div className="flex items-center gap-2 text-[#6e3102] dark:text-[#d4855a] font-bold uppercase tracking-[0.2em] text-xs">
-                <CheckCircle2 size={14} /> Resolve as New Entry
+                <CheckCircle2 size={14} />
+                {selectedQuestion?.status === "closed" ? "Resolution Details" : "Resolve as New Entry"}
               </div>
               {!selectedQuestion ? <p className="text-sm text-gray-500">Select a question to answer.</p> : null}
 
-              {selectedQuestion ? (
+              {selectedQuestion?.status === "closed" ? (
                 <>
                   <div className="rounded-xl border border-gray-200 dark:border-white/10 p-3 bg-gray-50/80 dark:bg-[#101014]">
                     <p className="text-xs uppercase tracking-[0.18em] text-gray-400">Question</p>
                     <p className="text-sm mt-1 whitespace-pre-wrap">{selectedQuestion.questionText}</p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 z-10 relative">
+                  <div className="rounded-xl border border-gray-200 dark:border-white/10 p-3 bg-blue-50/40 dark:bg-blue-950/20">
+                    <p className="text-xs uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400 mb-2">Status</p>
+                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      {selectedQuestion.resolutionCategory === "closed-without-entry"
+                        ? "Closed Without Entry"
+                        : resolvedEntry
+                        ? "Resolved with FAQ/Context Entry"
+                        : resolvedFallbackAnswer
+                        ? "Resolved with saved answer"
+                        : "Closed"}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                      Closed on {formatDate(selectedQuestion.resolvedAt ?? selectedQuestion.updatedAt)}
+                    </p>
+                  </div>
+
+                  {resolvedEntry && (
+                    <>
+                      <div className="rounded-xl border border-gray-200 dark:border-white/10 p-3 bg-gray-50/80 dark:bg-[#101014]">
+                        <p className="text-xs uppercase tracking-[0.18em] text-gray-400">
+                          {resolvedEntry.category === "faq" ? "FAQ Question" : "Context Title"}
+                        </p>
+                        <p className="text-sm mt-1">{resolvedEntry.title}</p>
+                      </div>
+
+                      <div className="rounded-xl border border-gray-200 dark:border-white/10 p-3 bg-gray-50/80 dark:bg-[#101014]">
+                        <p className="text-xs uppercase tracking-[0.18em] text-gray-400">Answer</p>
+                        <p className="text-sm mt-1 whitespace-pre-wrap">{resolvedEntry.answer}</p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="rounded-xl border border-gray-200 dark:border-white/10 p-3 bg-gray-50/80 dark:bg-[#101014]">
+                          <p className="text-xs uppercase tracking-[0.18em] text-gray-400">Scope Type</p>
+                          <p className="text-sm mt-1 font-mono">{resolvedEntry.scopeType}</p>
+                        </div>
+                        <div className="rounded-xl border border-gray-200 dark:border-white/10 p-3 bg-gray-50/80 dark:bg-[#101014]">
+                          <p className="text-xs uppercase tracking-[0.18em] text-gray-400">Category</p>
+                          <p className="text-sm mt-1 font-mono">{resolvedEntry.category}</p>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {!resolvedEntry && resolvedFallbackAnswer ? (
+                    <div className="rounded-xl border border-gray-200 dark:border-white/10 p-3 bg-gray-50/80 dark:bg-[#101014]">
+                      <p className="text-xs uppercase tracking-[0.18em] text-gray-400">
+                        {selectedQuestion.resolutionCategory === "closed-without-entry" ? "Close notes" : "Answer"}
+                      </p>
+                      <p className="text-sm mt-1 whitespace-pre-wrap">{resolvedFallbackAnswer}</p>
+                    </div>
+                  ) : null}
+
+                  {hasMissingLinkedEntry ? (
+                    <div className="rounded-xl border border-amber-300/60 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 p-3">
+                      <p className="text-xs uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">Linked entry missing</p>
+                      <p className="text-sm mt-1 text-amber-800 dark:text-amber-200">
+                        This question references entry ID {selectedQuestion?.resolutionEntryId}, but that FAQ/context entry no longer exists.
+                      </p>
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
+              {selectedQuestion ? (
+                selectedQuestion.status !== "closed" ? (
+                  <>
+                    <div className="rounded-xl border border-gray-200 dark:border-white/10 p-3 bg-gray-50/80 dark:bg-[#101014]">
+                      <p className="text-xs uppercase tracking-[0.18em] text-gray-400">Question</p>
+                      <p className="text-sm mt-1 whitespace-pre-wrap">{selectedQuestion.questionText}</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 z-10 relative">
                     <CustomSelect
                       value={form.section}
                       options={sectionOptions}
@@ -404,60 +506,61 @@ export default function QuestionsPage() {
                       }}
                     />
 
-                    <CustomSelect
-                      value={form.scopeType}
-                      options={scopeOptions}
-                      onChange={(val) => setForm((current) => ({ ...current, scopeType: val }))}
-                    />
-                  </div>
+                      <CustomSelect
+                        value={form.scopeType}
+                        options={scopeOptions}
+                        onChange={(val) => setForm((current) => ({ ...current, scopeType: val }))}
+                      />
+                    </div>
 
-                  <div className="space-y-1">
-                    <p className="text-xs uppercase tracking-[0.15em] text-gray-400">
-                      {form.section === "faq" ? "Question" : "Context title"}
-                    </p>
-                    <input
-                      value={form.title}
-                      onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
-                      placeholder={form.section === "faq" ? "FAQ question" : "Entry title"}
-                      className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-[#6e3102] dark:focus:ring-[#d4855a] transition-all"
+                    <div className="space-y-1">
+                      <p className="text-xs uppercase tracking-[0.15em] text-gray-400">
+                        {form.section === "faq" ? "Question" : "Context title"}
+                      </p>
+                      <input
+                        value={form.title}
+                        onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
+                        placeholder={form.section === "faq" ? "FAQ question" : "Entry title"}
+                        className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-[#6e3102] dark:focus:ring-[#d4855a] transition-all"
+                      />
+                      {form.section === "faq" && selectedQuestion ? (
+                        <button
+                          type="button"
+                          onClick={() => setForm((current) => ({ ...current, title: selectedQuestion.questionText }))}
+                          className="text-xs text-[#6e3102] dark:text-[#d4855a] hover:underline"
+                        >
+                          Use captured question text
+                        </button>
+                      ) : null}
+                    </div>
+
+                    <textarea
+                      value={form.answer}
+                      onChange={(event) => setForm((current) => ({ ...current, answer: event.target.value }))}
+                      placeholder="Answer content"
+                      rows={6}
+                      className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 resize-y focus:outline-none focus:ring-2 focus:ring-[#6e3102] dark:focus:ring-[#d4855a] transition-all"
                     />
-                    {form.section === "faq" && selectedQuestion ? (
+
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <button
-                        type="button"
-                        onClick={() => setForm((current) => ({ ...current, title: selectedQuestion.questionText }))}
-                        className="text-xs text-[#6e3102] dark:text-[#d4855a] hover:underline"
+                        onClick={() => void submitResolution()}
+                        disabled={actionLoading !== null || selectedQuestion.status !== "open"}
+                        className="px-4 py-2 rounded-xl bg-[#6e3102] hover:bg-[#5a2801] dark:bg-[#d4855a] dark:hover:bg-[#e9a67f] dark:text-[#121212] text-white font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Use captured question text
+                        {actionLoading === "resolve" ? "Resolving..." : "Resolve Question"}
                       </button>
-                    ) : null}
-                  </div>
 
-                  <textarea
-                    value={form.answer}
-                    onChange={(event) => setForm((current) => ({ ...current, answer: event.target.value }))}
-                    placeholder="Answer content"
-                    rows={6}
-                    className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 resize-y focus:outline-none focus:ring-2 focus:ring-[#6e3102] dark:focus:ring-[#d4855a] transition-all"
-                  />
-
-                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <button
-                      onClick={() => void submitResolution()}
-                      disabled={actionLoading !== null || selectedQuestion.status !== "open"}
-                      className="px-4 py-2 rounded-xl bg-[#6e3102] hover:bg-[#5a2801] dark:bg-[#d4855a] dark:hover:bg-[#e9a67f] dark:text-[#121212] text-white font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {actionLoading === "resolve" ? "Resolving..." : "Resolve Question"}
-                    </button>
-
-                    <button
-                      onClick={requestCloseWithoutResolution}
-                      disabled={actionLoading !== null || selectedQuestion.status !== "open"}
-                      className="px-4 py-2 rounded-xl border border-gray-300 dark:border-white/20 hover:bg-gray-50 dark:hover:bg-white/5 font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Close Without Entry
-                    </button>
-                  </div>
-                </>
+                      <button
+                        onClick={requestCloseWithoutResolution}
+                        disabled={actionLoading !== null || selectedQuestion.status !== "open"}
+                        className="px-4 py-2 rounded-xl border border-gray-300 dark:border-white/20 hover:bg-gray-50 dark:hover:bg-white/5 font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Close Without Entry
+                      </button>
+                    </div>
+                  </>
+                              ) : null
               ) : null}
             </section>
           </div>
