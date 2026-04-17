@@ -23,6 +23,12 @@ export default function CsvUploadHistoryPanel({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Determine if this is an office or college context
+  // Colleges pass collegeCodeFilter, offices don't
+  const isOfficeContext = !collegeCodeFilter || collegeCodeFilter.length === 0;
+  const thirdColumnHeader = isOfficeContext ? "Office" : "College";
+  const fourthColumnHeader = isOfficeContext ? "Record" : "Program";
+
   const normalizedFilter = useMemo(
     () => (categoryFilter ?? []).map((x) => x.toLowerCase()),
     [categoryFilter]
@@ -102,8 +108,8 @@ export default function CsvUploadHistoryPanel({
                     <tr>
                       <th className="text-left px-4 py-3 text-[var(--muted)]">Date Uploaded</th>
                       <th className="text-left px-4 py-3 text-[var(--muted)]">File</th>
-                      <th className="text-left px-4 py-3 text-[var(--muted)]">College</th>
-                      <th className="text-left px-4 py-3 text-[var(--muted)]">Program</th>
+                      <th className="text-left px-4 py-3 text-[var(--muted)]">{thirdColumnHeader}</th>
+                      <th className="text-left px-4 py-3 text-[var(--muted)]">{fourthColumnHeader}</th>
                       <th className="text-left px-4 py-3 text-[var(--muted)]">Category</th>
                       <th className="text-left px-4 py-3 text-[var(--muted)]">Rows</th>
                       <th className="text-left px-4 py-3 text-[var(--muted)]">Status</th>
