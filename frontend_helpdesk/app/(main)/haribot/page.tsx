@@ -280,9 +280,13 @@ export default function HaribotPage() {
 
         <div className="flex-1 lg:ml-64 flex flex-col h-full relative z-10 pt-16 lg:pt-0">
 
+          // Line ~328 in your file
           {/* Main Chat Area */}
           <main className="flex-1 flex flex-col max-w-4xl w-full mx-auto overflow-hidden relative">
             
+            {/* NEW GRADIENT MASK */}
+            <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-[#000000] to-transparent pointer-events-none z-10" />
+
             {isEmpty && !isLoading ? (
               /* EMPTY STATE */
               <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 pb-32 animate-fade-in w-full">
@@ -326,7 +330,7 @@ export default function HaribotPage() {
             ) : (
               /* CHAT THREAD STATE */
               <div 
-                className="flex-1 overflow-y-auto px-4 sm:px-8 pt-6 pb-32 space-y-8 scroll-smooth" 
+                className="flex-1 overflow-y-auto px-4 sm:px-8 pt-6 pb-32 space-y-8 scroll-smooth z-0" 
                 ref={threadRef}
               >
                 {messages.map((message) => {
@@ -361,7 +365,7 @@ export default function HaribotPage() {
                           <div 
                             className={`px-5 py-3.5 rounded-2xl border backdrop-blur-sm overflow-x-auto ${
                               isUser 
-                                ? 'bg-[#6e3102]/80 dark:bg-[#d4855a]/80 border-[#6e3102]/40 dark:border-[#d4855a]/40 text-white dark:text-[#121212] rounded-tr-sm' 
+                                ? 'bg-[#6e3102]/80 dark:bg-[#d4855a]/80 border-[#6e3102]/40 dark:border-[#d4855a]/40 text-white dark:text-[#000000] rounded-tr-sm' 
                                 : 'bg-gray-100/70 dark:bg-[#27272a]/70 border-gray-200/60 dark:border-white/10 text-gray-800 dark:text-gray-200 rounded-tl-sm'
                             }`}
                           >
@@ -452,7 +456,7 @@ export default function HaribotPage() {
             )}
 
             {/* FLOATING COMPOSER */}
-            <div className="absolute bottom-6 left-0 right-0 px-4 sm:px-8">
+            <div className="absolute bottom-6 left-0 right-0 px-4 sm:px-8 z-20">
               <div className="w-full bg-white dark:bg-[#18181b] p-2 pl-4 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)] border border-gray-100 dark:border-white/10 flex items-center gap-2">
                 <form onSubmit={submit} className="flex-1 flex items-center">
                   <input
