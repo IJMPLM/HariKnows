@@ -12,8 +12,7 @@ import {
   sendChatMessage, 
   getChatHistory, 
   clearChatHistory, 
-  type ChatMessage,
-  type RagResponseMeta
+  type ChatMessage
 } from "../../../lib/gemini-client";
 import { initializeSession, type StudentProfile } from "../../../lib/auth-client";
 
@@ -25,10 +24,14 @@ function getConversationStorageKey(studentNo: string) {
 }
 
 function formatTime(value: string) {
-  return new Date(value).toLocaleTimeString("en-US", {
+  const raw = value.trim();
+  const hasExplicitTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw);
+  const normalized = hasExplicitTimezone ? raw : `${raw}Z`;
+
+  return new Date(normalized).toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
-    timeZone: "Asia/Manila", // Philippine Standard Time (UTC+8)
+    timeZone: "Asia/Manila",
   });
 }
 
@@ -42,7 +45,6 @@ export default function HaribotPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<StudentProfile | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [messageMeta, setMessageMeta] = useState<Record<number, RagResponseMeta>>({});
   const tempMessageIdRef = useRef(1_000_000_000);
   const inFlightRef = useRef(false);
   const threadRef = useRef<HTMLDivElement | null>(null);
@@ -51,7 +53,6 @@ export default function HaribotPage() {
   const loadInitial = async (activeConversationId: string | null, user: StudentProfile | null) => {
     if (!activeConversationId) {
       setMessages([]);
-      setMessageMeta({});
       setIsLoading(false);
       return;
     }
@@ -129,13 +130,6 @@ export default function HaribotPage() {
         });
       }
 
-      if (response.meta) {
-        setMessageMeta((previous) => ({
-          ...previous,
-          [assistantId]: response.meta!,
-        }));
-      }
-      
       requestAnimationFrame(() => {
         threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
       });
@@ -162,13 +156,11 @@ export default function HaribotPage() {
         window.localStorage.removeItem(GUEST_CONVERSATION_KEY);
         setConversationId(null);
         setMessages([]);
-        setMessageMeta({});
         return;
       }
 
       await clearChatHistory(conversationId);
       setMessages([]);
-      setMessageMeta({});
     } catch (error) {
       console.error("Failed to clear history:", error);
       alert("Failed to clear history. Please try again.");
@@ -263,7 +255,6 @@ export default function HaribotPage() {
               >
                 {messages.map((message) => {
                   const isUser = message.role === "user";
-                  const meta = !isUser ? messageMeta[message.id] : undefined;
 
                   return (
                     <div key={message.id} className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -314,45 +305,6 @@ export default function HaribotPage() {
                           <span className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                             {formatTime(message.createdAt)}
                           </span>
-                          {!isUser && meta && (
-                            <div className="mt-2 w-full rounded-xl border border-gray-200/70 dark:border-white/10 bg-white/70 dark:bg-[#18181b]/80 px-3 py-2 text-xs text-gray-600 dark:text-gray-300">
-                              {/*
-                              <p>
-                                <span className="font-semibold">Routing:</span> {meta.routing} | <span className="font-semibold">Model:</span> {meta.modelSource} | <span className="font-semibold">Confidence:</span> {(meta.confidence * 100).toFixed(0)}%
-                              </p>
-                              */}
-                              {meta.redirectOffice ? (
-                                <p className="mt-1 text-amber-700 dark:text-amber-300">
-                                  Redirect: contact {meta.redirectOffice}. {meta.redirectReason ?? ""}
-                                </p>
-                              ) : null}
-                              {meta.citations.length > 0 ? (
-                                <div className="mt-1">
-                                  <p className="font-semibold">Sources</p>
-                                  <ul className="mt-1 space-y-1">
-                                    {meta.citations.slice(0, 4).map((citation) => (
-                                      <li key={citation.id}>
-                                        {(() => {
-                                          const isInternal = citation.url.startsWith("/");
-                                          return (
-                                        <a
-                                          href={citation.url}
-                                          target={isInternal ? undefined : "_blank"}
-                                          rel={isInternal ? undefined : "noreferrer"}
-                                          className="underline text-[#6e3102] dark:text-[#d4855a]"
-                                        >
-                                          {citation.title}
-                                        </a>
-                                          );
-                                        })()}
-                                        <span className="text-gray-400 dark:text-gray-500"> ({citation.category})</span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              ) : null}
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>

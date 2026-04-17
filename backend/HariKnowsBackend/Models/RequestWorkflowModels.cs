@@ -65,7 +65,6 @@ public record FaqContextEntryDto(
     string Category,
     string Title,
     string Answer,
-    bool IsGuestVisible,
     DateTime CreatedAt,
     DateTime UpdatedAt
 );
@@ -76,8 +75,7 @@ public record CreateFaqContextEntryDto(
     string ProgramCode,
     string Category,
     string Title,
-    string Answer,
-    bool IsGuestVisible
+    string Answer
 );
 
 public record UpdateFaqContextEntryDto(
@@ -86,8 +84,7 @@ public record UpdateFaqContextEntryDto(
     string ProgramCode,
     string Category,
     string Title,
-    string Answer,
-    bool IsGuestVisible
+    string Answer
 );
 
 public record UncertainQuestionDto(
@@ -113,7 +110,10 @@ public record ResolveUncertainQuestionRequestDto(
     string CollegeCode,
     string ProgramCode,
     string Title,
-    string Answer,
-    bool IsGuestVisible
+    string Answer
+);
+
+public record CloseUncertainQuestionRequestDto(
+    string? Notes
 );
 

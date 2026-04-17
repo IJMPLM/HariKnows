@@ -63,6 +63,20 @@ public sealed class RegistrarEtlController(IRegistrarEtlService etlService) : Co
         }
     }
 
+    [HttpPost("sync-faq-csv")]
+    public IActionResult SyncFaqCsv()
+    {
+        try
+        {
+            var result = etlService.SyncFaqCsv();
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpPost("commit")]
     public async Task<IActionResult> Commit([FromBody] CommitEtlRequest request, CancellationToken cancellationToken)
     {

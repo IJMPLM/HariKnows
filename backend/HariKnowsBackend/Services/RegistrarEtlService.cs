@@ -11,7 +11,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace HariKnowsBackend.Services;
 
-public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration configuration, IHostEnvironment hostEnvironment, IAuthService authService) : IRegistrarEtlService
+public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration configuration, IHostEnvironment hostEnvironment, IAuthService authService, IFaqCsvSyncService faqCsvSyncService) : IRegistrarEtlService
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
     private sealed record ParsedStagingRow(int SourceRowNumber, Dictionary<string, string> Data);
@@ -239,7 +239,7 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
             var normalizedScope = NormalizeFaqScopeType(request.ScopeType);
             var normalizedCollege = string.Empty;
             var normalizedProgram = string.Empty;
-            var normalizedCategory = string.IsNullOrWhiteSpace(request.Category) ? "faq" : request.Category.Trim();
+            var normalizedCategory = PromptRoleTagCategoryMapper.DeriveCategory(normalizedScope, request.Category);
             var normalizedTitle = request.Title.Trim();
 
             var existing = await db.FaqContextEntries.FirstOrDefaultAsync(entry =>
@@ -260,7 +260,6 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
                     Category = normalizedCategory,
                     Question = normalizedTitle,
                     Answer = request.Answer.Trim(),
-                    IsPublished = request.IsGuestVisible,
                     CreatedAt = now,
                     UpdatedAt = now
                 });
@@ -274,13 +273,18 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
             existing.Category = normalizedCategory;
             existing.Question = normalizedTitle;
             existing.Answer = request.Answer.Trim();
-            existing.IsPublished = request.IsGuestVisible;
             existing.UpdatedAt = now;
             updated++;
         }
 
         await db.SaveChangesAsync(cancellationToken);
+        faqCsvSyncService.SyncFromDatabase();
         return new FaqImportResultDto(imported, updated, skipped);
+    }
+
+    public FaqCsvSyncResultDto SyncFaqCsv()
+    {
+        return faqCsvSyncService.SyncFromDatabase();
     }
 
     public async Task<EtlCommitResultDto> CommitAsync(CommitEtlRequest request, CancellationToken cancellationToken)
@@ -1434,8 +1438,6 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
                     : string.Empty;
 
             var scopeType = NormalizeFaqScopeType(fields.TryGetValue("promptRoleTag", out var scopeTypeRaw) ? scopeTypeRaw : string.Empty);
-            var isGuestVisible = ParseGuestVisibility(fields.TryGetValue("isGuestVisible", out var isGuestVisibleRaw) ? isGuestVisibleRaw : null, scopeType);
-
             if (string.IsNullOrWhiteSpace(title))
             {
                 title = answer;
@@ -1450,8 +1452,7 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
                 string.Empty,
                 inferredCategory,
                 title,
-                answer,
-                isGuestVisible
+                answer
             ));
         }
 
@@ -1467,22 +1468,6 @@ public sealed class RegistrarEtlService(HariKnowsDbContext db, IConfiguration co
         }
 
         return normalized;
-    }
-
-    private static bool ParseGuestVisibility(string? rawValue, string normalizedScopeType)
-    {
-        if (string.IsNullOrWhiteSpace(rawValue))
-        {
-            return normalizedScopeType is not PromptRoleTags.FaqNonGuest and not PromptRoleTags.ContextNonGuest;
-        }
-
-        var normalized = rawValue.Trim().ToLowerInvariant();
-        return normalized switch
-        {
-            "true" or "1" or "yes" or "y" => true,
-            "false" or "0" or "no" or "n" => false,
-            _ => normalizedScopeType is not PromptRoleTags.FaqNonGuest and not PromptRoleTags.ContextNonGuest
-        };
     }
 
     private static (string CollegeCode, string ProgramCode) ResolveAcademicCodes(IReadOnlyList<string> metadata, string fileName)

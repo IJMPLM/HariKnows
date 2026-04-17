@@ -54,6 +54,8 @@ public interface IRegistrarService
     UncertainQuestionDto? GetUncertainQuestion(int questionId);
 
     (UncertainQuestionDto Question, FaqContextEntryDto CreatedEntry)? ResolveUncertainQuestion(int questionId, ResolveUncertainQuestionRequestDto request);
+
+    UncertainQuestionDto? CloseUncertainQuestion(int questionId, CloseUncertainQuestionRequestDto request);
 }
 
 public record DepartmentCreateResult(bool Success, bool NameConflict, string? Error, DepartmentDto? Department);

@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HariKnowsBackend.Services;
 
-public sealed class RegistrarService(IRegistrarRepository repository, IAuthService authService, HariKnowsDbContext dbContext, IHostEnvironment hostEnvironment) : IRegistrarService
+public sealed class RegistrarService(IRegistrarRepository repository, IAuthService authService, HariKnowsDbContext dbContext, IFaqCsvSyncService faqCsvSyncService) : IRegistrarService
 {
     private static readonly HashSet<string> TerminalRequestStatuses = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -418,16 +418,18 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
     public FaqContextEntryDto CreateFaqEntry(CreateFaqContextEntryDto request)
     {
         var normalizedScope = NormalizeFaqScopeType(request.ScopeType);
+        var normalizedCategory = PromptRoleTagCategoryMapper.DeriveCategory(normalizedScope, request.Category);
         var normalizedRequest = request with
         {
             ScopeType = normalizedScope,
+            Category = normalizedCategory,
             CollegeCode = string.Empty,
             ProgramCode = string.Empty
         };
 
         ValidateFaqRequest(normalizedRequest.ScopeType, normalizedRequest.Category, normalizedRequest.Title, normalizedRequest.Answer);
         var created = repository.CreateFaqEntry(normalizedRequest, DateTime.UtcNow);
-        SyncFaqEntryToCsv(created);
+        faqCsvSyncService.SyncFromDatabase();
         repository.WriteActivity($"FAQ/context created: {created.Title}", "Registrar");
         return created;
     }
@@ -435,9 +437,11 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
     public FaqContextEntryDto? UpdateFaqEntry(int faqId, UpdateFaqContextEntryDto request)
     {
         var normalizedScope = NormalizeFaqScopeType(request.ScopeType);
+        var normalizedCategory = PromptRoleTagCategoryMapper.DeriveCategory(normalizedScope, request.Category);
         var normalizedRequest = request with
         {
             ScopeType = normalizedScope,
+            Category = normalizedCategory,
             CollegeCode = string.Empty,
             ProgramCode = string.Empty
         };
@@ -446,7 +450,7 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
         var updated = repository.UpdateFaqEntry(faqId, normalizedRequest, DateTime.UtcNow);
         if (updated is not null)
         {
-            SyncFaqEntryToCsv(updated);
+            faqCsvSyncService.SyncFromDatabase();
             repository.WriteActivity($"FAQ/context updated: {updated.Title}", "Registrar");
         }
 
@@ -458,6 +462,7 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
         var deleted = repository.DeleteFaqEntry(faqId);
         if (deleted)
         {
+            faqCsvSyncService.SyncFromDatabase();
             repository.WriteActivity($"FAQ/context deleted: {faqId}", "Registrar");
         }
 
@@ -514,8 +519,7 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
             string.Empty,
             normalizedCategory,
             request.Title.Trim(),
-            request.Answer.Trim(),
-            request.IsGuestVisible
+            request.Answer.Trim()
         ));
 
         var duplicateOpenQuestions = dbContext.UncertainQuestions
@@ -542,6 +546,33 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
         repository.WriteActivity($"Question {question.Id} resolved to {normalizedCategory} entry {created.Id}", "Registrar");
 
         return (ToUncertainQuestionDto(question), created);
+    }
+
+    public UncertainQuestionDto? CloseUncertainQuestion(int questionId, CloseUncertainQuestionRequestDto request)
+    {
+        var question = dbContext.UncertainQuestions.FirstOrDefault(entry => entry.Id == questionId);
+        if (question is null)
+        {
+            return null;
+        }
+
+        if (!string.Equals(question.Status, "open", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Only open questions can be closed.");
+        }
+
+        var now = DateTime.UtcNow;
+        question.Status = "closed";
+        question.ResolutionCategory = "closed-without-entry";
+        question.ResolutionEntryId = null;
+        question.ResolutionAnswer = request.Notes?.Trim() ?? string.Empty;
+        question.ResolvedAt = now;
+        question.UpdatedAt = now;
+        dbContext.SaveChanges();
+
+        repository.WriteActivity($"Question {question.Id} closed without creating entry", "Registrar");
+
+        return ToUncertainQuestionDto(question);
     }
 
     private static UncertainQuestionDto ToUncertainQuestionDto(UncertainQuestion entry)
@@ -584,113 +615,6 @@ public sealed class RegistrarService(IRegistrarRepository repository, IAuthServi
         }
 
         return normalized;
-    }
-
-    private void SyncFaqEntryToCsv(FaqContextEntryDto changedEntry)
-    {
-        var isFaq = string.Equals(changedEntry.Category, "faq", StringComparison.OrdinalIgnoreCase);
-        var targetPath = ResolveCsvTargetPath(changedEntry, isFaq);
-
-        var rows = dbContext.FaqContextEntries
-            .AsNoTracking()
-            .Where(entry => isFaq
-                ? entry.Category.ToLower() == "faq"
-                : entry.Category.ToLower() != "faq")
-            .OrderBy(entry => entry.ScopeType)
-            .ThenBy(entry => entry.Category)
-            .ThenBy(entry => entry.Question)
-            .Select(entry => new CreateFaqContextEntryDto(
-                entry.ScopeType,
-                string.Empty,
-                string.Empty,
-                entry.Category,
-                entry.Question,
-                entry.Answer,
-                entry.IsPublished
-            ))
-            .ToList();
-
-        var directory = Path.GetDirectoryName(targetPath);
-        if (!string.IsNullOrWhiteSpace(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        using var writer = new StreamWriter(targetPath, false, new UTF8Encoding(false));
-        writer.WriteLine("promptRoleTag,category,title,answer,isGuestVisible");
-        foreach (var row in rows)
-        {
-            writer.WriteLine(string.Join(",", new[]
-            {
-                EscapeCsv(row.ScopeType),
-                EscapeCsv(row.Category),
-                EscapeCsv(row.Title),
-                EscapeCsv(row.Answer),
-                EscapeCsv(row.IsGuestVisible ? "true" : "false")
-            }));
-        }
-    }
-
-    private string ResolveCsvTargetPath(FaqContextEntryDto changedEntry, bool isFaq)
-    {
-        var desiredCategory = isFaq ? "faq" : "context";
-        var normalizedCollegeCode = string.Empty;
-        var normalizedProgramCode = string.Empty;
-
-        var latestCsvFileName = dbContext.EtlUploadFiles
-            .AsNoTracking()
-            .Where(file => file.FileName.EndsWith(".csv") && file.Category.ToLower() == desiredCategory)
-            .OrderByDescending(file =>
-                file.CollegeCode.ToUpper() == normalizedCollegeCode
-                && file.ProgramCode.ToUpper() == normalizedProgramCode)
-            .ThenByDescending(file => file.ParsedAt)
-            .ThenByDescending(file => file.Id)
-            .Select(file => file.FileName)
-            .FirstOrDefault();
-
-        var fallbackFileName = isFaq ? "faqs.csv" : "consolidated_context.csv";
-        var docsContextPath = Path.GetFullPath(Path.Combine(hostEnvironment.ContentRootPath, "..", "..", "docs", "context", fallbackFileName));
-
-        if (string.IsNullOrWhiteSpace(latestCsvFileName))
-        {
-            return docsContextPath;
-        }
-
-        if (Path.IsPathRooted(latestCsvFileName) && File.Exists(latestCsvFileName))
-        {
-            return latestCsvFileName;
-        }
-
-        var relativeCandidates = new[]
-        {
-            Path.Combine(hostEnvironment.ContentRootPath, "..", "..", "docs", latestCsvFileName),
-            Path.Combine(hostEnvironment.ContentRootPath, "..", "..", "docs", "context", latestCsvFileName),
-            Path.Combine(hostEnvironment.ContentRootPath, latestCsvFileName)
-        };
-
-        foreach (var candidate in relativeCandidates)
-        {
-            var resolved = Path.GetFullPath(candidate);
-            if (File.Exists(resolved))
-            {
-                return resolved;
-            }
-        }
-
-        return docsContextPath;
-    }
-
-    private static string EscapeCsv(string value)
-    {
-        if (string.IsNullOrEmpty(value))
-        {
-            return string.Empty;
-        }
-
-        var escaped = value.Replace("\"", "\"\"");
-        return escaped.IndexOfAny([',', '\"', '\n', '\r']) >= 0
-            ? $"\"{escaped}\""
-            : escaped;
     }
 
     private static void ValidateFaqRequest(string scopeType, string category, string title, string answer)

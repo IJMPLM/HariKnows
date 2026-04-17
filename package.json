@@ -7,7 +7,8 @@
     "dev": "concurrently -k -n backend,helpdesk,registrar -c blue,green,magenta \"npm:dev:backend\" \"npm:dev:helpdesk\" \"npm:dev:registrar\"",
     "dev:backend": "dotnet run --project backend/HariKnowsBackend/HariKnowsBackend.csproj --launch-profile http",
     "dev:helpdesk": "npm run dev --prefix frontend_helpdesk",
-    "dev:registrar": "npm run dev --prefix frontend_registrar"
+    "dev:registrar": "npm run dev --prefix frontend_registrar",
+    "generate:raw-prompt": "node scripts/generate-raw-prompt.js"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

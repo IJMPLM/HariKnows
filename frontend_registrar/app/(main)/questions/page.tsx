@@ -1,45 +1,60 @@
 "use client";
 
 import { useEffect, useMemo, useState, useRef } from "react";
-import { CheckCircle2, RefreshCw, Search, ChevronDown, Check } from "lucide-react";
+import { CheckCircle2, RefreshCw, Search, ChevronDown } from "lucide-react";
 import {
   getUncertainQuestions,
+  closeUncertainQuestion,
   resolveUncertainQuestion,
   type UncertainQuestion,
 } from "../../../lib/registrar-client";
+import {
+  deriveCategoryFromTag,
+  getTagOptions,
+  normalizePromptRoleTag,
+  type FaqSection,
+} from "../../../lib/faq-tags";
+
+type SelectOption = {
+  value: string;
+  label: string;
+};
 
 type ResolveForm = {
-  category: "faq" | "context";
+  section: FaqSection;
   scopeType: string;
-  programCode: string;
   title: string;
   answer: string;
-  isGuestVisible: boolean;
 };
 
 const defaultForm: ResolveForm = {
-  category: "faq",
-  scopeType: "general",
-  programCode: "",
+  section: "faq",
+  scopeType: "faq-general",
   title: "",
   answer: "",
-  isGuestVisible: true,
 };
 
-function normalizeScope(scopeType: string) {
-  const normalized = scopeType.trim().toLowerCase();
-  if (normalized === "global") return "general";
-  if (normalized === "non_guest" || normalized === "nonguest") return "non-guest";
-  return normalized || "general";
-}
+type QuestionSort = "created-desc" | "created-asc" | "confidence-desc" | "confidence-asc";
 
-function deriveCollegeCodeFromScope(scopeType: string) {
-  const normalized = normalizeScope(scopeType);
-  if (normalized === "general" || normalized === "non-guest") {
-    return "";
-  }
+const questionSortOptions: SelectOption[] = [
+  { value: "created-desc", label: "Newest first" },
+  { value: "created-asc", label: "Oldest first" },
+  { value: "confidence-desc", label: "Highest confidence" },
+  { value: "confidence-asc", label: "Lowest confidence" },
+];
 
-  return normalized.toUpperCase();
+const statusFilterOptions: SelectOption[] = [
+  { value: "open", label: "Open" },
+  { value: "closed", label: "Closed" },
+];
+
+const sectionOptions: SelectOption[] = [
+  { value: "faq", label: "FAQ" },
+  { value: "context", label: "Context" },
+];
+
+function getDefaultScopeType(section: FaqSection) {
+  return section === "faq" ? "faq-general" : "context-general";
 }
 
 function formatDate(value: string) {
@@ -57,11 +72,12 @@ function CustomSelect({
   onChange,
 }: {
   value: string;
-  options: string[];
+  options: SelectOption[];
   onChange: (val: string) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const selected = options.find((option) => option.value === value);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -80,7 +96,7 @@ function CustomSelect({
         onClick={() => setIsOpen(!isOpen)}
         className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 flex items-center justify-between text-left focus:outline-none focus:ring-2 focus:ring-[#6e3102] dark:focus:ring-[#d4855a] transition-all"
       >
-        <span className="truncate block capitalize">{value === "faq" ? "FAQ" : value}</span>
+        <span className="truncate block">{selected?.label ?? value}</span>
         <ChevronDown
           size={16}
           className={`text-gray-500 transition-transform duration-200 flex-shrink-0 ${
@@ -93,18 +109,18 @@ function CustomSelect({
         <div className="absolute z-20 w-full mt-2 bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10 rounded-xl shadow-xl max-h-60 overflow-y-auto py-1 animate-in fade-in zoom-in-95 duration-100">
           {options.map((option) => (
             <div
-              key={option}
+              key={option.value}
               onClick={() => {
-                onChange(option);
+                onChange(option.value);
                 setIsOpen(false);
               }}
-              className={`px-4 py-2.5 cursor-pointer transition-colors text-sm flex items-center capitalize ${
-                value === option
+              className={`px-4 py-2.5 cursor-pointer transition-colors text-sm flex items-center ${
+                value === option.value
                   ? "bg-gray-100 dark:bg-white/10 text-[#6e3102] dark:text-[#d4855a] font-bold"
                   : "hover:bg-gray-50 dark:hover:bg-white/5 text-gray-700 dark:text-gray-300"
               }`}
             >
-              {option === "faq" ? "FAQ" : option}
+              {option.label}
             </div>
           ))}
         </div>
@@ -119,12 +135,17 @@ export default function QuestionsPage() {
   const [selectedQuestion, setSelectedQuestion] = useState<UncertainQuestion | null>(null);
   const [form, setForm] = useState<ResolveForm>(defaultForm);
   const [statusFilter, setStatusFilter] = useState("open");
+  const [sortBy, setSortBy] = useState<QuestionSort>("created-desc");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [actionLoading, setActionLoading] = useState<"resolve" | "close" | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [closeModalOpen, setCloseModalOpen] = useState(false);
+  const [closeNotes, setCloseNotes] = useState("");
 
   const loadQuestions = async () => {
     setLoading(true);
+    setErrorMessage(null);
     try {
       const data = await getUncertainQuestions({ status: statusFilter, limit: 200 });
       setQuestions(data);
@@ -152,18 +173,17 @@ export default function QuestionsPage() {
     }
 
     const defaultCategory = selectedQuestion.routing.startsWith("faq") ? "faq" : "context";
+    const defaultSection = defaultCategory as FaqSection;
     setForm({
-      category: defaultCategory,
-      scopeType: selectedQuestion.studentNo ? "non-guest" : "general",
-      programCode: selectedQuestion.programCode,
+      section: defaultSection,
+      scopeType: getDefaultScopeType(defaultSection),
       title: selectedQuestion.questionText,
       answer: "",
-      isGuestVisible: !selectedQuestion.studentNo,
     });
   }, [selectedQuestion]);
 
   useEffect(() => {
-    if (!selectedQuestion || form.category !== "faq") {
+    if (!selectedQuestion || form.section !== "faq") {
       return;
     }
 
@@ -171,45 +191,97 @@ export default function QuestionsPage() {
     if (!form.title.trim() && fallbackQuestion) {
       setForm((current) => ({ ...current, title: fallbackQuestion }));
     }
-  }, [form.category, form.title, selectedQuestion]);
+  }, [form.section, form.title, selectedQuestion]);
 
   const visibleQuestions = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return questions.filter((entry) => {
+    const scoped = questions.filter((entry) => {
       if (!query) {
         return true;
       }
 
-      return [entry.questionText, entry.studentNo, entry.collegeCode, entry.programCode]
+      return [entry.questionText, entry.studentNo, entry.routing]
         .join(" ")
         .toLowerCase()
         .includes(query);
     });
-  }, [questions, search]);
+
+    const sorted = [...scoped];
+    sorted.sort((a, b) => {
+      switch (sortBy) {
+        case "created-asc":
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case "confidence-desc":
+          return b.confidence - a.confidence;
+        case "confidence-asc":
+          return a.confidence - b.confidence;
+        case "created-desc":
+        default:
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+    });
+
+    return sorted;
+  }, [questions, search, sortBy]);
+
+  const scopeOptions = useMemo<SelectOption[]>(() => {
+    return getTagOptions(form.section).map((tag) => ({ value: tag, label: tag }));
+  }, [form.section]);
 
   const submitResolution = async () => {
     if (!selectedQuestion || !form.title.trim() || !form.answer.trim()) {
       return;
     }
 
-    setSaving(true);
+    setActionLoading("resolve");
+    setErrorMessage(null);
     try {
       await resolveUncertainQuestion(selectedQuestion.id, {
-        category: form.category,
-        scopeType: normalizeScope(form.scopeType),
-        collegeCode: deriveCollegeCodeFromScope(form.scopeType),
-        programCode: form.programCode,
+        category: deriveCategoryFromTag(form.scopeType, form.section),
+        scopeType: normalizePromptRoleTag(form.scopeType),
+        collegeCode: "",
+        programCode: "",
         title: form.title.trim(),
         answer: form.answer.trim(),
-        isGuestVisible: form.isGuestVisible,
       });
 
       await loadQuestions();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to resolve question.";
-      alert(message);
+      setErrorMessage(error instanceof Error ? error.message : "Failed to resolve question.");
     } finally {
-      setSaving(false);
+      setActionLoading(null);
+    }
+  };
+
+  const requestCloseWithoutResolution = () => {
+    if (!selectedQuestion) {
+      return;
+    }
+
+    if (selectedQuestion.status !== "open") {
+      return;
+    }
+
+    setCloseNotes("");
+    setCloseModalOpen(true);
+  };
+
+  const confirmCloseWithoutResolution = async () => {
+    if (!selectedQuestion) {
+      return;
+    }
+
+    setActionLoading("close");
+    setErrorMessage(null);
+    try {
+      await closeUncertainQuestion(selectedQuestion.id, { notes: closeNotes.trim() });
+      setCloseModalOpen(false);
+      setCloseNotes("");
+      await loadQuestions();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to close question.");
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -227,12 +299,18 @@ export default function QuestionsPage() {
                 <RefreshCw size={16} /> Refresh
               </button>
             </div>
+
+            {errorMessage ? (
+              <div className="mt-3 rounded-xl border border-rose-300/60 dark:border-rose-500/40 bg-rose-50 dark:bg-rose-950/30 px-4 py-3 text-sm text-rose-700 dark:text-rose-300">
+                {errorMessage}
+              </div>
+            ) : null}
           </section>
 
           <div className="grid lg:grid-cols-[1.15fr_0.85fr] gap-6">
             <section className="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10 rounded-3xl p-5 space-y-4">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div className="relative max-w-sm w-full">
+              <div className="space-y-3">
+                <div className="relative w-full">
                   <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
                     value={search}
@@ -241,14 +319,22 @@ export default function QuestionsPage() {
                     className="w-full pl-10 pr-4 py-3 rounded-2xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10"
                   />
                 </div>
-                
-                {/* --- CUSTOM STATUS FILTER DROPDOWN --- */}
-                <div className="w-32 z-20">
-                  <CustomSelect
-                    value={statusFilter}
-                    options={["open", "closed"]}
-                    onChange={(val) => setStatusFilter(val)}
-                  />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="z-20">
+                    <CustomSelect
+                      value={statusFilter}
+                      options={statusFilterOptions}
+                      onChange={(val) => setStatusFilter(val)}
+                    />
+                  </div>
+                  <div className="z-20">
+                    <CustomSelect
+                      value={sortBy}
+                      options={questionSortOptions}
+                      onChange={(val) => setSortBy(val as QuestionSort)}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -279,7 +365,7 @@ export default function QuestionsPage() {
                           </div>
                           <p className="font-semibold mt-2 line-clamp-2">{entry.questionText}</p>
                           <p className="text-xs text-gray-500 mt-2">
-                            {entry.studentNo || "guest"} · {entry.collegeCode || "-"}/{entry.programCode || "-"} · {formatDate(entry.createdAt)}
+                            {entry.studentNo || "guest"} · {entry.routing} · {formatDate(entry.createdAt)}
                           </p>
                         </button>
                       );
@@ -302,53 +388,40 @@ export default function QuestionsPage() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 z-10 relative">
-                    {/* --- CUSTOM CATEGORY DROPDOWN --- */}
                     <CustomSelect
-                      value={form.category}
-                      options={["faq", "context"]}
+                      value={form.section}
+                      options={sectionOptions}
                       onChange={(val) => {
-                        const nextCategory = val as "faq" | "context";
+                        const nextSection = val as FaqSection;
                         setForm((current) => ({
                           ...current,
-                          category: nextCategory,
-                          title: nextCategory === "faq" && !current.title.trim() && selectedQuestion
+                          section: nextSection,
+                          scopeType: getDefaultScopeType(nextSection),
+                          title: nextSection === "faq" && !current.title.trim() && selectedQuestion
                             ? selectedQuestion.questionText
                             : current.title,
                         }));
                       }}
                     />
-                    
-                    <input
-                      value={form.scopeType}
-                      onChange={(event) => setForm((current) => ({ ...current, scopeType: event.target.value }))}
-                      placeholder="scopeType"
-                      className="px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-[#6e3102] dark:focus:ring-[#d4855a] transition-all"
-                    />
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <input
-                      value={form.programCode}
-                      onChange={(event) => setForm((current) => ({ ...current, programCode: event.target.value }))}
-                      placeholder="programCode (optional)"
-                      className="px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-[#6e3102] dark:focus:ring-[#d4855a] transition-all"
+                    <CustomSelect
+                      value={form.scopeType}
+                      options={scopeOptions}
+                      onChange={(val) => setForm((current) => ({ ...current, scopeType: val }))}
                     />
-                    <div className="px-4 py-3 rounded-xl bg-gray-100/60 dark:bg-[#101014] border border-gray-200 dark:border-white/10 text-xs text-gray-500 flex items-center">
-                      college from scopeType: {deriveCollegeCodeFromScope(form.scopeType) || "none"}
-                    </div>
                   </div>
 
                   <div className="space-y-1">
                     <p className="text-xs uppercase tracking-[0.15em] text-gray-400">
-                      {form.category === "faq" ? "Question" : "Context title"}
+                      {form.section === "faq" ? "Question" : "Context title"}
                     </p>
                     <input
                       value={form.title}
                       onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
-                      placeholder={form.category === "faq" ? "FAQ question" : "Entry title"}
+                      placeholder={form.section === "faq" ? "FAQ question" : "Entry title"}
                       className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-[#6e3102] dark:focus:ring-[#d4855a] transition-all"
                     />
-                    {form.category === "faq" && selectedQuestion ? (
+                    {form.section === "faq" && selectedQuestion ? (
                       <button
                         type="button"
                         onClick={() => setForm((current) => ({ ...current, title: selectedQuestion.questionText }))}
@@ -367,41 +440,81 @@ export default function QuestionsPage() {
                     className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 resize-y focus:outline-none focus:ring-2 focus:ring-[#6e3102] dark:focus:ring-[#d4855a] transition-all"
                   />
 
-                  {/* --- CUSTOM CHECKBOX --- */}
-                  <label className="flex items-center gap-3 text-sm cursor-pointer w-fit group py-1">
-                    <div className="relative flex items-center justify-center w-5 h-5 rounded border border-gray-300 dark:border-white/20 bg-white dark:bg-[#101014] group-hover:border-[#6e3102] dark:group-hover:border-[#d4855a] transition-colors">
-                      <input
-                        type="checkbox"
-                        className="absolute opacity-0 w-full h-full cursor-pointer z-10"
-                        checked={form.isGuestVisible}
-                        onChange={(event) => setForm((current) => ({
-                          ...current,
-                          isGuestVisible: event.target.checked,
-                          scopeType: event.target.checked ? "general" : "non-guest",
-                        }))}
-                      />
-                      <div className={`absolute inset-0 flex items-center justify-center rounded transition-all duration-200 ${form.isGuestVisible ? 'bg-[#6e3102] dark:bg-[#d4855a] scale-100' : 'scale-0'}`}>
-                        <Check size={14} className="text-white dark:text-[#121212] stroke-[3]" />
-                      </div>
-                    </div>
-                    <span className="text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
-                      Visible to guest users
-                    </span>
-                  </label>
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button
+                      onClick={() => void submitResolution()}
+                      disabled={actionLoading !== null || selectedQuestion.status !== "open"}
+                      className="px-4 py-2 rounded-xl bg-[#6e3102] hover:bg-[#5a2801] dark:bg-[#d4855a] dark:hover:bg-[#e9a67f] dark:text-[#121212] text-white font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {actionLoading === "resolve" ? "Resolving..." : "Resolve Question"}
+                    </button>
 
-                  <button
-                    onClick={() => void submitResolution()}
-                    disabled={saving || selectedQuestion.status !== "open"}
-                    className="px-4 py-2 mt-2 rounded-xl bg-[#6e3102] hover:bg-[#5a2801] dark:bg-[#d4855a] dark:hover:bg-[#e9a67f] dark:text-[#121212] text-white font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {saving ? "Saving..." : "Resolve Question"}
-                  </button>
+                    <button
+                      onClick={requestCloseWithoutResolution}
+                      disabled={actionLoading !== null || selectedQuestion.status !== "open"}
+                      className="px-4 py-2 rounded-xl border border-gray-300 dark:border-white/20 hover:bg-gray-50 dark:hover:bg-white/5 font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Close Without Entry
+                    </button>
+                  </div>
                 </>
               ) : null}
             </section>
           </div>
         </div>
       </div>
+
+      {closeModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/40"
+            onClick={() => {
+              if (actionLoading === null) {
+                setCloseModalOpen(false);
+              }
+            }}
+            aria-label="Dismiss close modal"
+          />
+
+          <div className="relative w-full max-w-lg rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#18181b] p-5 shadow-xl">
+            <h2 className="text-lg font-bold">Close Without Creating Entry</h2>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              This will mark the selected captured question as closed and will not create an FAQ/context entry.
+            </p>
+
+            <div className="mt-4 space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Optional notes</label>
+              <textarea
+                value={closeNotes}
+                onChange={(event) => setCloseNotes(event.target.value)}
+                rows={4}
+                placeholder="Reason for closing (optional)"
+                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 resize-y focus:outline-none focus:ring-2 focus:ring-[#6e3102] dark:focus:ring-[#d4855a] transition-all"
+              />
+            </div>
+
+            <div className="mt-5 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                disabled={actionLoading !== null}
+                onClick={() => setCloseModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-gray-300 dark:border-white/20 hover:bg-gray-50 dark:hover:bg-white/5 font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={actionLoading !== null}
+                onClick={() => void confirmCloseWithoutResolution()}
+                className="px-4 py-2 rounded-xl bg-[#6e3102] hover:bg-[#5a2801] dark:bg-[#d4855a] dark:hover:bg-[#e9a67f] dark:text-[#121212] text-white font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {actionLoading === "close" ? "Closing..." : "Confirm Close"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

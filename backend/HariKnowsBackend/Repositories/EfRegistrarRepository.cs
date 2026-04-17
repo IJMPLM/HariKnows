@@ -46,7 +46,6 @@ public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegis
             entry.Category,
             entry.Question,
             entry.Answer,
-            entry.IsPublished,
             entry.CreatedAt,
             entry.UpdatedAt
         );
@@ -488,7 +487,9 @@ public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegis
 
         if (!includeUnpublished)
         {
-            query = query.Where(e => e.IsPublished);
+            query = query.Where(e =>
+                e.ScopeType.ToLower() != PromptRoleTags.FaqNonGuest
+                && e.ScopeType.ToLower() != PromptRoleTags.ContextNonGuest);
         }
 
         if (!string.IsNullOrWhiteSpace(scopeType))
@@ -532,7 +533,6 @@ public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegis
             Category = request.Category,
             Question = request.Title,
             Answer = request.Answer,
-            IsPublished = request.IsGuestVisible,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -556,7 +556,6 @@ public sealed class EfRegistrarRepository(HariKnowsDbContext dbContext) : IRegis
         entry.Category = request.Category;
         entry.Question = request.Title;
         entry.Answer = request.Answer;
-        entry.IsPublished = request.IsGuestVisible;
         entry.UpdatedAt = now;
 
         dbContext.SaveChanges();

@@ -39,6 +39,14 @@ public record EtlErrorDto(string FileName, int Row, string Message);
 
 public record FaqImportResultDto(int Imported, int Updated, int Skipped);
 
+public record FaqCsvSyncResultDto(
+    int FaqRows,
+    int ContextRows,
+    int NormalizedRows,
+    string FaqCsvPath,
+    string ContextCsvPath
+);
+
 public record CommitEtlRequest(string BatchId, IReadOnlyList<EtlDecisionDto> Decisions);
 
 public record EtlDecisionDto(int StagingId, string Action);

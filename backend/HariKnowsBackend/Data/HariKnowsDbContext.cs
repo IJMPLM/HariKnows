@@ -146,7 +146,6 @@ public class HariKnowsDbContext(DbContextOptions<HariKnowsDbContext> options) : 
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.UpdatedAt).IsRequired();
             entity.HasIndex(e => new { e.ScopeType, e.CollegeCode, e.ProgramCode });
-            entity.HasIndex(e => e.IsPublished);
         });
 
         modelBuilder.Entity<EtlUploadBatch>(entity =>

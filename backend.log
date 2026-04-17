@@ -1,0 +1,373 @@
+Using launch settings from D:\Repositories\HariKnows\backend\HariKnowsBackend\Properties\launchSettings.json...
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (7ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT COUNT(*) FROM "sqlite_master" WHERE "type" = 'table' AND "rootpage" IS NOT NULL;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE TABLE IF NOT EXISTS "GeminiChats" (
+                  "Id" INTEGER NOT NULL CONSTRAINT "PK_GeminiChats" PRIMARY KEY AUTOINCREMENT,
+                  "Role" TEXT NOT NULL,
+                  "Content" TEXT NOT NULL,
+                  "CreatedAt" TEXT NOT NULL,
+                  "ConversationId" TEXT NOT NULL
+              );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE INDEX IF NOT EXISTS "IX_GeminiChats_ConversationId"
+              ON "GeminiChats" ("ConversationId");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE TABLE IF NOT EXISTS "Departments" (
+                  "Id" INTEGER NOT NULL CONSTRAINT "PK_Departments" PRIMARY KEY AUTOINCREMENT,
+                  "Name" TEXT NOT NULL
+              );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE UNIQUE INDEX IF NOT EXISTS "IX_Departments_Name"
+              ON "Departments" ("Name");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE TABLE IF NOT EXISTS "Documents" (
+                  "Id" INTEGER NOT NULL CONSTRAINT "PK_Documents" PRIMARY KEY AUTOINCREMENT,
+                  "ReferenceCode" TEXT NOT NULL,
+                  "StudentName" TEXT NOT NULL,
+                  "Title" TEXT NOT NULL,
+                  "DepartmentId" INTEGER NOT NULL,
+                  "CreatedAt" TEXT NOT NULL,
+                  "UpdatedAt" TEXT NOT NULL,
+                  CONSTRAINT "FK_Documents_Departments_DepartmentId" FOREIGN KEY ("DepartmentId") REFERENCES "Departments" ("Id") ON DELETE CASCADE
+              );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE INDEX IF NOT EXISTS "IX_Documents_DepartmentId"
+              ON "Documents" ("DepartmentId");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE TABLE IF NOT EXISTS "ActivityLogs" (
+                  "Id" INTEGER NOT NULL CONSTRAINT "PK_ActivityLogs" PRIMARY KEY AUTOINCREMENT,
+                  "Action" TEXT NOT NULL,
+                  "Actor" TEXT NOT NULL,
+                  "CreatedAt" TEXT NOT NULL
+              );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE TABLE IF NOT EXISTS "Colleges" (
+                  "Id" INTEGER NOT NULL CONSTRAINT "PK_Colleges" PRIMARY KEY AUTOINCREMENT,
+                  "Name" TEXT NOT NULL
+              );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE UNIQUE INDEX IF NOT EXISTS "IX_Colleges_Name"
+              ON "Colleges" ("Name");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE TABLE IF NOT EXISTS "AcademicPrograms" (
+                  "Id" INTEGER NOT NULL CONSTRAINT "PK_AcademicPrograms" PRIMARY KEY AUTOINCREMENT,
+                  "Name" TEXT NOT NULL,
+                  "Code" TEXT NOT NULL,
+                  "Group" TEXT NOT NULL,
+                  "CollegeId" INTEGER NOT NULL,
+                  CONSTRAINT "FK_AcademicPrograms_Colleges_CollegeId" FOREIGN KEY ("CollegeId") REFERENCES "Colleges" ("Id") ON DELETE CASCADE
+              );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE UNIQUE INDEX IF NOT EXISTS "IX_AcademicPrograms_CollegeId_Name"
+              ON "AcademicPrograms" ("CollegeId", "Name");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE UNIQUE INDEX IF NOT EXISTS "IX_AcademicPrograms_CollegeId_Code"
+              ON "AcademicPrograms" ("CollegeId", "Code");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE TABLE IF NOT EXISTS "StudentMasters" (
+                  "Id" INTEGER NOT NULL CONSTRAINT "PK_StudentMasters" PRIMARY KEY AUTOINCREMENT,
+                  "StudentNo" TEXT NOT NULL,
+                  "FirstName" TEXT NOT NULL DEFAULT '',
+                  "MiddleName" TEXT NOT NULL DEFAULT '',
+                  "LastName" TEXT NOT NULL DEFAULT '',
+                  "FullName" TEXT NOT NULL DEFAULT '',
+                  "CollegeCode" TEXT NOT NULL DEFAULT '',
+                  "ProgramCode" TEXT NOT NULL DEFAULT '',
+                  "CurrentYear" INTEGER NULL,
+                  "Block" TEXT NOT NULL DEFAULT '',
+                  "EnrollmentStatus" TEXT NOT NULL DEFAULT '',
+                  "BirthCertStatus" TEXT NOT NULL DEFAULT '',
+                  "Form137Status" TEXT NOT NULL DEFAULT '',
+                  "GoodMoralStatus" TEXT NOT NULL DEFAULT '',
+                  "NstpStatus" TEXT NOT NULL DEFAULT '',
+                  "TocStatus" TEXT NOT NULL DEFAULT '',
+                  "Email" TEXT NOT NULL DEFAULT '',
+                  "PasswordHash" TEXT NOT NULL DEFAULT '',
+                  "DateCreated" TEXT NOT NULL,
+                  "DateUpdated" TEXT NOT NULL
+              );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE UNIQUE INDEX IF NOT EXISTS "IX_StudentMasters_StudentNo"
+              ON "StudentMasters" ("StudentNo");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE TABLE IF NOT EXISTS "EtlUploadBatches" (
+                  "Id" INTEGER NOT NULL CONSTRAINT "PK_EtlUploadBatches" PRIMARY KEY AUTOINCREMENT,
+                  "BatchId" TEXT NOT NULL,
+                  "CreatedAt" TEXT NOT NULL,
+                  "Status" TEXT NOT NULL
+              );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE UNIQUE INDEX IF NOT EXISTS "IX_EtlUploadBatches_BatchId"
+              ON "EtlUploadBatches" ("BatchId");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE TABLE IF NOT EXISTS "EtlUploadFiles" (
+                  "Id" INTEGER NOT NULL CONSTRAINT "PK_EtlUploadFiles" PRIMARY KEY AUTOINCREMENT,
+                  "BatchId" TEXT NOT NULL,
+                  "FileName" TEXT NOT NULL,
+                  "Category" TEXT NOT NULL,
+                  "CollegeCode" TEXT NOT NULL DEFAULT '',
+                  "ProgramCode" TEXT NOT NULL DEFAULT '',
+                  "ScopeKey" TEXT NOT NULL DEFAULT '',
+                  "IsActive" INTEGER NOT NULL DEFAULT 1,
+                  "IsIncomplete" INTEGER NOT NULL DEFAULT 0,
+                  "ParsedRows" INTEGER NOT NULL,
+                  "Status" TEXT NOT NULL,
+                  "Error" TEXT NOT NULL,
+                  "ParsedAt" TEXT NOT NULL
+              );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE INDEX IF NOT EXISTS "IX_EtlUploadFiles_BatchId"
+              ON "EtlUploadFiles" ("BatchId");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE TABLE IF NOT EXISTS "EtlStagingRows" (
+                  "Id" INTEGER NOT NULL CONSTRAINT "PK_EtlStagingRows" PRIMARY KEY AUTOINCREMENT,
+                  "BatchId" TEXT NOT NULL,
+                  "Category" TEXT NOT NULL,
+                  "FileName" TEXT NOT NULL,
+                  "SourceRowNumber" INTEGER NOT NULL,
+                  "StudentNo" TEXT NOT NULL,
+                  "PayloadJson" TEXT NOT NULL,
+                  "Status" TEXT NOT NULL,
+                  "ConflictNote" TEXT NOT NULL,
+                  "Error" TEXT NOT NULL
+              );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE INDEX IF NOT EXISTS "IX_EtlStagingRows_BatchId_Status"
+              ON "EtlStagingRows" ("BatchId", "Status");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE INDEX IF NOT EXISTS "IX_EtlStagingRows_BatchId_Category"
+              ON "EtlStagingRows" ("BatchId", "Category");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE TABLE IF NOT EXISTS "CurriculumCourses" (
+                  "Id" INTEGER NOT NULL CONSTRAINT "PK_CurriculumCourses" PRIMARY KEY AUTOINCREMENT,
+                  "CollegeCode" TEXT NOT NULL,
+                  "ProgramCode" TEXT NOT NULL,
+                  "Level" INTEGER NOT NULL,
+                  "Term" INTEGER NOT NULL,
+                  "Units" REAL NOT NULL,
+                  "Code" TEXT NOT NULL,
+                  "Title" TEXT NOT NULL,
+                  "DateUpdated" TEXT NOT NULL
+              );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE UNIQUE INDEX IF NOT EXISTS "IX_CurriculumCourses_Unique"
+              ON "CurriculumCourses" ("CollegeCode", "ProgramCode", "Level", "Term", "Code");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE TABLE IF NOT EXISTS "GradeRecords" (
+                  "Id" INTEGER NOT NULL CONSTRAINT "PK_GradeRecords" PRIMARY KEY AUTOINCREMENT,
+                  "CollegeCode" TEXT NOT NULL,
+                  "ProgramCode" TEXT NOT NULL,
+                  "CourseCode" TEXT NOT NULL,
+                  "StudentNo" TEXT NOT NULL,
+                  "Grade" TEXT NOT NULL,
+                  "DateUpdated" TEXT NOT NULL
+              );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE UNIQUE INDEX IF NOT EXISTS "IX_GradeRecords_Unique"
+              ON "GradeRecords" ("CollegeCode", "ProgramCode", "CourseCode", "StudentNo");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE TABLE IF NOT EXISTS "SyllabusEntries" (
+                  "Id" INTEGER NOT NULL CONSTRAINT "PK_SyllabusEntries" PRIMARY KEY AUTOINCREMENT,
+                  "CollegeCode" TEXT NOT NULL,
+                  "ProgramCode" TEXT NOT NULL,
+                  "Code" TEXT NOT NULL,
+                  "Title" TEXT NOT NULL,
+                  "Description" TEXT NOT NULL,
+                  "DateUpdated" TEXT NOT NULL
+              );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE UNIQUE INDEX IF NOT EXISTS "IX_SyllabusEntries_Unique"
+              ON "SyllabusEntries" ("CollegeCode", "ProgramCode", "Code");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE TABLE IF NOT EXISTS "StudentDocumentRequests" (
+                  "Id" INTEGER NOT NULL CONSTRAINT "PK_StudentDocumentRequests" PRIMARY KEY AUTOINCREMENT,
+                  "RequestCode" TEXT NOT NULL,
+                  "StudentNo" TEXT NOT NULL,
+                  "StudentName" TEXT NOT NULL,
+                  "DocumentType" TEXT NOT NULL,
+                  "DepartmentId" INTEGER NOT NULL,
+                  "Status" TEXT NOT NULL,
+                  "RequestedAt" TEXT NOT NULL,
+                  "PreparedAt" TEXT NULL,
+                  "ClaimedAt" TEXT NULL,
+                  "DisposedAt" TEXT NULL,
+                  "DisposedReason" TEXT NOT NULL DEFAULT '',
+                  "HandledBy" TEXT NOT NULL DEFAULT '',
+                  "Notes" TEXT NOT NULL DEFAULT '',
+                  "UpdatedAt" TEXT NOT NULL,
+                  CONSTRAINT "FK_StudentDocumentRequests_Departments_DepartmentId" FOREIGN KEY ("DepartmentId") REFERENCES "Departments" ("Id") ON DELETE RESTRICT
+              );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE UNIQUE INDEX IF NOT EXISTS "IX_StudentDocumentRequests_RequestCode"
+              ON "StudentDocumentRequests" ("RequestCode");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE INDEX IF NOT EXISTS "IX_StudentDocumentRequests_StudentNo_Status"
+              ON "StudentDocumentRequests" ("StudentNo", "Status");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE INDEX IF NOT EXISTS "IX_StudentDocumentRequests_DepartmentId"
+              ON "StudentDocumentRequests" ("DepartmentId");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE TABLE IF NOT EXISTS "FaqContextEntries" (
+                  "Id" INTEGER NOT NULL CONSTRAINT "PK_FaqContextEntries" PRIMARY KEY AUTOINCREMENT,
+                  "ScopeType" TEXT NOT NULL,
+                  "CollegeCode" TEXT NOT NULL DEFAULT '',
+                  "ProgramCode" TEXT NOT NULL DEFAULT '',
+                  "Category" TEXT NOT NULL,
+                  "Question" TEXT NOT NULL,
+                  "Answer" TEXT NOT NULL,
+                  "AvailabilityCriteria" TEXT NOT NULL DEFAULT '',
+                  "EligibilityRules" TEXT NOT NULL DEFAULT '',
+                  "PricingDetails" TEXT NOT NULL DEFAULT '',
+                  "Requirements" TEXT NOT NULL DEFAULT '',
+                  "Caveats" TEXT NOT NULL DEFAULT '',
+                  "EscalationGuidance" TEXT NOT NULL DEFAULT '',
+                  "CitationUrl" TEXT NOT NULL DEFAULT '',
+                  "TagsCsv" TEXT NOT NULL DEFAULT '',
+                  "IsPublished" INTEGER NOT NULL,
+                  "CreatedAt" TEXT NOT NULL,
+                  "UpdatedAt" TEXT NOT NULL
+              );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE INDEX IF NOT EXISTS "IX_FaqContextEntries_Scope"
+              ON "FaqContextEntries" ("ScopeType", "CollegeCode", "ProgramCode");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE INDEX IF NOT EXISTS "IX_FaqContextEntries_IsPublished"
+              ON "FaqContextEntries" ("IsPublished");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE TABLE IF NOT EXISTS "UncertainQuestions" (
+                  "Id" INTEGER NOT NULL CONSTRAINT "PK_UncertainQuestions" PRIMARY KEY AUTOINCREMENT,
+                  "ConversationId" TEXT NOT NULL DEFAULT '',
+                  "StudentNo" TEXT NOT NULL DEFAULT '',
+                  "CollegeCode" TEXT NOT NULL DEFAULT '',
+                  "ProgramCode" TEXT NOT NULL DEFAULT '',
+                  "QuestionText" TEXT NOT NULL,
+                  "NormalizedQuestion" TEXT NOT NULL,
+                  "Routing" TEXT NOT NULL DEFAULT '',
+                  "Confidence" REAL NOT NULL,
+                  "Status" TEXT NOT NULL,
+                  "ResolutionCategory" TEXT NOT NULL DEFAULT '',
+                  "ResolutionEntryId" INTEGER NULL,
+                  "ResolutionAnswer" TEXT NOT NULL DEFAULT '',
+                  "CreatedAt" TEXT NOT NULL,
+                  "UpdatedAt" TEXT NOT NULL,
+                  "ResolvedAt" TEXT NULL
+              );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE INDEX IF NOT EXISTS "IX_UncertainQuestions_Status_CreatedAt"
+              ON "UncertainQuestions" ("Status", "CreatedAt");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE INDEX IF NOT EXISTS "IX_UncertainQuestions_NormalizedQuestion_Status_CreatedAt"
+              ON "UncertainQuestions" ("NormalizedQuestion", "Status", "CreatedAt");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      
+              CREATE INDEX IF NOT EXISTS "IX_UncertainQuestions_ConversationId_CreatedAt"
+              ON "UncertainQuestions" ("ConversationId", "CreatedAt");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "Departments" AS "d")
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "Colleges" AS "c")
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "AcademicPrograms" AS "a")
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "f"."Id", "f"."Answer", "f"."AvailabilityCriteria", "f"."Category", "f"."Caveats", "f"."CitationUrl", "f"."CollegeCode", "f"."CreatedAt", "f"."EligibilityRules", "f"."EscalationGuidance", "f"."IsPublished", "f"."PricingDetails", "f"."ProgramCode", "f"."Question", "f"."Requirements", "f"."ScopeType", "f"."TagsCsv", "f"."UpdatedAt"
+      FROM "FaqContextEntries" AS "f"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "f"."Id", "f"."Answer", "f"."AvailabilityCriteria", "f"."Category", "f"."Caveats", "f"."CitationUrl", "f"."CollegeCode", "f"."CreatedAt", "f"."EligibilityRules", "f"."EscalationGuidance", "f"."IsPublished", "f"."PricingDetails", "f"."ProgramCode", "f"."Question", "f"."Requirements", "f"."ScopeType", "f"."TagsCsv", "f"."UpdatedAt"
+      FROM "FaqContextEntries" AS "f"
+      ORDER BY "f"."ScopeType", "f"."Category", "f"."Question"
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:5240
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: D:\Repositories\HariKnows\backend\HariKnowsBackend

@@ -357,37 +357,50 @@ public sealed class RegistrarController(IRegistrarService registrarService) : Co
         }
     }
 
+    [HttpPost("questions/{questionId:int}/close")]
+    public IActionResult CloseUncertainQuestion(int questionId, [FromBody] CloseUncertainQuestionRequestDto? request)
+    {
+        try
+        {
+            var result = registrarService.CloseUncertainQuestion(questionId, request ?? new CloseUncertainQuestionRequestDto(null));
+            return result is null
+                ? NotFound(new { error = "Question entry not found." })
+                : Ok(new { question = result });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpPost("faq/seed-mockup")]
     public IActionResult SeedMockupFaqData()
     {
         var mockupEntries = new[]
         {
             new CreateFaqContextEntryDto(
-                "global",
+                "context-general",
                 "",
                 "",
                 "documents",
                 "What is a Transcript of Records (TOR)?",
-                "A Transcript of Records is an official academic document that shows your complete enrollment history, grades achieved in each course, and your cumulative grade point average (GPA).",
-                true
+                "A Transcript of Records is an official academic document that shows your complete enrollment history, grades achieved in each course, and your cumulative grade point average (GPA)."
             ),
             new CreateFaqContextEntryDto(
-                "global",
+                "context-general",
                 "",
                 "",
                 "enrollment",
                 "How do I enroll for the next semester?",
-                "Enrollment occurs online through the student portal during the designated enrollment period. You'll select courses, pay the appropriate fees, and confirm your registration.",
-                true
+                "Enrollment occurs online through the student portal during the designated enrollment period. You'll select courses, pay the appropriate fees, and confirm your registration."
             ),
             new CreateFaqContextEntryDto(
-                "global",
+                "context-general",
                 "",
                 "",
                 "grades",
                 "When will my grades be posted?",
-                "Final grades are typically posted to your student portal 3-5 working days after the examination period ends. Instructors submit grades through the faculty portal.",
-                true
+                "Final grades are typically posted to your student portal 3-5 working days after the examination period ends. Instructors submit grades through the faculty portal."
             )
         };
 

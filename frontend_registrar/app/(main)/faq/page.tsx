@@ -1,70 +1,54 @@
 "use client";
 
 import { useEffect, useMemo, useState, useRef } from "react";
-import { Plus, RefreshCw, Search, Pencil, Trash2, ChevronDown, Check } from "lucide-react";
+import { Plus, RefreshCw, Search, Pencil, Trash2, ChevronDown } from "lucide-react";
 import { createFaqEntry, deleteFaqEntry, getFaqEntries, updateFaqEntry, type FaqContextEntry } from "../../../lib/registrar-client";
+import {
+  deriveCategoryFromTag,
+  getTagOptions,
+  isGuestVisibleScopeTag,
+  isFaqTag,
+  normalizePromptRoleTag,
+  type FaqSection,
+} from "../../../lib/faq-tags";
 
-type Section = "faq" | "context";
+type SelectOption = {
+  value: string;
+  label: string;
+};
 
 type FaqFormState = {
   scopeType: string;
   category: string;
   title: string;
   answer: string;
-  isGuestVisible: boolean;
 };
 
-const FAQ_TAG_OPTIONS = ["faq-general", "faq-non-guest"];
-
-const CONTEXT_TAG_OPTIONS = [
-  "assistant-identity",
-  "guidance-header",
-  "context-unavailable",
-  "guest-mode-tag",
-  "auth-status-guest",
-  "auth-status-signed-in",
-  "redirect-reply-guest",
-  "redirect-reply-signed-in",
-  "redirect-note-guest",
-  "redirect-note-signed-in",
-  "response-guardrail",
-  "context-general",
-  "context-non-guest",
-  "other",
-];
-
-const CATEGORY_BY_TAG: Record<string, string> = {
-  "assistant-identity": "assistant",
-  "guidance-header": "assistant",
-  "context-unavailable": "assistant",
-  "guest-mode-tag": "assistant",
-  "auth-status-guest": "assistant",
-  "auth-status-signed-in": "assistant",
-  "redirect-reply-guest": "assistant",
-  "redirect-reply-signed-in": "assistant",
-  "redirect-note-guest": "assistant",
-  "redirect-note-signed-in": "assistant",
-  "response-guardrail": "guardrail",
-  "context-general": "context",
-  "context-non-guest": "context",
-  "other": "context",
-  "faq-general": "faq",
-  "faq-non-guest": "faq",
+type EntryFilters = {
+  scopeType: string;
+  sortBy: "latest-desc" | "latest-asc" | "title-asc" | "title-desc";
 };
 
-const createEmptyForm = (section: Section): FaqFormState => ({
+const createEmptyForm = (section: FaqSection): FaqFormState => ({
   scopeType: section === "faq" ? "faq-general" : "context-general",
   category: section === "faq" ? "faq" : "context",
   title: "",
   answer: "",
-  isGuestVisible: true,
 });
 
-const isFaqEntry = (entry: FaqContextEntry) => entry.category.trim().toLowerCase() === "faq";
+const createDefaultFilters = (): EntryFilters => ({
+  scopeType: "all",
+  sortBy: "latest-desc",
+});
 
-function normalizeScope(scopeType: string) {
-  return scopeType.trim().toLowerCase();
-}
+const isFaqEntry = (entry: FaqContextEntry) => isFaqTag(entry.scopeType);
+
+const sortOptions: SelectOption[] = [
+  { value: "latest-desc", label: "Latest" },
+  { value: "latest-asc", label: "Oldest" },
+  { value: "title-asc", label: "Title A-Z" },
+  { value: "title-desc", label: "Title Z-A" },
+];
 
 function CustomSelect({
   value,
@@ -72,11 +56,12 @@ function CustomSelect({
   onChange,
 }: {
   value: string;
-  options: string[];
+  options: SelectOption[];
   onChange: (val: string) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const selected = options.find((option) => option.value === value);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -95,7 +80,7 @@ function CustomSelect({
         onClick={() => setIsOpen(!isOpen)}
         className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 flex items-center justify-between text-left focus:outline-none focus:ring-2 focus:ring-[#6e3102] dark:focus:ring-[#d4855a] transition-all"
       >
-        <span className="truncate block">{value}</span>
+        <span className="truncate block">{selected?.label ?? value}</span>
         <ChevronDown
           size={16}
           className={`text-gray-500 transition-transform duration-200 flex-shrink-0 ${
@@ -108,18 +93,18 @@ function CustomSelect({
         <div className="absolute z-10 w-full mt-2 bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10 rounded-xl shadow-xl max-h-60 overflow-y-auto py-1 animate-in fade-in zoom-in-95 duration-100">
           {options.map((option) => (
             <div
-              key={option}
+              key={option.value}
               onClick={() => {
-                onChange(option);
+                onChange(option.value);
                 setIsOpen(false);
               }}
               className={`px-4 py-2.5 cursor-pointer transition-colors text-sm flex items-center ${
-                value === option
+                value === option.value
                   ? "bg-gray-100 dark:bg-white/10 text-[#6e3102] dark:text-[#d4855a] font-bold"
                   : "hover:bg-gray-50 dark:hover:bg-white/5 text-gray-700 dark:text-gray-300"
               }`}
             >
-              {option}
+              {option.label}
             </div>
           ))}
         </div>
@@ -131,10 +116,13 @@ function CustomSelect({
 export default function FaqContextPage() {
   const [entries, setEntries] = useState<FaqContextEntry[]>([]);
   const [search, setSearch] = useState("");
-  const [activeSection, setActiveSection] = useState<Section>("faq");
+  const [activeSection, setActiveSection] = useState<FaqSection>("faq");
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<FaqContextEntry | null>(null);
-  const [form, setForm] = useState<FaqFormState>(createEmptyForm("faq"));
+  const [faqDraft, setFaqDraft] = useState<FaqFormState>(createEmptyForm("faq"));
+  const [contextDraft, setContextDraft] = useState<FaqFormState>(createEmptyForm("context"));
+  const [editingIds, setEditingIds] = useState<{ faq: number | null; context: number | null }>({ faq: null, context: null });
+  const [faqFilters, setFaqFilters] = useState<EntryFilters>(createDefaultFilters());
+  const [contextFilters, setContextFilters] = useState<EntryFilters>(createDefaultFilters());
 
   const load = async () => {
     setLoading(true);
@@ -150,17 +138,37 @@ export default function FaqContextPage() {
     void load();
   }, []);
 
-  useEffect(() => {
-    if (!editing) {
-      setForm(createEmptyForm(activeSection));
+  const form = activeSection === "faq" ? faqDraft : contextDraft;
+  const activeEditingId = activeSection === "faq" ? editingIds.faq : editingIds.context;
+  const activeFilters = activeSection === "faq" ? faqFilters : contextFilters;
+
+  const updateActiveForm = (updater: (prev: FaqFormState) => FaqFormState) => {
+    if (activeSection === "faq") {
+      setFaqDraft((prev) => updater(prev));
+      return;
     }
-  }, [activeSection, editing]);
+
+    setContextDraft((prev) => updater(prev));
+  };
+
+  const updateActiveFilters = (updater: (prev: EntryFilters) => EntryFilters) => {
+    if (activeSection === "faq") {
+      setFaqFilters((prev) => updater(prev));
+      return;
+    }
+
+    setContextFilters((prev) => updater(prev));
+  };
 
   const visibleEntries = useMemo(() => entries.filter((entry) => (activeSection === "faq" ? isFaqEntry(entry) : !isFaqEntry(entry))), [entries, activeSection]);
 
   const filteredEntries = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return visibleEntries.filter((entry) => {
+    const scoped = visibleEntries.filter((entry) => {
+      if (activeFilters.scopeType !== "all" && entry.scopeType !== activeFilters.scopeType) {
+        return false;
+      }
+
       if (!query) {
         return true;
       }
@@ -170,23 +178,63 @@ export default function FaqContextPage() {
         .toLowerCase()
         .includes(query);
     });
-  }, [visibleEntries, search]);
+
+    const sorted = [...scoped];
+    sorted.sort((a, b) => {
+      switch (activeFilters.sortBy) {
+        case "latest-asc":
+          return Math.max(new Date(a.updatedAt).getTime(), new Date(a.createdAt).getTime())
+            - Math.max(new Date(b.updatedAt).getTime(), new Date(b.createdAt).getTime());
+        case "title-asc":
+          return a.title.localeCompare(b.title);
+        case "title-desc":
+          return b.title.localeCompare(a.title);
+        case "latest-desc":
+        default:
+          return Math.max(new Date(b.updatedAt).getTime(), new Date(b.createdAt).getTime())
+            - Math.max(new Date(a.updatedAt).getTime(), new Date(a.createdAt).getTime());
+      }
+    });
+
+    return sorted;
+  }, [activeFilters, visibleEntries, search]);
+
+  const scopeFilterOptions = useMemo<SelectOption[]>(() => {
+    const sectionTags = getTagOptions(activeSection).map((tag) => ({ value: tag, label: tag }));
+    return [{ value: "all", label: "All tags" }, ...sectionTags];
+  }, [activeSection]);
+
+  const scopeFormOptions = useMemo<SelectOption[]>(() => {
+    return getTagOptions(activeSection).map((tag) => ({ value: tag, label: tag }));
+  }, [activeSection]);
 
   const startEdit = (entry: FaqContextEntry) => {
-    setEditing(entry);
-    setActiveSection(isFaqEntry(entry) ? "faq" : "context");
-    setForm({
-      scopeType: normalizeScope(entry.scopeType),
+    const section = isFaqEntry(entry) ? "faq" : "context";
+    const nextForm: FaqFormState = {
+      scopeType: normalizePromptRoleTag(entry.scopeType),
       category: entry.category,
       title: entry.title,
       answer: entry.answer,
-      isGuestVisible: entry.isGuestVisible,
-    });
+    };
+
+    setActiveSection(section);
+    setEditingIds((prev) => ({ ...prev, [section]: entry.id }));
+    if (section === "faq") {
+      setFaqDraft(nextForm);
+      return;
+    }
+
+    setContextDraft(nextForm);
   };
 
   const resetForm = () => {
-    setEditing(null);
-    setForm(createEmptyForm(activeSection));
+    setEditingIds((prev) => ({ ...prev, [activeSection]: null }));
+    if (activeSection === "faq") {
+      setFaqDraft(createEmptyForm("faq"));
+      return;
+    }
+
+    setContextDraft(createEmptyForm("context"));
   };
 
   const submit = async () => {
@@ -195,25 +243,28 @@ export default function FaqContextPage() {
     }
 
     const payload = {
-      scopeType: normalizeScope(form.scopeType),
+      scopeType: normalizePromptRoleTag(form.scopeType),
       collegeCode: "",
       programCode: "",
       category: activeSection === "faq"
         ? "faq"
-        : (form.scopeType === "other" ? (form.category.trim() || "context") : (CATEGORY_BY_TAG[form.scopeType] ?? "context")),
+        : deriveCategoryFromTag(form.scopeType, form.category),
       title: form.title.trim(),
       answer: form.answer.trim(),
-      isGuestVisible: form.isGuestVisible,
     };
 
-    if (editing) {
-      await updateFaqEntry(editing.id, payload);
+    if (activeEditingId) {
+      await updateFaqEntry(activeEditingId, payload);
     } else {
       await createFaqEntry(payload);
     }
 
-    setEditing(null);
-    setForm(createEmptyForm(activeSection));
+    setEditingIds((prev) => ({ ...prev, [activeSection]: null }));
+    if (activeSection === "faq") {
+      setFaqDraft(createEmptyForm("faq"));
+    } else {
+      setContextDraft(createEmptyForm("context"));
+    }
     await load();
   };
 
@@ -284,19 +335,34 @@ export default function FaqContextPage() {
                 />
               </div>
 
+              <div className="grid sm:grid-cols-2 gap-3">
+                <CustomSelect
+                  value={activeFilters.scopeType}
+                  options={scopeFilterOptions}
+                  onChange={(nextScope) => updateActiveFilters((prev) => ({ ...prev, scopeType: nextScope }))}
+                />
+                <CustomSelect
+                  value={activeFilters.sortBy}
+                  options={sortOptions}
+                  onChange={(nextSort) => updateActiveFilters((prev) => ({ ...prev, sortBy: nextSort as EntryFilters["sortBy"] }))}
+                />
+              </div>
+
               <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
                 {loading ? (
                   <p className="text-sm text-gray-500">Loading...</p>
                 ) : filteredEntries.length > 0 ? (
-                  filteredEntries.map((entry) => (
+                  filteredEntries.map((entry) => {
+                    const displayCategory = deriveCategoryFromTag(entry.scopeType, entry.category);
+                    return (
                     <article key={entry.id} className="rounded-2xl border border-gray-200 dark:border-white/10 p-4 bg-gray-50/60 dark:bg-white/[0.03]">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 space-y-2">
                           <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-gray-400">
-                            <span>{entry.category}</span>
+                            <span>{displayCategory}</span>
                             <span>·</span>
                             <span className="rounded-full bg-[#f2e8e1] dark:bg-[#39261a] px-2 py-1 text-[#6e3102] dark:text-[#d4855a] font-bold">{entry.scopeType}</span>
-                            {entry.isGuestVisible ? <span className="text-emerald-600 dark:text-emerald-400">Guest visible</span> : <span>Signed-in users</span>}
+                            {isGuestVisibleScopeTag(entry.scopeType) ? <span className="text-emerald-600 dark:text-emerald-400">Guest visible</span> : <span>Signed-in users</span>}
                           </div>
                           <h2 className="font-bold mt-1">{entry.title}</h2>
                           <p className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{entry.answer}</p>
@@ -312,7 +378,8 @@ export default function FaqContextPage() {
                         </div>
                       </div>
                     </article>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="rounded-2xl border border-dashed border-gray-200 dark:border-white/10 p-8 text-center text-sm text-gray-500">
                     No entries match the current search.
@@ -323,68 +390,50 @@ export default function FaqContextPage() {
 
             <section className="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-white/10 rounded-3xl p-5 space-y-3 h-fit">
               <div className="flex items-center gap-2 text-[#6e3102] dark:text-[#d4855a] font-bold uppercase tracking-[0.2em] text-xs">
-                <Plus size={14} /> {editing ? "Edit entry" : "New entry"}
+                <Plus size={14} /> {activeEditingId ? "Edit entry" : "New entry"}
               </div>
               <p className="text-sm text-gray-500 dark:text-gray-400">{sectionDescription}</p>
 
               <CustomSelect
                 value={form.scopeType}
-                options={activeSection === "faq" ? FAQ_TAG_OPTIONS : CONTEXT_TAG_OPTIONS}
+                options={scopeFormOptions}
                 onChange={(nextScope) => {
-                  setForm({
-                    ...form,
+                  updateActiveForm((prev) => ({
+                    ...prev,
                     scopeType: nextScope,
-                    category: activeSection === "faq" ? "faq" : (nextScope === "other" ? form.category : (CATEGORY_BY_TAG[nextScope] ?? "context")),
-                    isGuestVisible: nextScope.endsWith("non-guest") ? false : form.isGuestVisible,
-                  });
+                    category: activeSection === "faq" ? "faq" : deriveCategoryFromTag(nextScope, prev.category),
+                  }));
                 }}
               />
 
               {activeSection === "context" && form.scopeType === "other" ? (
                 <input
                   value={form.category}
-                  onChange={(event) => setForm({ ...form, category: event.target.value })}
+                  onChange={(event) => updateActiveForm((prev) => ({ ...prev, category: event.target.value }))}
                   placeholder="custom category label"
                   className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-[#6e3102] dark:focus:ring-[#d4855a] transition-all"
                 />
               ) : (
-                <input value={activeSection === "faq" ? "faq" : (CATEGORY_BY_TAG[form.scopeType] ?? "context")} disabled className="w-full px-4 py-3 rounded-xl bg-gray-100 dark:bg-[#101014] border border-gray-200 dark:border-white/10 text-gray-500 cursor-not-allowed" />
+                <input value={activeSection === "faq" ? "faq" : deriveCategoryFromTag(form.scopeType, form.category)} disabled className="w-full px-4 py-3 rounded-xl bg-gray-100 dark:bg-[#101014] border border-gray-200 dark:border-white/10 text-gray-500 cursor-not-allowed" />
               )}
 
               <input
                 value={form.title}
-                onChange={(event) => setForm({ ...form, title: event.target.value })}
+                onChange={(event) => updateActiveForm((prev) => ({ ...prev, title: event.target.value }))}
                 placeholder={activeSection === "faq" ? "title" : "context title"}
                 className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-[#6e3102] dark:focus:ring-[#d4855a] transition-all"
               />
               <textarea
                 value={form.answer}
-                onChange={(event) => setForm({ ...form, answer: event.target.value })}
+                onChange={(event) => updateActiveForm((prev) => ({ ...prev, answer: event.target.value }))}
                 placeholder={activeSection === "faq" ? "answer" : "context paragraphs"}
                 rows={6}
                 className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#101014] border border-gray-200 dark:border-white/10 resize-y min-h-[140px] focus:outline-none focus:ring-2 focus:ring-[#6e3102] dark:focus:ring-[#d4855a] transition-all"
               />
               
-              <label className="flex items-center gap-3 text-sm cursor-pointer w-fit group py-1">
-                <div className="relative flex items-center justify-center w-5 h-5 rounded border border-gray-300 dark:border-white/20 bg-white dark:bg-[#101014] group-hover:border-[#6e3102] dark:group-hover:border-[#d4855a] transition-colors">
-                  <input 
-                    type="checkbox" 
-                    className="absolute opacity-0 w-full h-full cursor-pointer z-10"
-                    checked={form.isGuestVisible} 
-                    onChange={(event) => setForm({ ...form, isGuestVisible: event.target.checked })}
-                  />
-                  <div className={`absolute inset-0 flex items-center justify-center rounded transition-all duration-200 ${form.isGuestVisible ? 'bg-[#6e3102] dark:bg-[#d4855a] scale-100' : 'scale-0'}`}>
-                    <Check size={14} className="text-white dark:text-[#121212] stroke-[3]" />
-                  </div>
-                </div>
-                <span className="text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
-                  Visible to guest users
-                </span>
-              </label>
-
               <div className="flex gap-3 pt-2">
                 <button onClick={() => void submit()} className="px-4 py-2 rounded-xl bg-[#6e3102] hover:bg-[#5a2801] dark:bg-[#d4855a] dark:hover:bg-[#e9a67f] dark:text-[#121212] text-white font-semibold transition-colors">
-                  {editing ? "Save" : "Create"}
+                  {activeEditingId ? "Save" : "Create"}
                 </button>
                 <button onClick={resetForm} className="px-4 py-2 rounded-xl border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">Reset</button>
               </div>

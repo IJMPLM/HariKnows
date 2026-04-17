@@ -65,4 +65,10 @@ public static class PromptRoleTags
         var normalized = Normalize(tag);
         return normalized is ContextGeneral or ContextNonGuest or Other;
     }
+
+    public static bool IsGuestVisible(string tag)
+    {
+        var normalized = Normalize(tag);
+        return normalized is not FaqNonGuest and not ContextNonGuest;
+    }
 }

@@ -72,6 +72,7 @@ builder.Services.AddScoped<IGeminiService, GeminiService>();
 builder.Services.AddScoped<IHelpdeskService, HelpdeskService>();
 builder.Services.AddScoped<IRegistrarService, RegistrarService>();
 builder.Services.AddScoped<IRegistrarEtlService, RegistrarEtlService>();
+builder.Services.AddScoped<IFaqCsvSyncService, FaqCsvSyncService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.Configure<RagAssistantOptions>(builder.Configuration.GetSection("RagAssistant"));
 builder.Services.AddScoped<IRagAssistantService, RagAssistantService>();
@@ -354,11 +355,11 @@ using (var scope = app.Services.CreateScope())
             ""EscalationGuidance"" TEXT NOT NULL DEFAULT '',
             ""CitationUrl"" TEXT NOT NULL DEFAULT '',
             ""TagsCsv"" TEXT NOT NULL DEFAULT '',
-            ""IsPublished"" INTEGER NOT NULL,
             ""CreatedAt"" TEXT NOT NULL,
             ""UpdatedAt"" TEXT NOT NULL
         );
     ");
+    await DropFaqIsPublishedColumnIfExistsAsync(db);
     await EnsureSqliteColumnAsync(db, "FaqContextEntries", "CollegeCode", "TEXT NOT NULL DEFAULT ''");
     await EnsureSqliteColumnAsync(db, "FaqContextEntries", "ProgramCode", "TEXT NOT NULL DEFAULT ''");
     await EnsureSqliteColumnAsync(db, "FaqContextEntries", "AvailabilityCriteria", "TEXT NOT NULL DEFAULT ''");
@@ -374,8 +375,7 @@ using (var scope = app.Services.CreateScope())
         ON ""FaqContextEntries"" (""ScopeType"", ""CollegeCode"", ""ProgramCode"");
     ");
     await db.Database.ExecuteSqlRawAsync(@"
-        CREATE INDEX IF NOT EXISTS ""IX_FaqContextEntries_IsPublished""
-        ON ""FaqContextEntries"" (""IsPublished"");
+        DROP INDEX IF EXISTS ""IX_FaqContextEntries_IsPublished"";
     ");
     await db.Database.ExecuteSqlRawAsync(@"
         CREATE TABLE IF NOT EXISTS ""UncertainQuestions"" (
@@ -430,6 +430,9 @@ using (var scope = app.Services.CreateScope())
     {
         await EfRegistrarRepository.SeedDataAsync(db, registrarDefaults);
     }
+
+    var faqCsvSyncService = scope.ServiceProvider.GetRequiredService<IFaqCsvSyncService>();
+    faqCsvSyncService.SyncFromDatabase();
 }
 
 if (app.Environment.IsDevelopment())
@@ -472,4 +475,89 @@ static async Task EnsureSqliteColumnAsync(HariKnowsDbContext db, string tableNam
     await using var alter = connection.CreateCommand();
     alter.CommandText = $"ALTER TABLE \"{tableName}\" ADD COLUMN \"{columnName}\" {columnSql};";
     await alter.ExecuteNonQueryAsync();
+}
+
+static async Task DropFaqIsPublishedColumnIfExistsAsync(HariKnowsDbContext db)
+{
+    var connection = db.Database.GetDbConnection();
+    if (connection.State != System.Data.ConnectionState.Open)
+    {
+        await connection.OpenAsync();
+    }
+
+    await using var check = connection.CreateCommand();
+    check.CommandText = "PRAGMA table_info(\"FaqContextEntries\");";
+    var hasLegacyColumn = false;
+    await using (var reader = await check.ExecuteReaderAsync())
+    {
+        while (await reader.ReadAsync())
+        {
+            var columnName = reader.GetString(1);
+            if (string.Equals(columnName, "IsPublished", StringComparison.OrdinalIgnoreCase))
+            {
+                hasLegacyColumn = true;
+                break;
+            }
+        }
+    }
+
+    if (!hasLegacyColumn)
+    {
+        return;
+    }
+
+    await using var tx = await connection.BeginTransactionAsync();
+
+    async Task ExecuteAsync(string sql)
+    {
+        await using var cmd = connection.CreateCommand();
+        cmd.Transaction = tx;
+        cmd.CommandText = sql;
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    await ExecuteAsync(@"
+        ALTER TABLE ""FaqContextEntries"" RENAME TO ""FaqContextEntries_legacy"";
+    ");
+
+    await ExecuteAsync(@"
+        CREATE TABLE ""FaqContextEntries"" (
+            ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_FaqContextEntries"" PRIMARY KEY AUTOINCREMENT,
+            ""ScopeType"" TEXT NOT NULL,
+            ""CollegeCode"" TEXT NOT NULL DEFAULT '',
+            ""ProgramCode"" TEXT NOT NULL DEFAULT '',
+            ""Category"" TEXT NOT NULL,
+            ""Question"" TEXT NOT NULL,
+            ""Answer"" TEXT NOT NULL,
+            ""AvailabilityCriteria"" TEXT NOT NULL DEFAULT '',
+            ""EligibilityRules"" TEXT NOT NULL DEFAULT '',
+            ""PricingDetails"" TEXT NOT NULL DEFAULT '',
+            ""Requirements"" TEXT NOT NULL DEFAULT '',
+            ""Caveats"" TEXT NOT NULL DEFAULT '',
+            ""EscalationGuidance"" TEXT NOT NULL DEFAULT '',
+            ""CitationUrl"" TEXT NOT NULL DEFAULT '',
+            ""TagsCsv"" TEXT NOT NULL DEFAULT '',
+            ""CreatedAt"" TEXT NOT NULL,
+            ""UpdatedAt"" TEXT NOT NULL
+        );
+    ");
+
+    await ExecuteAsync(@"
+        INSERT INTO ""FaqContextEntries"" (
+            ""Id"", ""ScopeType"", ""CollegeCode"", ""ProgramCode"", ""Category"", ""Question"", ""Answer"",
+            ""AvailabilityCriteria"", ""EligibilityRules"", ""PricingDetails"", ""Requirements"", ""Caveats"",
+            ""EscalationGuidance"", ""CitationUrl"", ""TagsCsv"", ""CreatedAt"", ""UpdatedAt""
+        )
+        SELECT
+            ""Id"", ""ScopeType"", ""CollegeCode"", ""ProgramCode"", ""Category"", ""Question"", ""Answer"",
+            ""AvailabilityCriteria"", ""EligibilityRules"", ""PricingDetails"", ""Requirements"", ""Caveats"",
+            ""EscalationGuidance"", ""CitationUrl"", ""TagsCsv"", ""CreatedAt"", ""UpdatedAt""
+        FROM ""FaqContextEntries_legacy"";
+    ");
+
+    await ExecuteAsync(@"
+        DROP TABLE ""FaqContextEntries_legacy"";
+    ");
+
+    await tx.CommitAsync();
 }

@@ -16,7 +16,7 @@ public sealed class RagAssistantOptions
     public int MaxHistoryTurns { get; set; } = 8;
     public int MaxHistoryCharsPerTurn { get; set; } = 220;
     public int MaxFaqCharsPerEntry { get; set; } = 360;
-    public double UncertainConfidenceThreshold { get; set; } = 0.66;
+    public double UncertainConfidenceThreshold { get; set; } = 0.52;
     public int UncertainDedupMinutes { get; set; } = 20;
     public int UncertainAnsweredSuppressionDays { get; set; } = 180;
 }
@@ -72,7 +72,7 @@ public sealed class RagAssistantService(
             var finalResponse = response with { Reply = linkedReply };
 
             var hasStrongFaqAnswer = faqMatches.Count > 0 && IsStrongFaqMatch(message, faqMatches[0].Title);
-            if (ShouldCaptureUncertainQuestion(message, finalResponse.Confidence, hasKnowledgeMatch, hasStrongFaqAnswer))
+            if (ShouldCaptureUncertainQuestion(message, finalResponse, hasKnowledgeMatch, hasStrongFaqAnswer))
             {
                 await CaptureUncertainQuestionAsync(studentNo, student, conversationId, message, finalResponse.Routing, finalResponse.Confidence, cancellationToken);
                 finalResponse = finalResponse with { UncertainQuestion = message.Trim() };
@@ -348,7 +348,7 @@ public sealed class RagAssistantService(
         return BuildContext(student, studentStatus, gradeSnapshot, curriculumCount, syllabusCount, recentRequests, faqMatches, contextEntries, conversationHistory, message, isGuest);
     }
 
-    private bool ShouldCaptureUncertainQuestion(string message, double confidence, bool hasKnowledgeMatch, bool hasStrongFaqAnswer)
+    private bool ShouldCaptureUncertainQuestion(string message, RagResponseDto response, bool hasKnowledgeMatch, bool hasStrongFaqAnswer)
     {
         if (!IsKnowledgeExpansionCandidate(message))
         {
@@ -360,7 +360,18 @@ public sealed class RagAssistantService(
             return false;
         }
 
-        return confidence < _options.UncertainConfidenceThreshold || !hasKnowledgeMatch;
+        var isIncompleteResponse =
+            string.Equals(response.Routing, "redirect", StringComparison.OrdinalIgnoreCase)
+            || !string.IsNullOrWhiteSpace(response.RedirectOffice)
+            || string.IsNullOrWhiteSpace(response.Reply)
+            || response.Reply.Trim().Length < 24;
+
+        if (!isIncompleteResponse)
+        {
+            return false;
+        }
+
+        return response.Confidence < _options.UncertainConfidenceThreshold || !hasKnowledgeMatch;
     }
 
     private static bool IsKnowledgeExpansionCandidate(string message)

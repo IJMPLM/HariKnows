@@ -50,7 +50,6 @@ export type FaqContextEntry = {
   category: string;
   title: string;
   answer: string;
-  isGuestVisible: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -380,7 +379,6 @@ export async function resolveUncertainQuestion(
     programCode: string;
     title: string;
     answer: string;
-    isGuestVisible: boolean;
   }
 ): Promise<{ question: UncertainQuestion; createdEntry: FaqContextEntry }> {
   const response = await fetch(`${API_BASE}/api/registrar/questions/${questionId}/resolve`, {
@@ -390,6 +388,25 @@ export async function resolveUncertainQuestion(
   });
 
   return (await parseJsonOrThrow(response)) as { question: UncertainQuestion; createdEntry: FaqContextEntry };
+}
+
+export async function closeUncertainQuestion(
+  questionId: number,
+  payload?: {
+    notes?: string;
+  }
+): Promise<{ question: UncertainQuestion }> {
+  const response = await fetch(`${API_BASE}/api/registrar/questions/${questionId}/close`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ notes: payload?.notes ?? "" }),
+  });
+
+  if (response.status === 404) {
+    throw new Error("Close endpoint not found. Restart the backend so the latest API routes are loaded.");
+  }
+
+  return (await parseJsonOrThrow(response)) as { question: UncertainQuestion };
 }
 
 export async function moveDocument(documentId: number, toDepartmentId: number): Promise<{ moved: boolean }> {
@@ -413,6 +430,14 @@ export async function bulkUploadRegistrarCsv(files: File[], incompleteFiles: str
   });
 
   return (await parseJsonOrThrow(response)) as EtlBulkUploadResponse;
+}
+
+export async function syncFaqCsv() {
+  const response = await fetch(`${API_BASE}/api/registrar/etl/sync-faq-csv`, {
+    method: "POST",
+  });
+
+  return await parseJsonOrThrow(response);
 }
 
 export async function commitRegistrarEtl(batchId: string, decisions: Array<{ stagingId: number; action: string }>) {
