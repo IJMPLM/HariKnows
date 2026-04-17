@@ -89,13 +89,13 @@ function TagFilterButton({
       <button
         type="button"
         onClick={() => setIsOpen((v) => !v)}
-        className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-medium transition-colors whitespace-nowrap ${
+        className={`inline-flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl border text-sm font-medium transition-colors whitespace-nowrap w-28 flex-shrink-0 ${
           value !== "all"
             ? "bg-[#6e3102] dark:bg-[#d4855a] border-[#6e3102] dark:border-[#d4855a] text-white dark:text-[#121212]"
             : "border-gray-200 dark:border-white/10 bg-white dark:bg-[#18181b] hover:bg-gray-50 dark:hover:bg-white/5 text-gray-600 dark:text-gray-300"
         }`}
       >
-        {selected?.label ?? value}
+        <span className="truncate">{selected?.label ?? value}</span>
         <ChevronDown
           size={13}
           className={`transition-transform duration-150 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
