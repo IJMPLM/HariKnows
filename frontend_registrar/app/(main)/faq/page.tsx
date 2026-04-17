@@ -80,10 +80,20 @@ const scopeDisplayLabel: Record<string, string> = {
   "faq-student":           "Students",
   "context-general":       "General",
   "context-student":       "Students",
-  "context-ai-identity":   "AI Identity",
-  "context-restrictions":  "Restrictions",
+  "assistant-identity":    "AI Identity",
+  "response-guardrail":    "Restrictions",
 };
 const getScopeDisplayLabel = (tag: string) => scopeDisplayLabel[tag] ?? tag;
+
+// Tooltip map for pill hover text
+const tooltipTextMap: Record<string, string> = {
+  "faq-general":          "Visible to all users.",
+  "faq-student":          "Visible to students only.",
+  "context-general":      "Visible to all users.",
+  "context-student":      "Visible to students only.",
+  "assistant-identity":   "Sets identity of the chatbot.",
+  "response-guardrail":   "Sets restrictions of the chatbot.",
+};
 
 type SortOption = { value: EntryFilters["sortBy"]; label: string; Icon: React.ElementType };
 const sortOptions: SortOption[] = [
@@ -671,7 +681,7 @@ export default function FaqContextPage() {
                           : "border-gray-200 dark:border-white/10 bg-white dark:bg-[#18181b] hover:bg-gray-50 dark:hover:bg-white/5 text-gray-600 dark:text-gray-300"
                       }`}
                     >
-                      <activeQSortOption.Icon size={15} strokeWidth={2.5} aria-hidden="true" />
+                      <ListFilter size={15} strokeWidth={2.5} aria-hidden="true" />
                     </button>
                     {showQSortMenu && (
                       <div
@@ -940,14 +950,12 @@ export default function FaqContextPage() {
                                   <span className="rounded-full bg-[#f2e8e1] dark:bg-[#39261a] px-2 py-1 text-[#6e3102] dark:text-[#d4855a] font-bold cursor-default">
                                     {getScopeDisplayLabel(entry.scopeType)}
                                   </span>
-                                  {(entry.scopeType === "faq-general" || entry.scopeType === "faq-student") && (
+                                  {tooltipTextMap[entry.scopeType] && (
                                     <span
                                       role="tooltip"
                                       className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 w-max max-w-[200px] rounded-xl bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-[11px] font-normal normal-case tracking-normal px-2.5 py-1.5 shadow-lg opacity-0 group-hover/pill:opacity-100 transition-opacity duration-150 z-50 text-center leading-snug whitespace-nowrap"
                                     >
-                                      {entry.scopeType === "faq-general"
-                                        ? "Visible to all users."
-                                        : "Visible to students only."}
+                                      {tooltipTextMap[entry.scopeType]}
                                       <span aria-hidden="true" className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-gray-900 dark:border-b-gray-100" />
                                     </span>
                                   )}
