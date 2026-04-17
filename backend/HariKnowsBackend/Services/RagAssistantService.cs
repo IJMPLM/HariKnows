@@ -482,12 +482,18 @@ public sealed class RagAssistantService(
         }
 
         var topCitation = citations[0];
-        if (string.IsNullOrWhiteSpace(topCitation.Url) || sanitizedReply.Contains(topCitation.Url, StringComparison.OrdinalIgnoreCase))
+        if (topCitation.Id <= 0)
         {
             return sanitizedReply;
         }
 
-        return $"{sanitizedReply.Trim()}\n\nSee related FAQ: [{topCitation.Title}]({topCitation.Url}).";
+        var faqReferenceToken = BuildFaqReferenceToken(topCitation);
+        if (sanitizedReply.Contains(faqReferenceToken, StringComparison.OrdinalIgnoreCase))
+        {
+            return sanitizedReply;
+        }
+
+        return $"{sanitizedReply.Trim()}\n\n{faqReferenceToken}";
     }
 
     private static string SanitizeFaqLinkMentions(string reply, IReadOnlyList<RagCitationDto> citations)
@@ -502,6 +508,18 @@ public sealed class RagAssistantService(
             .Where(url => !string.IsNullOrWhiteSpace(url))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+        var allowedFaqReferences = citations
+            .Where(citation => citation.Id > 0)
+            .Select(citation => BuildFaqReferenceToken(citation))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Remove structured FAQ reference tokens that were not generated from actual citation entries.
+        sanitized = Regex.Replace(
+            sanitized,
+            @"\[\[FAQ_REF:\d+\|[^\]]+\]\]",
+            match => allowedFaqReferences.Contains(match.Value) ? match.Value : string.Empty,
+            RegexOptions.IgnoreCase);
+
         // Remove markdown links that do not point to allowed citation URLs to avoid dead/invented FAQ links.
         sanitized = Regex.Replace(
             sanitized,
@@ -514,6 +532,22 @@ public sealed class RagAssistantService(
             RegexOptions.IgnoreCase);
 
         return sanitized.Trim();
+    }
+
+    private static string BuildFaqReferenceToken(RagCitationDto citation)
+    {
+        var title = citation.Title ?? string.Empty;
+        var safeTitle = title
+            .Replace("|", "/", StringComparison.Ordinal)
+            .Replace("]", string.Empty, StringComparison.Ordinal)
+            .Trim();
+
+        if (string.IsNullOrWhiteSpace(safeTitle))
+        {
+            safeTitle = "Related FAQ";
+        }
+
+        return $"[[FAQ_REF:{citation.Id}|{safeTitle}]]";
     }
 
     private static bool IsStrongFaqMatch(string message, string faqTitle)
@@ -758,12 +792,21 @@ public sealed class RagAssistantService(
         {
             builder.AppendLine("- If a specific FAQ is relevant, prefer a concise answer and include one clear FAQ reference link.");
             builder.AppendLine("- Do not mention internal uncertainty logging, triage queues, or hidden metadata in user-visible responses.");
+            builder.AppendLine("- Only cite FAQ entries listed in Relevant FAQ/context, and when citing use exactly one token in this format: [[FAQ_REF:<id>|<title>]]. Never invent ids, titles, or links.");
         }
         else
         {
             foreach (var guardrail in responseGuardrails)
             {
                 builder.AppendLine($"- {guardrail.Answer}");
+            }
+
+            var hasStructuredFaqReferenceGuardrail = responseGuardrails.Any(entry =>
+                (entry.Answer ?? string.Empty).Contains("FAQ_REF", StringComparison.OrdinalIgnoreCase));
+
+            if (!hasStructuredFaqReferenceGuardrail)
+            {
+                builder.AppendLine("- Only cite FAQ entries listed in Relevant FAQ/context, and when citing use exactly one token in this format: [[FAQ_REF:<id>|<title>]]. Never invent ids, titles, or links.");
             }
         }
 
