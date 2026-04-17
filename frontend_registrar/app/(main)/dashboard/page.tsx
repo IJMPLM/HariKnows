@@ -392,7 +392,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen text-gray-900 dark:text-white">
-      <div className="px-5 lg:px-8 py-6 space-y-6">
+      <div className="pt-16 lg:pt-0 px-5 lg:px-8 py-6 space-y-6">
 
         {/* ── Header ── */}
         <section className="rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#18181b] p-5 sm:p-6">
