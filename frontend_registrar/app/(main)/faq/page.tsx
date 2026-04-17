@@ -49,7 +49,7 @@ const isFaqEntry = (entry: FaqContextEntry) => isFaqTag(entry.scopeType);
 // Display-only label map — raw tag values are never changed
 const scopeDisplayLabel: Record<string, string> = {
   "faq-general": "General",
-  "faq-non-guest": "Students",
+  "faq-student": "Students",
 };
 const getScopeDisplayLabel = (tag: string) => scopeDisplayLabel[tag] ?? tag;
 
@@ -541,7 +541,7 @@ export default function FaqContextPage() {
                                 <span className="rounded-full bg-[#f2e8e1] dark:bg-[#39261a] px-2 py-1 text-[#6e3102] dark:text-[#d4855a] font-bold cursor-default">
                                   {getScopeDisplayLabel(entry.scopeType)}
                                 </span>
-                                {(entry.scopeType === "faq-general" || entry.scopeType === "faq-non-guest") && (
+                                {(entry.scopeType === "faq-general" || entry.scopeType === "faq-student") && (
                                   <span
                                     role="tooltip"
                                     className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 w-max max-w-[200px] rounded-xl bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-[11px] font-normal normal-case tracking-normal px-2.5 py-1.5 shadow-lg opacity-0 group-hover/pill:opacity-100 transition-opacity duration-150 z-50 text-center leading-snug whitespace-nowrap"
