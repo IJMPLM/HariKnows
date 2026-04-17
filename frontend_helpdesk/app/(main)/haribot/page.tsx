@@ -405,17 +405,17 @@ export default function HaribotPage() {
 
         <div className="flex-1 lg:ml-64 flex flex-col h-full relative z-10 pt-16 lg:pt-0">
 
+          {/* GRADIENT MASK */}
+          <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-stone-50 dark:from-[#121212] to-transparent pointer-events-none z-10" />
+
           {/* Main Chat Area */}
           <main className="flex-1 flex flex-col max-w-4xl w-full mx-auto overflow-hidden relative">
-            
-            {/* NEW GRADIENT MASK */}
-            <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-[#000000] to-transparent pointer-events-none z-10" />
 
             {isEmpty && !isLoading ? (
               /* EMPTY STATE */
               <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 pb-32 animate-fade-in w-full">
                 
-                {/* Redesigned Banner Container */}
+                {/* Banner Container */}
                 <div className="w-full max-w-3xl bg-white dark:bg-[#18181b] border border-gray-100 dark:border-white/10 rounded-3xl p-8 sm:p-10 shadow-sm flex flex-col sm:flex-row items-center gap-8 sm:gap-12 relative overflow-hidden">
                   
                   {/* Mascot Core & Orb Container (Left) */}
@@ -623,7 +623,7 @@ export default function HaribotPage() {
                     type="text"
                     value={text}
                     onChange={(event) => setText(event.target.value)}
-                    placeholder="Ask Haribot..."
+                    placeholder="Ask Hari..."
                     disabled={busy || isLoading}
                     className="w-full bg-transparent border-none text-gray-900 dark:text-gray-100 px-2 py-3 focus:outline-none focus:ring-0 text-[0.95rem] disabled:opacity-50"
                     aria-label="Message"
@@ -645,7 +645,7 @@ export default function HaribotPage() {
               
               {/* Footer text */}
               <p className="text-center text-[11px] text-gray-400 mt-3">
-                Haribot provides general guidance. Please verify official details directly with the Registrar. <a href="/privacy-policy" className="underline hover:no-underline text-[#6e3102] dark:text-[#d4855a]">Privacy Policy</a>
+                Hari provides general guidance. Please verify official details directly with the Registrar. <a href="/privacy-policy" className="underline hover:no-underline text-[#6e3102] dark:text-[#d4855a]">Privacy Policy</a>
               </p>
             </div>
 
