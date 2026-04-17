@@ -141,7 +141,7 @@ export default function CsvUploadHistoryPanel({
                         <td className="px-4 py-3">{entry.parsedRows}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`px-2 py-1 rounded text-xs font-semibold ${entry.status === "error" ? "bg-red-500/15 text-red-300" : entry.isActive ? "bg-emerald-500/15 text-emerald-300" : "bg-zinc-500/15 text-zinc-300"}`}>
+                            <span className={`px-2 py-1 rounded text-xs font-semibold ${entry.status === "error" ? "bg-red-500/15 text-red-300" : entry.isActive ? "bg-emerald-600 text-white dark:bg-emerald-600" : "bg-gray-600 text-white dark:bg-gray-600"}`}>
                               {entry.status === "error" ? "error" : entry.isActive ? "active" : "archived"}
                             </span>
                             {entry.isIncomplete ? (
