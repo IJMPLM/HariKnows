@@ -12,6 +12,7 @@ import {
   MessageCircle,
   BarChart2,
   HelpCircle,
+  BookOpen,
   LogIn,
   LogOut,
 } from "lucide-react";
@@ -21,11 +22,12 @@ const signedInLinks = [
   { href: "/haribot",      label: "Talk with Hari",       icon: <MessageCircle size={16} /> },
   { href: "/transactions", label: "Transaction History",   icon: <BarChart2 size={16} /> },
   { href: "/faqs",         label: "FAQs",                  icon: <HelpCircle size={16} /> },
+  { href: "/manual",       label: "User Manual",           icon: <BookOpen size={16} /> },
 ];
 
 const guestLinks = [
   { href: "/haribot", label: "Talk with Hari", icon: <MessageCircle size={16} /> },
-  { href: "/faqs", label: "FAQs", icon: <HelpCircle size={16} /> },
+  { href: "/faqs",    label: "FAQs",           icon: <HelpCircle size={16} /> },
 ];
 
 const recentChatsLink = {
